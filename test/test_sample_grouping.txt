@@ -1,0 +1,8 @@
+s_CH_20	group_1
+s_Molm14	group_2
+s_HEL	group_3
+s_Mo91	group_3
+s_KYO1	group_1
+s_Mo7e	group_4
+s_MKP_1	group_2
+s_CMK	group_2

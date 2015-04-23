@@ -1,0 +1,8 @@
+FASTX			/opt/common/fastx/fastx_toolkit-0.0.13
+PAIREDREADFINDER	/opt/common/PairedreadFinder/PairedreadFinder-1.01 
+BWA			/opt/common/bwa/bwa-0.7.5a
+PICARD			/opt/common/picard/picard-tools-1.92
+GATK			/opt/common/gatk/GenomeAnalysisTK-2.5-2-gf57256b
+MUTECT			/opt/common/muTect/muTect-1.1.4
+BEDTOOLS		/opt/common/bedtools/bedtools-2.17.0
+ONCOTATOR		/opt/common/oncotator/oncotator-1.0

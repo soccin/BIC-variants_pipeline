@@ -1,0 +1,77 @@
+Annotate a MAF with COSMIC and/or Mutation Assessor
+Caitlin Byrne
+November 2012
+
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+****ADD COSMIC ANNOTATIONS TO A MAF****
+
+Dependencies:
+    SourceDataUpdater.py
+    ftpFileUpdate.py
+
+usage: addCosmicAnnotation.py [-h] -i INPUTMAF -o OUTMAF [-l LOCAL_DIR]
+                              [-f COSMICFILE] [-d]
+
+Add COSMIC annotations to MAF
+
+optional arguments:
+  -h, --help            show this help message and exit
+
+Input:
+  -i INPUTMAF           MAF to be annotated
+  -o OUTMAF             output MAF
+  -l LOCAL_DIR, --local LOCAL_DIR
+                        Directory to which COSMIC should be downloaded; must
+                        use this option if not specifying a local COSMIC file
+  -f COSMICFILE, --cosmic COSMICFILE
+                        Local COSMIC file; must use this option if user does
+                        NOT wish to download the latest version of COSMIC
+  -d, --detailed        Include ALL COSMIC fields in MAF; by default, only
+                        "standard" fields are included.
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+****ADD MUTATION ASSESSOR ANNOTATIONS TO A MAF****
+(modified version of Emily's mutAss.py)
+
+Dependencies (optional, but recommended):
+    /ifs/data/mpirun/data/annotations/annotations.db (database of cached results; 
+    can potentially speed up the script significantly)
+
+usage: addMAannotation.py [-h] -i INPUT -o OUT [-d] > addMAannotation.log
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -d, --detailed        include ALL Mutation Assessor fields in output; by
+                        default only 'standard' fields are included in output
+
+Input:
+  -i INPUT, --in INPUT  input MAF file
+  -o OUT, --out OUT     output MAF file (annotated)
+
+Note: script prints to stdout one log message per line in MAF. This line will 
+contain either 1) the URL constructed to submit the query or 2) a warning message
+indicating that a URL was NOT constructed and no query was made. This warning 
+message will be printed if 1) the mutation is an insertion or deletion (mutation 
+assessor does not support indels), 2) both tumor sequence alleles are equal to 
+the reference, or 3) either the reference or the alts consist of multiple bases 
+(mutation assessor does not support these either). These log messages are preceded
+by the MAF line number to aid in manual QA/QC. 
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+*** DOWNLOAD ALL TCGA MAFS, TO BE USED TO POULATE MUTATION ASSESSOR CACHE ***
+
+usage: python getTCGAmafs.py
+
+- takes no input; currently root remote directory and local download directory are hardcoded
+     - local dir: 
+            /ifs/data/BIC/tcga/maf
+     - root remote dir: 
+            https://tcga-data.nci.nih.gov/tcgafiles/ftp_auth/distro_ftpusers/anonymous/tumor/
+
+- downloads all TCGA MAFs and stores in a manifest file local file name, 
+  remote file URL, last modified date and md5
+
+

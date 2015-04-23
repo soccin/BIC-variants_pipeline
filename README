@@ -1,0 +1,59 @@
+command: ./exome_pipeline/exome_pipeline.pl -map MAP -group GROUP -pair PAIR -pre PRE -config CONFIG -species SPECIES
+
+NOTES: 1. if you are not apart of the sge project named ngs, then you will need to remove "-P ngs" from all qsub commands
+       2. you need to have /scratch/YOUR_USER_ID on all of the sge cluster nodes e.g. /scratch/mpirun
+
+
+MAP: file listing sample information for processing
+LIB_ID SAMPLE_ID RUN_ID PATH_TO_FASTQ_DIRECTORY SEQUENCING_TYPE (PE || SE)
+ex.
+_1      s_CH_20 LOLA_1018       /ifs/archive/GCL/hiseq/FASTQ/LOLA_1018_BC087CACXX/Project_2397/Sample_CH_20     PE
+_1      s_Molm14        LOLA_1018       /ifs/archive/GCL/hiseq/FASTQ/LOLA_1018_BC087CACXX/Project_2397/Sample_Molm14    PE
+_1      s_HEL   LOLA_1018       /ifs/archive/GCL/hiseq/FASTQ/LOLA_1018_BC087CACXX/Project_2397/Sample_HEL       PE
+_1      s_Mo91  LOLA_1018       /ifs/archive/GCL/hiseq/FASTQ/LOLA_1018_BC087CACXX/Project_2397/Sample_Mo91      PE
+_1      s_KYO1  LOLA_1018       /ifs/archive/GCL/hiseq/FASTQ/LOLA_1018_BC087CACXX/Project_2397/Sample_KYO1      PE
+_1      s_Mo7e  LOLA_1018       /ifs/archive/GCL/hiseq/FASTQ/LOLA_1018_BC087CACXX/Project_2397/Sample_Mo7e      PE
+_1      s_MKP_1 LOLA_1018       /ifs/archive/GCL/hiseq/FASTQ/LOLA_1018_BC087CACXX/Project_2397/Sample_MKP_1     PE
+_1      s_CMK   LOLA_1018       /ifs/archive/GCL/hiseq/FASTQ/LOLA_1018_BC087CACXX/Project_2397/Sample_CMK       PE
+
+
+GROUP: file listing grouping of samples for realign/recal steps
+SAMPLE_ID GROUP_ID
+ex.
+s_CH_20 group_1
+s_Molm14        group_2
+s_HEL   group_3
+s_Mo91  group_3
+s_KYO1  group_1
+s_Mo7e  group_4
+s_MKP_1 group_2
+s_CMK   group_2
+
+
+PAIR: file listing tumor/normal pairing of samples for mutect/maf conversion
+SAMPLE_1 SAMPLE_2
+ex.
+s_Mo91  s_CMK
+s_Mo91  s_KYO1
+s_Mo91  s_MKP_1
+s_Mo7e  s_CMK
+
+
+PRE: output prefix
+
+
+CONFIG: file listing paths to programs needed for pipeline; full path to config file needed
+PROGRAM PATH_TO_PROGRAM_FOLDER
+ex.
+FASTX                   /opt/common/fastx/fastx_toolkit-0.0.13
+PAIREDREADFINDER        /opt/common/PairedreadFinder/PairedreadFinder-1.01 
+BWA                     /opt/common/bwa/bwa-0.7.5a
+PICARD                  /opt/common/picard/picard-tools-1.92
+GATK                    /opt/common/gatk/GenomeAnalysisTK-2.5-2-gf57256b
+MUTECT                  /opt/common/muTect/muTect-1.1.4
+BEDTOOLS                /opt/common/bedtools/bedtools-2.17.0
+ONCOTATOR               /opt/common/oncotator/oncotator-1.0
+
+SPECIES: sequenced species; currently only hg19 and mm9 are supported
+ex.
+hg19

@@ -1,0 +1,14 @@
+BEDTOOLS		/opt/common/bedtools/bedtools-2.21.0
+BWA			/opt/common/bwa/bwa-0.7.10
+CUTADAPT		/opt/common/cutadapt/cutadapt-1.6
+GATK			/opt/common/gatk/GenomeAnalysisTK-3.2-2-gec30cee
+MUTECT			/opt/common/muTect/muTect-1.1.7
+ONCOTATOR		/opt/common/oncotator/oncotator_2014.01.06
+PICARD			/opt/common/picard/picard-tools-1.124
+SAMTOOLS		/opt/common/samtools/samtools-1.1
+SCALPEL			/opt/common/scalpel/scalpel-0.2.2
+SNPEFF			/opt/common/snpEff/snpEff_v3.5h
+SOMATICSNIPER		/opt/common/somaticsniper/somatic-sniper-1.0.4
+STRELKA			/opt/common/strelka/strelka_workflow-1.0.14
+VARSCAN			/opt/common/varscan/v2.3.7
+VIRMID			/opt/common/virmid/Virmid-1.1.1

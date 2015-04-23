@@ -1,0 +1,8 @@
+_1	s_CH_20	LOLA_1018	/ifs/archive/GCL/hiseq/FASTQ/LOLA_1018_BC087CACXX/Project_2397/Sample_CH_20	PE
+_1	s_Molm14	LOLA_1018	/ifs/archive/GCL/hiseq/FASTQ/LOLA_1018_BC087CACXX/Project_2397/Sample_Molm14	PE
+_1	s_HEL	LOLA_1018	/ifs/archive/GCL/hiseq/FASTQ/LOLA_1018_BC087CACXX/Project_2397/Sample_HEL	PE
+_1	s_Mo91	LOLA_1018	/ifs/archive/GCL/hiseq/FASTQ/LOLA_1018_BC087CACXX/Project_2397/Sample_Mo91	PE
+_1	s_KYO1	LOLA_1018	/ifs/archive/GCL/hiseq/FASTQ/LOLA_1018_BC087CACXX/Project_2397/Sample_KYO1	PE
+_1	s_Mo7e	LOLA_1018	/ifs/archive/GCL/hiseq/FASTQ/LOLA_1018_BC087CACXX/Project_2397/Sample_Mo7e	PE
+_1	s_MKP_1	LOLA_1018	/ifs/archive/GCL/hiseq/FASTQ/LOLA_1018_BC087CACXX/Project_2397/Sample_MKP_1	PE
+_1	s_CMK	LOLA_1018	/ifs/archive/GCL/hiseq/FASTQ/LOLA_1018_BC087CACXX/Project_2397/Sample_CMK	PE

@@ -1,0 +1,4 @@
+s_Mo91	s_CMK
+s_Mo91	s_KYO1
+s_Mo91	s_MKP_1
+s_Mo7e	s_CMK
