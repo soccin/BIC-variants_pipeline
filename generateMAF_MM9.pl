@@ -10,13 +10,14 @@ use FindBin qw($Bin);
 ### NOTE: CAN'T RUN ON NODE BECAUSE NO NETWORK ACCESS FOR ONCOTATOR
 ### NOTE2: DESIGNED TO WORK FOR ONCOTATOR ANNOTATED MAFS
 
-my ($vcf, $pairing, $species, $config, $caller, $normal_sample, $tumor_sample);
+my ($vcf, $pairing, $species, $config, $caller, $normal_sample, $tumor_sample, $delete_temp);
 GetOptions ('vcf=s' => \$vcf,
 	    'species=s' => \$species,
 	    'config=s' => \$config,
 	    'caller=s' => \$caller,
 	    'normal_sample=s' => \$normal_sample,
 	    'tumor_sample=s' => \$tumor_sample,
+	    'delete_temp' => \$delete_temp,
 	    'pairing=s' => \$pairing);
 
 
@@ -44,33 +45,38 @@ if($caller !~ /unifiedgenotyper|ug|haplotypecaller|hc|mutect|varscan|somaticsnip
     die "Only support for unifiedgenotyper(ug), haplotypecaller(hc), mutect, varscan, and somaticsniper";
 }
 
-my $ONCOTATOR = '/opt/bin/oncotator';
+my $PYTHON = '';
 open(CONFIG, "$config") or warn "CAN'T OPEN CONFIG FILE $config SO USING DEFAULT SETTINGS";
 while(<CONFIG>){
     chomp;
 
     my @conf = split(/\s+/, $_);
-    if($conf[0] =~ /oncotator/i){
-	$ONCOTATOR = $conf[1];
+    if($conf[0] =~ /python/i){
+	if(!-e "$conf[1]/python"){
+	    die "CAN'T FIND python IN $conf[1] $!";
+	}
+	$PYTHON = $conf[1];
     }
 }
 close CONFIG;
 
+
 print "converting to MAF and filtering snp calls for coverage/qual\n";
 if($caller =~ /unifiedgenotyper|ug|haplotypecaller|hc/i){
     if($pairing){
-	print "$Bin/maf/vcf2maf0.py -i $vcf -c $caller -o $vcf\_PAIRED.maf -p $pairing\n";
-	print "cat $vcf\_PAIRED.maf | $Bin/maf/pA_qSom2+noLow.py | /usr/bin/tee $vcf\_$somatic\_maf0.txt\n\n";
+	print "$PYTHON/python $Bin/maf/vcf2maf0.py -i $vcf -c $caller -o $vcf\_PAIRED.maf -p $pairing\n";
+	print "cat $vcf\_PAIRED.maf | $PYTHON/python $Bin/maf/pA_qSomHC.py | /usr/bin/tee $vcf\_$somatic\_maf0.txt\n\n";
 
-	`$Bin/maf/vcf2maf0.py -i $vcf -c $caller -o $vcf\_PAIRED.maf -p $pairing`;
-	`cat $vcf\_PAIRED.maf | $Bin/maf/pA_qSom2+noLow.py | /usr/bin/tee $vcf\_$somatic\_maf0.txt > $vcf\_$somatic\_maf0.log 2>&1`;
+	`$PYTHON/python $Bin/maf/vcf2maf0.py -i $vcf -c $caller -o $vcf\_PAIRED.maf -p $pairing`;
+	`cat $vcf\_PAIRED.maf | $PYTHON/python $Bin/maf/pA_qSomHC.py | /usr/bin/tee $vcf\_$somatic\_maf0.txt > $vcf\_$somatic\_maf0.log 2>&1`;
     }
     else{
-	print "$Bin/maf/vcf2maf0.py -i $vcf -c $caller -o $vcf\_UNPAIRED.maf\n";
-	print "cat $vcf\_UNPAIRED.maf | $Bin/maf/pA_Cov+noLow.py | /usr/bin/tee $vcf\_$somatic\_maf0.txt\n\n";
-	`$Bin/maf/vcf2maf0.py -i $vcf -c $caller -o $vcf\_UNPAIRED.maf`;
-	`cat $vcf\_UNPAIRED.maf | $Bin/maf/pA_Cov+noLow.py | /usr/bin/tee $vcf\_$somatic\_maf0.txt > $vcf\_$somatic\_maf0.log 2>&1`;
-    }
+ 	print "$PYTHON/python $Bin/maf/vcf2maf0.py -i $vcf -c $caller -o $vcf\_UNPAIRED.maf\n";
+	print "cat $vcf\_UNPAIRED.maf | $PYTHON/python $Bin/maf/pA_Cov+noLow.py | /usr/bin/tee $vcf\_$somatic\_maf0.txt\n\n";
+
+	`$PYTHON/python $Bin/maf/vcf2maf0.py -i $vcf -c $caller -o $vcf\_UNPAIRED.maf`;
+	`cat $vcf\_UNPAIRED.maf | $PYTHON/python $Bin/maf/pA_Cov+noLow.py | /usr/bin/tee $vcf\_$somatic\_maf0.txt > $vcf\_$somatic\_maf0.log 2>&1`;
+   }
 }
 else{
     my $af = '';
@@ -87,57 +93,37 @@ else{
 	$t_sample = "-t $tumor_sample";
     }
 
-    print "$Bin/maf/vcf2maf0.py -i $vcf $af -c $caller -o $vcf\_$somatic\_maf0.txt -p $pairing $n_sample $t_sample\n\n";
-    `$Bin/maf/vcf2maf0.py -i $vcf $af -c $caller -o $vcf\_$somatic\_maf0.txt -p $pairing $n_sample $t_sample`;
+    print "$PYTHON/python $Bin/maf/vcf2maf0.py -i $vcf $af -c $caller -o $vcf\_$somatic\_maf0.txt -p $pairing $n_sample $t_sample\n\n";
+    `$PYTHON/python $Bin/maf/vcf2maf0.py -i $vcf $af -c $caller -o $vcf\_$somatic\_maf0.txt -p $pairing $n_sample $t_sample`;
 
     if($caller =~ /mutect|mu/i){
 	`/bin/mv $vcf\_$somatic\_maf0.txt $vcf\_$somatic\_UNFILTERED.txt`;
-	open(MUT, "$vcf\_$somatic\_UNFILTERED.txt");
+	print "$PYTHON/python $Bin/rescue/DMP_rescue.py <$vcf\_$somatic\_UNFILTERED.txt> $vcf\_$somatic\_rescued.txt 2> $vcf\_$somatic\_maf0_rescue.log";
+	`$PYTHON/python $Bin/rescue/DMP_rescue.py <$vcf\_$somatic\_UNFILTERED.txt> $vcf\_$somatic\_rescued.txt 2> $vcf\_$somatic\_maf0_rescue.log`;
+	
+	open(MUT, "$vcf\_$somatic\_rescued.txt");
 	open(OUT, ">$vcf\_$somatic\_maf0.txt");
 	my $header = <MUT>;
 	print OUT "$header";
 	my @columns = split(/\t/, $header);
 	my $index_keep = -1;
-	my $index_covered = -1;
-	my $index_mq0 = -1;
-	my $index_adalt = -1;
-	my $index_nadalt = -1;
-
+	
 	for(my $i=0; $i<scalar(@columns); $i++){
-	    if($columns[$i] eq 'MUT_COVERED'){
-		$index_covered = $i;
-	    }
-	    elsif($columns[$i] eq 'MUT_KEEP'){
+	    if($columns[$i] eq 'MUT_KEEP'){
 		$index_keep = $i;
-	    }
-	    elsif($columns[$i] eq 'AD_ALT'){
-		$index_adalt = $i;
-	    }
-	    elsif($columns[$i] eq 'NORM_AD_ALT'){
-		$index_nadalt = $i;
-	    }
-	    elsif($columns[$i] eq 'MUT_MQ0_READS'){
-		$index_mq0 = $i;
 	    }
 	}
 	
-	if($index_keep == -1 || $index_covered == -1 || $index_adalt == -1 || $index_nadalt == -1 || $index_mq0 == -1){
-	    die "Can find MUT_KEEP and/or MUT_COVERED and/or AD_ALT and/or NORM_AD_ALT MUT_MQ0_READS column(s) in $vcf\_$somatic\_UNFILTERED.txt";
+	if($index_keep == -1){
+	    die "Can find MUT_KEEP column in $vcf\_$somatic\_UNFILTERED.txt";
 	}
-
+	
 	while(my $line=<MUT>){
 	    chomp $line;
 	    
 	    my @data = split(/\t/, $line);
-	    if($data[$index_covered] eq 'COVERED'){
-		if($data[$index_keep] eq 'KEEP'){
-		    print OUT "$line\n";
-		}
-		#elsif($data[$index_keep] eq 'REJECT'){
-		 #   if($data[$index_mq0] < $data[$index_adalt] && $data[$index_mq0] < $data[$index_nadalt]){
-			#print OUT "$line\n";	
-		    #}
-		#}
+	    if($data[$index_keep] eq 'KEEP'){
+		print OUT "$line\n";
 	    }
 	}
 	close MUT;
@@ -154,3 +140,7 @@ print "$Bin/maf/oldMAF2tcgaMAF.py $species $vcf\_$somatic\_maf1.txt $vcf\_$somat
 ### Convert old (NDS) MAF to official TCGA MAF
 ### NOTE; DON'T FORGET <> AROUND INPUT FILE (maf0.txt)
 `$Bin/maf/oldMAF2tcgaMAF.py $species $vcf\_$somatic\_maf1.txt $vcf\_$somatic\_TCGA_MAF.txt`;
+
+if($delete_temp){
+    `/bin/rm $vcf\_PAIRED.maf $vcf\_$somatic\_maf0.txt $vcf\_$somatic\_maf0.log $vcf\_UNPAIRED.maf $vcf\_$somatic\_UNFILTERED.txt $vcf\_$somatic\_rescued.txt $vcf\_$somatic\_maf1.txt`;
+}

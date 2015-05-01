@@ -1,0 +1,27 @@
+ABRA			/opt/common/CentOS_6/abra/abra-0.91
+BEDTOOLS		/opt/common/CentOS_6/bedtools/bedtools-2.22.0/bin
+BWA			/opt/common/CentOS_6/bwa/bwa-0.7.12
+CUTADAPT		/opt/common/CentOS_6/cutadapt/cutadapt-1.6/bin
+GATK			/opt/common/CentOS_6/gatk/GenomeAnalysisTK-3.2-2-gec30cee
+JAVA			/opt/common/CentOS_6/java/jre1.7.0_75/bin
+MUTECT			/opt/common/CentOS_6/muTect/muTect-1.1.7
+ONCOTATOR		/opt/common/CentOS_6/oncotator/oncotator_2014.01.06
+PERL			/opt/common/CentOS_6/perl/perl-5.16.3/bin
+PICARD			/opt/common/CentOS_6/picard/picard-tools-1.124
+PYTHON			/opt/common/CentOS_6/python/python-2.7.8/bin
+R			/opt/common/CentOS_6/R/R-3.1.2/bin
+SAMTOOLS		/opt/common/CentOS_6/samtools/samtools-1.2
+SCALPEL			/opt/common/CentOS_6/scalpel/scalpel-0.2.2
+SNPEFF			/opt/common/CentOS_6/snpEff/snpEff_v3.5h
+SOMATICSNIPER		/opt/common/CentOS_6/somaticsniper/somatic-sniper-1.0.4
+STRELKA			/opt/common/CentOS_6/strelka/strelka_1.0.11
+VARSCAN			/opt/common/CentOS_6/varscan/v2.3.7
+VIRMID			/opt/common/CentOS_6/virmid/Virmid-1.1.1
+HG19_BWA_INDEX		/common/data/assemblies/H.sapiens/hg19/index/bwa/0.7.4-r385/hg19.fasta
+HG19_FASTA		/common/data/assemblies/H.sapiens/hg19/hg19.fasta
+HG19_MM10_HYBRID_BWA_INDEX	/common/data/assemblies/hybrids/H.sapiens_M.musculus/hg19_mm10/index/bwa/0.7.8/hybrid_hg19_mm10.fasta
+HG19_MM10_HYBRID_FASTA	/common/data/assemblies/hybrids/H.sapiens_M.musculus/hg19_mm10/hybrid_hg19_mm10.fasta
+MM9_BWA_INDEX	/common/data/assemblies/M.musculus/mm9/index/bwa/0.7.4-r385/mm9.fasta
+MM9_FASTA	/common/data/assemblies/M.musculus/mm9/mm9.fasta
+DM3_BWA_INDEX
+DM3_FASTA

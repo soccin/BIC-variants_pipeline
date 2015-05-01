@@ -1,0 +1,67 @@
+#!/bin/bash
+
+# Version 2.0
+
+usage() {
+    echo "usage: jobSync QUEUE_TYPE JOB_NAME"
+    echo "          QUEUE_TYPE = LSF | SGE"
+    exit
+}
+
+if [ "$#" -ne 2 ]; then
+    usage
+fi
+
+QUEUE=$1
+JOBNAME=$2
+
+if [ "$QUEUE" == "LSF" ] || [ "$QUEUE" == "lsf" ]; then
+
+    getLastJobNo() {
+        $LSFBIN/bjobs -UF 2>&1 | fgrep "Job Name" | egrep $JOBNAME \
+            | tail -1 | perl -ne '/Job <(\d+)[\[\]\d]*>/;print "$1\n"'
+	}
+
+    LSFBIN=/common/lsf/9.1/linux2.6-glibc2.3-x86_64/bin
+    BACKOFF=2
+    HOLDJOB=$(getLastJobNo)
+    while [ "$HOLDJOB" != "" ]; do
+        echo
+        echo "Holding on" $HOLDJOB $(date) $(( BACKOFF - 1 ))
+        echo
+        $LSFBIN/bsub -We 1 -w "post_done($HOLDJOB)" -J bSync_$$ -K sleep $(( BACKOFF - 1 ))
+        BACKOFF=$(( BACKOFF / 2 + BACKOFF ))
+        if [ "$BACKOFF" -gt 1200 ]; then
+            BACKOFF=1200
+        fi
+        HOLDJOB=$(getLastJobNo)
+    done
+
+elif [ "$QUEUE" == "SGE" ] || [ "$QUEUE" == "sge" ]; then
+
+    QRSH=/common/sge/bin/lx24-amd64/qrsh
+    USER=$(/usr/bin/whoami)
+    export TMPDIR=/ifs/data/${USER}/tmp
+    mkdir -p $TMPDIR
+    SEMAPHORE=$(mktemp -t QSYNC_XXXXXXXX)
+    echo SYNC $JOBNAME >$SEMAPHORE
+    date >>$SEMAPHORE
+    TAG=qSync.${JOBNAME} ##${SEMAPHORE##*/}
+    echo $TAG
+    sleep 2
+    while [ -e $SEMAPHORE ]; do
+        cat $SEMAPHORE
+        sleep 1
+        echo "Holding for" $JOBNAME, $SEMAPHORE
+        $QRSH -now no -hold_jid $JOBNAME -N $TAG /bin/rm $SEMAPHORE
+        #echo "===="
+        #cat $SEMAPHORE
+        #echo "--"
+    done
+
+else
+
+    echo "Unknown QUEUE_TYPE =  ["$QUEUE"]"
+    usage
+
+fi
