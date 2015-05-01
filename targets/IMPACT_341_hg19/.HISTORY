@@ -1,0 +1,7 @@
+cat ../../b37/IMPACT_341_b37/IMPACT_341_b37_FP_tiling_intervals.list 
+cat ../../b37/IMPACT_341_b37/IMPACT_341_b37_FP_tiling_intervals.list  | awk '{print "chr"$0}'
+cat ../../b37/IMPACT_341_b37/IMPACT_341_b37_FP_tiling_intervals.list  | awk '{print "chr"$0}' >IMPACT_341_hg19_FP_tiling_intervals.list 
+hg status
+cd ..
+pwd
+cd
