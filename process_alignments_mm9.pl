@@ -797,22 +797,25 @@ sub generateMaf{
 	$t_sample = "-tumor_sample $tumor_sample";
     }
 
+    my $jna = $vcf;
+    $jna =~ s/\//_/g;
+
     my %addParams = (scheduler => "$scheduler", runtime => "500", priority_project=> "$priority_project", priority_group=> "$priority_group", queues => "ito.q");
     my $additionalParams = Schedule::additionalParams(%addParams);
 
     if($pair){
-	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$vcf\_MAF_PAIRED", job_hold => "$hold", cpu => "4", mem => "8", internet => "1", cluster_out => "$output/progress/$pre\_$uID\_$vcf\_MAF_PAIRED.log");
+	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$jna\_MAF_PAIRED", job_hold => "$hold", cpu => "4", mem => "8", internet => "1", cluster_out => "$output/progress/$pre\_$uID\_$jna\_MAF_PAIRED.log");
 	my $standardParams = Schedule::queuing(%stdParams);
 	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $standardParams->{internet} $additionalParams $Bin/generateMAF_MM9.pl -vcf $vcf -pairing $pair -species mm9 -config $config -caller $type $n_sample $t_sample -delete_temp`;
 
 	if($type =~ /unifiedgenotyper|ug|haplotypecaller|hc/i){
-	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$vcf\_MAF_UNPAIRED", job_hold => "$hold", cpu => "4", mem => "8", internet => "1", cluster_out => "$output/progress/$pre\_$uID\_$vcf\_MAF_UNPAIRED.log");
+	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$jna\_MAF_UNPAIRED", job_hold => "$hold", cpu => "4", mem => "8", internet => "1", cluster_out => "$output/progress/$pre\_$uID\_$jna\_MAF_UNPAIRED.log");
 	    my $standardParams = Schedule::queuing(%stdParams);
 	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $standardParams->{internet} $additionalParams $Bin/generateMAF_MM9.pl -vcf $vcf -species mm9 -config $config -caller $type -delete_temp`;
 	}
     }
     else{
-	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$vcf\_MAF_UNPAIRED", job_hold => "$hold", cpu => "4", mem => "8", internet => "1", cluster_out => "$output/progress/$pre\_$uID\_$vcf\_MAF_UNPAIRED.log");
+	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$jna\_MAF_UNPAIRED", job_hold => "$hold", cpu => "4", mem => "8", internet => "1", cluster_out => "$output/progress/$pre\_$uID\_$jna\_MAF_UNPAIRED.log");
 	my $standardParams = Schedule::queuing(%stdParams);
 	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $standardParams->{internet} $additionalParams $Bin/generateMAF_MM9.pl -vcf $vcf -species mm9 -config $config -caller $type -delete_temp`;
     }
