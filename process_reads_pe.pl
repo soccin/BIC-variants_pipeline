@@ -40,7 +40,7 @@ if(!$file || !$config || !$species || !$scheduler || $help){
     USAGE: process_reads_pe.pl -file FILE -pre PRE -species SPECIES -config CONFIG -run RUN -readgroup READGROUP -scheduler SCHEDULER
 	* FILE: file listing read pairs to process (REQUIRED)
 	* PRE: output prefix (default: TEMP)
-	* SPECIES: only hg19, mm9, hybrid (hg19+mm10) and dm3 currently supported (REQUIRED)
+	* SPECIES: only hg19, mm9, mm10, hybrid (hg19+mm10) and dm3 currently supported (REQUIRED)
 	* CONFIG: file listing paths to programs needed for pipeline; full path to config file needed (REQUIRED)
 	* SCHEDULER: currently support for SGE and LSF (REQUIRED)
 	* RUN: RUN IDENTIFIER (default: TEMP_RUN)
@@ -67,6 +67,8 @@ my $HG19_MM9_HYBRID_FASTA = '';
 my $HG19_MM9_HYBRID_BWA_INDEX = '';
 my $MM9_FASTA = '';
 my $MM9_BWA_INDEX = '';
+my $MM10_FASTA = '';
+my $MM10_BWA_INDEX = '';
 my $DM3_FASTA = '';
 my $DM3_BWA_INDEX = '';
 my $CUTADAPT = '';
@@ -123,27 +125,39 @@ while(<CONFIG>){
     }
     elsif($conf[0] =~ /hg9_mm9_hybrid_fasta/i){
 	if(!-e "$conf[1]"){
-	    ###die "CAN'T FIND $conf[1] $!";
+	    die "CAN'T FIND $conf[1] $!";
 	}
 	$HG19_MM9_HYBRID_FASTA = $conf[1];
     }
     elsif($conf[0] =~ /hg19_mm9_hybrid_bwa_index/i){
 	if(!-e "$conf[1]\.bwt" || !-e "$conf[1]\.pac" || !-e "$conf[1]\.ann" || !-e "$conf[1]\.amb" || !-e "$conf[1]\.sa"){
-	    ###die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR HG19-MM9 HYBRID WITH PREFIX $conf[1] $!";
+	    die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR HG19-MM9 HYBRID WITH PREFIX $conf[1] $!";
 	}
 	$HG19_MM9_HYBRID_BWA_INDEX = $conf[1];
     }
     elsif($conf[0] =~ /mm9_fasta/i){
 	if(!-e "$conf[1]"){
-	    ###die "CAN'T FIND $conf[1] $!";
+	    die "CAN'T FIND $conf[1] $!";
 	}
 	$MM9_FASTA = $conf[1];
     }
     elsif($conf[0] =~ /mm9_bwa_index/i){
 	if(!-e "$conf[1]\.bwt" || !-e "$conf[1]\.pac" || !-e "$conf[1]\.ann" || !-e "$conf[1]\.amb" || !-e "$conf[1]\.sa"){
-	    ###die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR MM9 WITH PREFIX $conf[1] $!";
+	    die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR MM9 WITH PREFIX $conf[1] $!";
 	}
 	$MM9_BWA_INDEX = $conf[1];
+    }
+    elsif($conf[0] =~ /mm10_fasta/i){
+	if(!-e "$conf[1]"){
+	    die "CAN'T FIND $conf[1] $!";
+	}
+	$MM10_FASTA = $conf[1];
+    }
+    elsif($conf[0] =~ /mm10_bwa_index/i){
+	if(!-e "$conf[1]\.bwt" || !-e "$conf[1]\.pac" || !-e "$conf[1]\.ann" || !-e "$conf[1]\.amb" || !-e "$conf[1]\.sa"){
+	    die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR MM10 WITH PREFIX $conf[1] $!";
+	}
+	$MM10_BWA_INDEX = $conf[1];
     }
     elsif($conf[0] =~ /dm3_fasta/i){
 	if(!-e "$conf[1]"){
@@ -160,9 +174,13 @@ while(<CONFIG>){
 }
 close CONFIG;
 
-if($species =~/hg19/i){
+if($species =~/hg19|human/i){
     $bwaDB = "$HG19_BWA_INDEX";
     $refSeq = "$HG19_FASTA";
+}
+elsif($species =~ /mm10|mouse/i){
+    $bwaDB = "$MM10_BWA_INDEX";
+    $refSeq = "$MM10_FASTA";
 }
 elsif($species =~ /mm9/i){
     $bwaDB = "$MM9_BWA_INDEX";
@@ -177,7 +195,7 @@ elsif($species =~ /dm3/i){
     $refSeq = "$DM3_FASTA";
 }
 else{
-    die "SPECIES $species ISN'T CURRENTLY SUPPORTED; ONLY SUPPORT FOR hg19 and mm9\n";
+    die "SPECIES $species ISN'T CURRENTLY SUPPORTED; ONLY SUPPORT FOR hg19 and mm9|mm10\n";
 }
 
 `/bin/mkdir -m 775 -p progress`;

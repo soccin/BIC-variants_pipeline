@@ -12,7 +12,7 @@ PYTHON			/opt/common/CentOS_6/python/python-2.7.8/bin
 R			/opt/common/CentOS_6/R/R-3.1.2/bin
 SAMTOOLS		/opt/common/CentOS_6/samtools/samtools-1.2
 SCALPEL			/opt/common/CentOS_6/scalpel/scalpel-0.2.2
-SNPEFF			/opt/common/CentOS_6/snpEff/snpEff_v3.5h
+SNPEFF			/opt/common/CentOS_6/snpEff/snpEff_v4_1e
 SOMATICSNIPER		/opt/common/CentOS_6/somaticsniper/somatic-sniper-1.0.4
 STRELKA			/opt/common/CentOS_6/strelka/strelka_1.0.11
 VARSCAN			/opt/common/CentOS_6/varscan/v2.3.7
@@ -23,5 +23,7 @@ HG19_MM10_HYBRID_BWA_INDEX	/common/data/assemblies/hybrids/H.sapiens_M.musculus/
 HG19_MM10_HYBRID_FASTA	/common/data/assemblies/hybrids/H.sapiens_M.musculus/hg19_mm10/hybrid_hg19_mm10.fasta
 MM9_BWA_INDEX	/common/data/assemblies/M.musculus/mm9/index/bwa/0.7.4-r385/mm9.fasta
 MM9_FASTA	/common/data/assemblies/M.musculus/mm9/mm9.fasta
+MM10_BWA_INDEX	/common/data/assemblies/M.musculus/mm10/index/bwa/0.7.8/mm10.fasta
+MM10_FASTA	/common/data/assemblies/M.musculus/mm10/mm10.fasta
 DM3_BWA_INDEX
 DM3_FASTA
