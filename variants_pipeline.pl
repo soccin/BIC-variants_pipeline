@@ -395,7 +395,7 @@ sub verifyConfig{
 		die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR HG19 WITH PREFIX $conf[1] $!";
 	    }
 	}
-	elsif($conf[0] =~ /hg9_mm10_hybrid_fasta/i){
+	elsif($conf[0] =~ /hg19_mm10_hybrid_fasta/i){
 	    if(!-e "$conf[1]"){
 		die "CAN'T FIND $conf[1] $!";
 	    }
@@ -838,6 +838,9 @@ sub mergeStats {
     if(!-e "$output/progress/$pre\_$uID\_ISM_MATRIX.done" || $ran_merge_ism){    
 	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_ISM_MATRIX", job_hold => "$pre\_$uID\_MERGE_ISM", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_ISM_MATRIX.log");
 	my $standardParams = Schedule::queuing(%stdParams);
+
+	print "$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PYTHON/python $Bin/qc/mergeInsertSizeHistograms.py $output/intFiles '*InsertSizeMetrics_*.txt' $output/metrics/$pre\_InsertSizeMetrics_Histograms.txt\n";
+
 	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PYTHON/python $Bin/qc/mergeInsertSizeHistograms.py $output/intFiles '*InsertSizeMetrics_*.txt' $output/metrics/$pre\_InsertSizeMetrics_Histograms.txt`;
 	`/bin/touch $output/progress/$pre\_$uID\_ISM_MATRIX.done`;
     }
