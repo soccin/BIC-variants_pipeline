@@ -167,7 +167,7 @@ while(<CONFIG>){
 	}
 	$HG19_FASTA = $conf[1];
     }
-    elsif($conf[0] =~ /hg9_mm10_hybrid_fasta/i){
+    elsif($conf[0] =~ /hg19_mm10_hybrid_fasta/i){
 	if(!-e "$conf[1]"){
 	    die "CAN'T FIND $conf[1] $!";
 	}

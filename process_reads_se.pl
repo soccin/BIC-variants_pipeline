@@ -116,7 +116,7 @@ while(<CONFIG>){
 	}
 	$HG19_BWA_INDEX = $conf[1];
     }
-    elsif($conf[0] =~ /hg9_mm9_hybrid_fasta/i){
+    elsif($conf[0] =~ /hg19_mm9_hybrid_fasta/i){
 	if(!-e "$conf[1]"){
 	    die "CAN'T FIND $conf[1] $!";
 	}
