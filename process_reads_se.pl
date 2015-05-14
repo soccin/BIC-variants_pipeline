@@ -56,8 +56,8 @@ my $knownSites = '';
 my $refSeq = '';
 my $HG19_FASTA = '';
 my $HG19_BWA_INDEX = '';
-my $HG19_MM9_HYBRID_FASTA = '';
-my $HG19_MM9_HYBRID_BWA_INDEX = '';
+my $HG19_MM10_HYBRID_FASTA = '';
+my $HG19_MM10_HYBRID_BWA_INDEX = '';
 my $MM9_FASTA = '';
 my $MM9_BWA_INDEX = '';
 my $MM10_FASTA = '';
@@ -120,13 +120,13 @@ while(<CONFIG>){
 	if(!-e "$conf[1]"){
 	    die "CAN'T FIND $conf[1] $!";
 	}
-	$HG19_MM9_HYBRID_FASTA = $conf[1];
+	$HG19_MM10_HYBRID_FASTA = $conf[1];
     }
     elsif($conf[0] =~ /hg19_mm9_hybrid_bwa_index/i){
 	if(!-e "$conf[1]\.bwt" || !-e "$conf[1]\.pac" || !-e "$conf[1]\.ann" || !-e "$conf[1]\.amb" || !-e "$conf[1]\.sa"){
-	    die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR HG19-MM9 HYBRID WITH PREFIX $conf[1] $!";
+	    die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR HG19-MM10 HYBRID WITH PREFIX $conf[1] $!";
 	}
-	$HG19_MM9_HYBRID_BWA_INDEX = $conf[1];
+	$HG19_MM10_HYBRID_BWA_INDEX = $conf[1];
     }
     elsif($conf[0] =~ /mm9_fasta/i){
 	if(!-e "$conf[1]"){
@@ -180,8 +180,8 @@ elsif($species =~ /mm9/i){
     $refSeq = "$MM9_FASTA";
 }
 elsif($species =~ /hybrid/i){
-    $bwaDB = "$HG19_MM9_HYBRID_BWA_INDEX";
-    $refSeq = "$HG19_MM9_HYBRID_FASTA";
+    $bwaDB = "$HG19_MM10_HYBRID_BWA_INDEX";
+    $refSeq = "$HG19_MM10_HYBRID_FASTA";
 }
 elsif($species =~ /dm3/i){
     $bwaDB = "$DM3_BWA_INDEX";
