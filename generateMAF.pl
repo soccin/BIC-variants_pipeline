@@ -47,6 +47,7 @@ if($caller !~ /unifiedgenotyper|ug|haplotypecaller|hc|mutect|varscan|somaticsnip
 
 my $ONCOTATOR = '';
 my $PYTHON = '';
+my $PERL = '';
 open(CONFIG, "$config") or warn "CAN'T OPEN CONFIG FILE $config SO USING DEFAULT SETTINGS";
 while(<CONFIG>){
     chomp;
@@ -63,6 +64,12 @@ while(<CONFIG>){
 	    die "CAN'T FIND python IN $conf[1] $!";
 	}
 	$PYTHON = $conf[1];
+    }
+    elsif($conf[0] =~ /perl/i){
+	if(!-e "$conf[1]/perl"){
+	    die "CAN'T FIND perl IN $conf[1] $!";
+	}
+	$PERL = $conf[1];
     }
 }
 close CONFIG;
@@ -157,11 +164,11 @@ print "/bin/cat $vcf\_$somatic\_maf2.txt | $PYTHON/python $Bin/maf/pA_fixHugo.py
 `/bin/cat $vcf\_$somatic\_maf2.txt | $PYTHON/python $Bin/maf/pA_fixHugo.py > $vcf\_$somatic\_maf3.txt`;
 
 print "updating hugo symbol\n";
-print "$Bin/update_gene_names_and_ids.pl $vcf\_$somatic\_maf3.txt\n\n";
+print "$PERL/perl $Bin/update_gene_names_and_ids.pl $vcf\_$somatic\_maf3.txt\n\n";
 ### update hugo_symbol
 ### deletes old copy and get fresh copy every time
 #`/bin/rm $Bin/lib/hugo_data.tsv`;
-`$Bin/update_gene_names_and_ids.pl $vcf\_$somatic\_maf3.txt > $vcf\_$somatic\_MAF3_HUGO.log 2>&1`;
+`$PERL/perl $Bin/update_gene_names_and_ids.pl $vcf\_$somatic\_maf3.txt > $vcf\_$somatic\_MAF3_HUGO.log 2>&1`;
 
 print "creating TCGA-formatted MAF file... \n";
 print "/bin/cat $vcf\_$somatic\_maf3.txt_hugo_modified | $PYTHON/python $Bin/maf/pA_Functional_Oncotator.py\n\n";

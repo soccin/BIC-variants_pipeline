@@ -76,6 +76,7 @@ umask $orig_umask;
 
 my $ONCOTATOR = '';
 my $PYTHON = '';
+my $PERL = '';
 open(CONFIG, "$config") or warn "CAN'T OPEN CONFIG FILE $config SO USING DEFAULT SETTINGS";
 while(<CONFIG>){
     chomp;
@@ -92,6 +93,12 @@ while(<CONFIG>){
 	    die "CAN'T FIND python IN $conf[1] $!";
 	}
 	$PYTHON = $conf[1];
+    }
+    elsif($conf[0] =~ /perl/i){
+	if(!-e "$conf[1]/perl"){
+	    die "CAN'T FIND perl IN $conf[1] $!";
+	}
+	$PERL = $conf[1];
     }
 }
 close CONFIG;
@@ -210,9 +217,9 @@ print "$PYTHON/python $Bin/maf/pA_fixHugo.py <$output/$pre\_merge_maf1.txt >$out
 `$PYTHON/python $Bin/maf/pA_fixHugo.py <$output/$pre\_merge_maf1.txt >$output/$pre\_merge_maf2.txt`;
 
 ## Update hugo symbol
-print "$Bin/update_gene_names_and_ids.pl $output/$pre\_merge_maf2.txt\n\n";
+print "$PERL/perl $Bin/update_gene_names_and_ids.pl $output/$pre\_merge_maf2.txt\n\n";
 #`/bin/rm $Bin/lib/hugo_data.tsv`;
-`$Bin/update_gene_names_and_ids.pl $output/$pre\_merge_maf2.txt > $output/$pre\_merge_maf2_hugo.log 2>&1`;
+`$PERL/perl $Bin/update_gene_names_and_ids.pl $output/$pre\_merge_maf2.txt > $output/$pre\_merge_maf2_hugo.log 2>&1`;
 
 ## Grep for functional events YO!
 print "cat $output/$pre\_merge_maf2.txt_hugo_modified | $PYTHON/python $Bin/maf/pA_Functional_Oncotator2.py > $output/$pre\_haplotect_TCGA_MAF.txt\n\n";
