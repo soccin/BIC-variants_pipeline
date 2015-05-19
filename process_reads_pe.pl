@@ -216,23 +216,47 @@ while (<IN>){
 	$ran_zcatR2 = 1;
     }
 
-    my @rsplit_jids = ();
-    my $ran_rsplit1 = 0;
-    if(!-e "progress/$pre\_$uID\_RSPLIT_$nameR1[0]\.done" || $ran_zcatR1){
+    my $ran_cqs1 = 0;
+    my $cqs1_jid = '';
+    if(!-e "progress/$pre\_$uID\_CQS_$nameR1[0]\.done" || $ran_zcatR1){
 	sleep(3);
-	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_RSPLIT_$nameR1[0]", job_hold => "$zcatR1_jid", cpu => "1", mem => "1", cluster_out => "progress/$pre\_$uID\_RSPLIT_$nameR1[0]\.log");
+	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_CQS_$nameR1[0]", job_hold => "$zcatR1_jid", cpu => "1", mem => "1", cluster_out => "progress/$pre\_$uID\_CQS_$nameR1[0]\.log");
 	my $standardParams = Schedule::queuing(%stdParams);
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams /usr/bin/split -a 3 -l 16000000 -d $count/$nameR1[0] $count/$nameR1[0]\__`;
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/ConvertQualityScore --input $count/$nameR1[0] --output $count/$nameR1[0]\_CQS`;
+	`/bin/touch progress/$pre\_$uID\_CQS_$nameR1[0]\.done`;
+	$cqs1_jid = "$pre\_$uID\_CQS_$nameR1[0]";
+	$ran_cqs1 = 1;	
+    }
+
+    my $ran_cqs2 = 0;
+    my $cqs2_jid = '';
+    if(!-e "progress/$pre\_$uID\_CQS_$nameR2[0]\.done" || $ran_zcatR2){
+	sleep(3);
+	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_CQS_$nameR2[0]", job_hold => "$zcatR2_jid", cpu => "1", mem => "1", cluster_out => "progress/$pre\_$uID\_CQS_$nameR2[0]\.log");
+	my $standardParams = Schedule::queuing(%stdParams);
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/ConvertQualityScore --input $count/$nameR2[0] --output $count/$nameR2[0]\_CQS`;
+	`/bin/touch progress/$pre\_$uID\_CQS_$nameR2[0]\.done`;
+	$cqs2_jid = "$pre\_$uID\_CQS_$nameR2[0]";
+	$ran_cqs2 = 1;	
+    }
+
+    my $ran_rsplit1 = 0;
+    my @rsplit_jids = ();
+    if(!-e "progress/$pre\_$uID\_RSPLIT_$nameR1[0]\.done" || $ran_cqs1){
+	sleep(3);
+	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_RSPLIT_$nameR1[0]", job_hold => "$cqs1_jid", cpu => "1", mem => "1", cluster_out => "progress/$pre\_$uID\_RSPLIT_$nameR1[0]\.log");
+	my $standardParams = Schedule::queuing(%stdParams);
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams /usr/bin/split -a 3 -l 16000000 -d $count/$nameR1[0]\_CQS $count/$nameR1[0]\_CQS__`;
 	`/bin/touch progress/$pre\_$uID\_RSPLIT_$nameR1[0]\.done`;
 	push @rsplit_jids, "$pre\_$uID\_RSPLIT_$nameR1[0]";
 	$ran_rsplit1 = 1;	
     }
     my $ran_rsplit2 = 0;
-    if(!-e "progress/$pre\_$uID\_RSPLIT_$nameR2[0]\.done" || $ran_zcatR2){
+    if(!-e "progress/$pre\_$uID\_RSPLIT_$nameR2[0]\.done" || $ran_cqs2){
 	sleep(3);
-	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_RSPLIT_$nameR2[0]", job_hold => "$zcatR2_jid", cpu => "1", mem => "1", cluster_out => "progress/$pre\_$uID\_RSPLIT_$nameR2[0]\.log");
+	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_RSPLIT_$nameR2[0]", job_hold => "$cqs2_jid", cpu => "1", mem => "1", cluster_out => "progress/$pre\_$uID\_RSPLIT_$nameR2[0]\.log");
 	my $standardParams = Schedule::queuing(%stdParams);
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams /usr/bin/split -a 3 -l 16000000 -d $count/$nameR2[0] $count/$nameR2[0]\__`;    
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams /usr/bin/split -a 3 -l 16000000 -d $count/$nameR2[0]\_CQS $count/$nameR2[0]\_CQS__`;    
 	`/bin/touch progress/$pre\_$uID\_RSPLIT_$nameR2[0]\.done`;
 	push @rsplit_jids, "$pre\_$uID\_RSPLIT_$nameR2[0]";
 	$ran_rsplit2 = 1;
@@ -266,7 +290,7 @@ while (<IN>){
     my $rsj = join(",", @rsplit_jids);
     my $rcount = 0;
     foreach my $rfile (@rsplits){	
-	if($rfile =~ /$nameR1[0]\_\_/){
+	if($rfile =~ /$nameR1[0]\_CQS\_\_/){
 	    $rcount++;
 
 	    `/bin/mkdir -m 775 -p $count/$rcount`;

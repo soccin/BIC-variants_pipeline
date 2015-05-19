@@ -181,13 +181,25 @@ while (<IN>){
 	$ran_zcatR1 = 1;
     }
 
+    my $ran_cqs1 = 0;
+    my $cqs1_jid = '';
+    if(!-e "progress/$pre\_$uID\_CQS_$nameR1[0]\.done" || $ran_zcatR1){
+	sleep(3);
+	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_CQS_$nameR1[0]", job_hold => "$zcatR1_jid", cpu => "1", mem => "1", cluster_out => "progress/$pre\_$uID\_CQS_$nameR1[0]\.log");
+	my $standardParams = Schedule::queuing(%stdParams);
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/ConvertQualityScore --input $count/$nameR1[0] --output $count/$nameR1[0]\_CQS`;
+	`/bin/touch progress/$pre\_$uID\_CQS_$nameR1[0]\.done`;
+	$cqs1_jid = "$pre\_$uID\_CQS_$nameR1[0]";
+	$ran_cqs1 = 1;	
+    }
+
     my $ran_rsplit = 0;
     my $rsplit_jid = '';
-    if(!-e "progress/$pre\_$uID\_RSPLIT_$nameR1[0]\.done" || $ran_zcatR1){
+    if(!-e "progress/$pre\_$uID\_RSPLIT_$nameR1[0]\.done" || $ran_cqs1){
 	sleep(3);
-	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_RSPLIT_$nameR1[0]", job_hold => "$zcatR1_jid", cpu => "1", mem => "1", cluster_out => "progress/$pre\_$uID\_RSPLIT_$nameR1[0]\.log");
+	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_RSPLIT_$nameR1[0]", job_hold => "$cqs1_jid", cpu => "1", mem => "1", cluster_out => "progress/$pre\_$uID\_RSPLIT_$nameR1[0]\.log");
 	my $standardParams = Schedule::queuing(%stdParams);
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $additionalParams /usr/bin/split -a 3 -l 16000000 -d $count/$nameR1[0] $count/$nameR1[0]\__`;
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $additionalParams /usr/bin/split -a 3 -l 16000000 -d $count/$nameR1[0]\_CQS $count/$nameR1[0]\_CQS__`;
 	`/bin/touch progress/$pre\_$uID\_RSPLIT_$nameR1[0]\.done`;
 	$rsplit_jid = "$pre\_$uID\_RSPLIT_$nameR1[0]";
 	$ran_rsplit = 1;	
@@ -216,7 +228,7 @@ while (<IN>){
 
     my $rcount = 0;
     foreach my $rfile (@rsplits){
-	if($rfile =~ /$nameR1[0]\_\_/){
+	if($rfile =~ /$nameR1[0]\_CQS\_\_/){
 	    $rcount++;
 
 	    `/bin/mkdir -m 775 -p $count/$rcount`;
