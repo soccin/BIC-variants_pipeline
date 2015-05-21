@@ -152,7 +152,6 @@ else{
 }
 
 `/bin/mkdir -m 775 -p progress`;
-sleep(3);
 my $ran_bwa = 0;
 open(IN, "$file") or die "Can't open $file file listing fastqs $!";
 
@@ -167,9 +166,7 @@ while (<IN>){
     my @nameR1 = split(/\.gz/, $data[0]);
     $count++;
     
-    `/bin/mkdir -m 775 -p $count`;
-    sleep(3);
-        
+    `/bin/mkdir -m 775 -p $count`;        
     my $ran_zcatR1 = 0;
     my $zcatR1_jid = '';
     if(!-e "progress/$pre\_$uID\_ZCAT_$nameR1[0]\.done"){
@@ -232,7 +229,6 @@ while (<IN>){
 	    $rcount++;
 
 	    `/bin/mkdir -m 775 -p $count/$rcount`;
-	    sleep(3);
 	    my $ran_cutadapt = 0;
 	    my $ca_jid = '';
 	    if(!-e "progress/$pre\_$uID\_CUTADAPT_$rfile\.done" || $ran_rsplit){
@@ -253,7 +249,6 @@ while (<IN>){
 		push @bwa_jids, "$pre\_$uID\_BWA_$rfile";
 		$ran_bwa = 1;
 	    }
-	    	    
 	    push @raw, "I=$count/$rcount/$rfile\_CT.fastq_$species\.bwa.sam";
 	}
     }

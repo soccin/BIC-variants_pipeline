@@ -133,6 +133,7 @@ my %grouping_samples = ();
 my @run_merge_jids = ();
 my $PICARD = '';
 my $JAVA = '';
+my $PERL = '';
 my $PYTHON = '';
 
 &verifyConfig($config);
@@ -164,7 +165,6 @@ print LOG "$currentTime[2]:$currentTime[1]:$currentTime[0], $currentTime[3]\/$cu
 `/bin/mkdir -m 775 -p $output/metrics`;
 `/bin/mkdir -m 775 -p $output/metrics/fingerprint`;
 
-my $ran_sol = 0;
 alignReads();
 
 my $rmdups = 'false';
@@ -358,6 +358,7 @@ sub verifyConfig{
 	    if(!-e "$conf[1]/perl"){
 		die "CAN'T FIND perl IN $conf[1] $!";
 	    }
+	    $PERL = $conf[1];
 	    my $path_tmp = $ENV{'PATH'};
 	    $ENV{'PATH'} = "$conf[1]:$path_tmp";
 	}
@@ -617,57 +618,48 @@ sub alignReads {
 	`/bin/mkdir -m 775 -p $output/intFiles/$data[1]`;
 	`/bin/mkdir -m 775 -p $output/intFiles/$data[1]/$data[0]`;
 	`/bin/mkdir -m 775 -p $output/intFiles/$data[1]/$data[0]/$data[2]`;
-	$samp_libs_run{$data[1]}{$data[0]}{$data[2]} = 1;
+	$samp_libs_run{$data[1]}{$data[0]}{$data[2]} = 1;	
+	`ln -s $data[3]/* $output/intFiles/$data[1]/$data[0]/$data[2]/`;
+	chdir "$output/intFiles/$data[1]/$data[0]/$data[2]";
 	
+	opendir(workDir, "./");
+	my @unsorted = readdir workDir;
+	closedir workDir;
+	my @files = sort @unsorted;
 	
-	if(!-e "$output/progress/reads_files_$data[1]\_$data[0]\_$data[2]\.done"){
-	    $ran_sol = 1;
-	    `ln -s $data[3]/* $output/intFiles/$data[1]/$data[0]/$data[2]/`;
-	    
-	    chdir "$output/intFiles/$data[1]/$data[0]/$data[2]";
-	    
-	    opendir(workDir, "./");
-	    my @unsorted = readdir workDir;
-	    closedir workDir;
-	    my @files = sort @unsorted;
-	    
-	    open(OUT, ">files_$data[1]\_$data[0]\_$data[2]");
-	    foreach my $file (@files){
-		if($file =~ /fastq\.gz$/ && $file =~ m/^(.*)(R\d+)(.*)$/){
-		    if($2 eq 'R1'){
-			my $file_R2 = $file;
-			$file_R2 =~ s/^(.*)R1(.*)$/$1R2$2/;
-			
-			if($data[4] =~ /pe/i){
-			    print OUT "$file\t$file_R2\n";
-			}
-			elsif($data[4] =~ /se/i){
-			    print OUT "$file\n";
-			}
+	open(OUT, ">files_$data[1]\_$data[0]\_$data[2]");
+	foreach my $file (@files){
+	    if($file =~ /fastq\.gz$/ && $file =~ m/^(.*)(R\d+)(.*)$/){
+		if($2 eq 'R1'){
+		    my $file_R2 = $file;
+		    $file_R2 =~ s/^(.*)R1(.*)$/$1R2$2/;
+		    
+		    if($data[4] =~ /pe/i){
+			print OUT "$file\t$file_R2\n";
+		    }
+		    elsif($data[4] =~ /se/i){
+			print OUT "$file\n";
 		    }
 		}
 	    }
-	    close OUT;
-	    
-	    my @currentTime = &getTime();
-	    print LOG "$currentTime[2]:$currentTime[1]:$currentTime[0], $currentTime[3]\/$currentTime[4]\/$currentTime[5]\tSTARTING READS PROCESSING/ALIGNMENT FOR $data[1]\_$data[0]\_$data[2]\n";
-	    
-	    if($data[4] =~ /pe/i){
-		`$Bin/process_reads_pe.pl -file files_$data[1]\_$data[0]\_$data[2] -pre $pre -run $data[1]\_$data[0]\_$data[2] -readgroup "\@RG\\tID:$data[1]\_$data[0]\_$data[2]\_PE\\tPL:Illumina\\tPU:$data[1]\_$data[0]\_$data[2]\\tLB:$data[1]\_$data[0]\\tSM:$data[1]" -species $species -config $config -scheduler $scheduler > files_$data[1]\_$data[0]\_$data[2]\_process_reads_pe.log 2>&1`;
-		
-		###`/common/sge/bin/lx24-amd64/qsub /home/mpirun/tools/qCMD $Bin/solexa_PE.pl -file files -pre $pre -run $data[1]\_$data[0]\_$data[2] -readgroup "\@RG\\\tID:$data[1]\_$data[0]\_$data[2]\_PE\\\tPL:Illumina\\\tPU:$data[1]\_$data[0]\_$data[2]\\\tLB:$data[1]\_$data[0]\\\tSM:$data[1]" -species $species -config $config $targeted -scheduler $scheduler`;
-	    }
-	    elsif($data[4] =~ /se/i){
-		`$Bin/process_reads_se.pl -file files_$data[1]\_$data[0]\_$data[2] -pre $pre -run $data[1]\_$data[0]\_$data[2] -readgroup "\@RG\\tID:$data[1]\_$data[0]\_$data[2]\_SE\\tPL:Illumina\\tPU:$data[1]\_$data[0]\_$data[2]\\tLB:$data[1]\_$data[0]\\tSM:$data[1]" -species $species -config $config -scheduler $scheduler > files_$data[1]\_$data[0]\_$data[2]\_process_reads.log 2>&1`;
-	    }
-	    $ran_solexa{$data[1]} = 1;
-	    chdir $curDir;
-	    push @run_merge_jids, "$pre\_$uID\_$data[1]\_$data[0]\_$data[2]\_MERGE";
-	    `/bin/touch $output/progress/reads_files_$data[1]\_$data[0]\_$data[2]\.done`;
 	}
-	else{
-	    print LOG "$currentTime[2]:$currentTime[1]:$currentTime[0], $currentTime[3]\/$currentTime[4]\/$currentTime[5]\tSKIPPING READS PROCESSING/ALIGNMENT FOR $data[1]\_$data[0]\_$data[2]; PREVIOUSLY RAN TO COMPLETION\n";
+	close OUT;
+	
+	my @currentTime = &getTime();
+	print LOG "$currentTime[2]:$currentTime[1]:$currentTime[0], $currentTime[3]\/$currentTime[4]\/$currentTime[5]\tSTARTING READS PROCESSING/ALIGNMENT FOR $data[1]\_$data[0]\_$data[2]\n";
+	
+	if($data[4] =~ /pe/i){
+	    `$Bin/process_reads_pe.pl -file files_$data[1]\_$data[0]\_$data[2] -pre $pre -run $data[1]\_$data[0]\_$data[2] -readgroup "\@RG\\tID:$data[1]\_$data[0]\_$data[2]\_PE\\tPL:Illumina\\tPU:$data[1]\_$data[0]\_$data[2]\\tLB:$data[1]\_$data[0]\\tSM:$data[1]" -species $species -config $config -scheduler $scheduler > files_$data[1]\_$data[0]\_$data[2]\_process_reads_pe.log 2>&1`;
+	    
+	    ###`/common/sge/bin/lx24-amd64/qsub /home/mpirun/tools/qCMD $Bin/solexa_PE.pl -file files -pre $pre -run $data[1]\_$data[0]\_$data[2] -readgroup "\@RG\\\tID:$data[1]\_$data[0]\_$data[2]\_PE\\\tPL:Illumina\\\tPU:$data[1]\_$data[0]\_$data[2]\\\tLB:$data[1]\_$data[0]\\\tSM:$data[1]" -species $species -config $config $targeted -scheduler $scheduler`;
 	}
+	elsif($data[4] =~ /se/i){
+	    `$Bin/process_reads_se.pl -file files_$data[1]\_$data[0]\_$data[2] -pre $pre -run $data[1]\_$data[0]\_$data[2] -readgroup "\@RG\\tID:$data[1]\_$data[0]\_$data[2]\_SE\\tPL:Illumina\\tPU:$data[1]\_$data[0]\_$data[2]\\tLB:$data[1]\_$data[0]\\tSM:$data[1]" -species $species -config $config -scheduler $scheduler > files_$data[1]\_$data[0]\_$data[2]\_process_reads.log 2>&1`;
+	}
+	$ran_solexa{$data[1]} = 1;
+	chdir $curDir;
+	push @run_merge_jids, "$pre\_$uID\_$data[1]\_$data[0]\_$data[2]\_MERGE";
+	`/bin/touch $output/progress/reads_files_$data[1]\_$data[0]\_$data[2]\.done`;
     }
 }
 
@@ -805,6 +797,8 @@ sub processBams {
 }
 
 sub mergeStats {
+    my @qcpdf_jids = ();
+    my $ran_merge = 0;
     my $ran_merge_ism = 0;
     my %addParams = (scheduler => "$scheduler", runtime => "50", priority_project=> "$priority_project", priority_group=> "$priority_group", rerun => "1", iounits => "1");
     my $additionalParams = Schedule::additionalParams(%addParams);
@@ -815,6 +809,8 @@ sub mergeStats {
 	my $standardParams = Schedule::queuing(%stdParams);
 	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/qc/mergePicardMetrics.pl $mdfiles ">$output/metrics/$pre\_markDuplicatesMetrics.txt"`;
 	`/bin/touch $output/progress/$pre\_$uID\_MERGE_MDM.done`;
+	push @qcpdf_jids, "$pre\_$uID\_MERGE_MDM";
+	$ran_merge = 1;
     }
     
     my $hsfiles = join(" ", @hsm);
@@ -824,6 +820,8 @@ sub mergeStats {
 	my $standardParams = Schedule::queuing(%stdParams);
 	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/qc/mergePicardMetrics.pl $hsfiles ">$output/metrics/$pre\_HsMetrics.txt"`;
 	`/bin/touch $output/progress/$pre\_$uID\_MERGE_HSM.done`;
+	push @qcpdf_jids, "$pre\_$uID\_MERGE_HSM";
+	$ran_merge = 1;
     }
     
     my $isfiles = join(" ", @ism);
@@ -834,16 +832,17 @@ sub mergeStats {
 	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/qc/mergePicardMetrics.pl $isfiles ">$output/metrics/$pre\_InsertSizeMetrics.txt"`;
 	`/bin/touch $output/progress/$pre\_$uID\_MERGE_ISM.done`;
 	$ran_merge_ism = 1;
+	push @qcpdf_jids, "$pre\_$uID\_MERGE_ISM";
+	$ran_merge = 1;
     }
 
     if(!-e "$output/progress/$pre\_$uID\_ISM_MATRIX.done" || $ran_merge_ism){    
 	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_ISM_MATRIX", job_hold => "$pre\_$uID\_MERGE_ISM", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_ISM_MATRIX.log");
 	my $standardParams = Schedule::queuing(%stdParams);
-
-	print "$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PYTHON/python $Bin/qc/mergeInsertSizeHistograms.py $output/intFiles '*InsertSizeMetrics_*.txt' $output/metrics/$pre\_InsertSizeMetrics_Histograms.txt\n";
-
 	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PYTHON/python $Bin/qc/mergeInsertSizeHistograms.py $output/intFiles '*InsertSizeMetrics_*.txt' $output/metrics/$pre\_InsertSizeMetrics_Histograms.txt`;
 	`/bin/touch $output/progress/$pre\_$uID\_ISM_MATRIX.done`;
+	push @qcpdf_jids, "$pre\_$uID\_ISM_MATRIX";
+	$ran_merge = 1;
     }
     
     my $asfiles = join(" ", @asm);
@@ -853,18 +852,26 @@ sub mergeStats {
 	my $standardParams = Schedule::queuing(%stdParams);
 	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/qc/mergePicardMetrics.pl $asfiles ">$output/metrics/$pre\_AlignmentSummaryMetrics.txt"`;
 	`/bin/touch $output/progress/$pre\_$uID\_MERGE_ASM.done`;
+	push @qcpdf_jids, "$pre\_$uID\_MERGE_ASM";
+	$ran_merge = 1;
     }
     
     my $cogfiles = join(" ", @cogm);
     my $cogj = join(",", @cog_jids);
     if(!-e "$output/progress/$pre\_$uID\_MERGE_COGM.done" || $ran_cog){
-	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_MERGE_COG", job_hold => "$cogj", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_MERGE_COG.log");
+	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_MERGE_COGM", job_hold => "$cogj", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_MERGE_COG.log");
 	my $standardParams = Schedule::queuing(%stdParams);
 	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/qc/mergePicardMetrics.pl $cogfiles ">$output/metrics/$pre\_CollectOxoGMetrics.txt"`;
 	`/bin/touch $output/progress/$pre\_$uID\_MERGE_COGM.done`;
+	push @qcpdf_jids, "$pre\_$uID\_MERGE_COGM";
+	$ran_merge = 1;
     }
 
-    if(!-e "$output/progress/$pre\_$uID\_MERGE_CAS.done" || $ran_sol){
+    if(!-e "$output/progress/$pre\_$uID\_MERGE_CAS.done" || $ran_merge){
+	### NOTE: if any of the merges run, will run this
+	###       no longer checking to see if process_reads ran before running this
+	###       so the asumption is that if any of the merges ran, then likely the reads were reprocessed for at least one sample
+	###       not always true, but this step doesn't take up much in term of resources so not a big loss
 	###my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_MERGE_CAS", job_hold => "$pre\_$uID\_CUTADAPT*", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_MERGE_CAS.log");
 	### NOTE: all of the cutadapt jobs should be done because of the job sync on merge jobs
 	###       so don't need this to hold on cutadapt
@@ -873,6 +880,14 @@ sub mergeStats {
 	my $standardParams = Schedule::queuing(%stdParams);
 	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PYTHON/python $Bin/qc/mergeCutAdaptStats.py . '*CUTADAPT_STATS.txt' $output/metrics/$pre\_CutAdaptStats.txt`;
 	`/bin/touch $output/progress/$pre\_$uID\_MERGE_CAS.done`;
+	push @qcpdf_jids, "$pre\_$uID\_MERGE_CAS";
+    }
+
+    if(!-e "$output/progress/$pre\_$uID\_QCPDF.done" || $ran_merge){
+	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_QCPDF", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_QCPDF.log");
+	my $standardParams = Schedule::queuing(%stdParams);
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/qc/qcPDF.pl -path $output/metrics -pre $pre -config $config`;
+	`/bin/touch $output/progress/$pre\_$uID\_QCPDF.done`;
     }
 }
 
@@ -928,26 +943,22 @@ sub callSNPS {
     }
     
     my @currentTime = &getTime();
-    if(!-e "$output/progress/$pre\_$uID\_SNP_PIPE.done" || $ran_md){
-	print LOG "$currentTime[2]:$currentTime[1]:$currentTime[0], $currentTime[3]\/$currentTime[4]\/$currentTime[5]\tSNP CALLING RUNNING\n";
-	my %addParams = (scheduler => "$scheduler", runtime => "50", priority_project=> "$priority_project", priority_group=> "$priority_group", rerun => "1", iounits => "1");
-	my $additionalParams = Schedule::additionalParams(%addParams);
-	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_SNP_PIPE", job_hold => "$mdj", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_SNP_PIPE.log");
-	my $standardParams = Schedule::queuing(%stdParams);
-	
-	if($species =~ /hg19/i){
-	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/process_alignments_hg19.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra`;
-	}
-	elsif($species =~ /hybrid/i){
-	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/process_alignments_hg19.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -hybrid -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra`;
-	}
-	elsif($species =~ /mm9|mm10/i){
-	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/process_alignments_mouse.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group -species $species $run_abra`;
-	}
-	elsif($species =~ /dm3/i){
-	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/process_alignments_dm3.pl -pre $pre -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra`;
-	}
-	`/bin/touch $output/progress/$pre\_$uID\_SNP_PIPE.done`;
+    print LOG "$currentTime[2]:$currentTime[1]:$currentTime[0], $currentTime[3]\/$currentTime[4]\/$currentTime[5]\tSNP CALLING RUNNING\n";
+    my %addParams = (scheduler => "$scheduler", runtime => "50", priority_project=> "$priority_project", priority_group=> "$priority_group", rerun => "1", iounits => "1");
+    my $additionalParams = Schedule::additionalParams(%addParams);
+    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_SNP_PIPE", job_hold => "$mdj", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_SNP_PIPE.log");
+    my $standardParams = Schedule::queuing(%stdParams);
+    
+    if($species =~ /hg19/i){
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/process_alignments_hg19.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra`;
+    }
+    elsif($species =~ /hybrid/i){
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/process_alignments_hg19.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -hybrid -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra`;
+    }
+    elsif($species =~ /mm9|mm10/i){
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/process_alignments_mouse.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group -species $species $run_abra`;
+    }
+    elsif($species =~ /dm3/i){
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/process_alignments_dm3.pl -pre $pre -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra`;
     }
 }
-

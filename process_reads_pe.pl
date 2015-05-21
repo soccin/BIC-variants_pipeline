@@ -159,9 +159,6 @@ else{
 }
 
 `/bin/mkdir -m 775 -p progress`;
-
-sleep(3);
-
 my $ran_bwa = 0;
 open(IN, "$file") or die "Can't open $file file listing fastqs $!";
 open(MISS, ">$file\_MISSING_READS.txt") or die "Can't write $file\_MISSING_READS.txt file listing fastqs $!";
@@ -192,8 +189,6 @@ while (<IN>){
     $count++;
 
     `/bin/mkdir -m 775 -p $count`;
-    sleep(3);
-
     my $ran_zcatR1 = 0;
     my $zcatR1_jid = '';
     if(!-e "progress/$pre\_$uID\_ZCAT_$nameR1[0]\.done"){
@@ -294,8 +289,6 @@ while (<IN>){
 	    $rcount++;
 
 	    `/bin/mkdir -m 775 -p $count/$rcount`;
-	    sleep(3);
-
 	    my $r2file = $rfile;
             $r2file =~ s/^(.*)R1(.*)$/$1R2$2/;
 
@@ -325,7 +318,6 @@ while (<IN>){
 		push @bwa_jids, "$pre\_$uID\_BWA_$rfile\_$r2file";
 		$ran_bwa = 1;
 	    }
-
 	    push @raw, "I=$count/$rcount/$rfile\_$r2file\_CT_PE.fastq_$species\.bwa.sam";
 	}
     }
