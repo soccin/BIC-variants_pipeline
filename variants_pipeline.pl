@@ -165,6 +165,7 @@ print LOG "$currentTime[2]:$currentTime[1]:$currentTime[0], $currentTime[3]\/$cu
 `/bin/mkdir -m 775 -p $output/metrics`;
 `/bin/mkdir -m 775 -p $output/metrics/fingerprint`;
 
+my $ran_sol = 0;
 alignReads();
 
 my $rmdups = 'false';
@@ -619,47 +620,54 @@ sub alignReads {
 	`/bin/mkdir -m 775 -p $output/intFiles/$data[1]/$data[0]`;
 	`/bin/mkdir -m 775 -p $output/intFiles/$data[1]/$data[0]/$data[2]`;
 	$samp_libs_run{$data[1]}{$data[0]}{$data[2]} = 1;	
-	`ln -s $data[3]/* $output/intFiles/$data[1]/$data[0]/$data[2]/`;
-	chdir "$output/intFiles/$data[1]/$data[0]/$data[2]";
 	
-	opendir(workDir, "./");
-	my @unsorted = readdir workDir;
-	closedir workDir;
-	my @files = sort @unsorted;
-	
-	open(OUT, ">files_$data[1]\_$data[0]\_$data[2]");
-	foreach my $file (@files){
-	    if($file =~ /fastq\.gz$/ && $file =~ m/^(.*)(R\d+)(.*)$/){
-		if($2 eq 'R1'){
-		    my $file_R2 = $file;
-		    $file_R2 =~ s/^(.*)R1(.*)$/$1R2$2/;
-		    
-		    if($data[4] =~ /pe/i){
-			print OUT "$file\t$file_R2\n";
-		    }
-		    elsif($data[4] =~ /se/i){
-			print OUT "$file\n";
+	if(!-e "$output/progress/reads_files_$data[1]\_$data[0]\_$data[2]\.done"){
+	    $ran_sol = 1;
+	    `ln -s $data[3]/* $output/intFiles/$data[1]/$data[0]/$data[2]/`;
+	    chdir "$output/intFiles/$data[1]/$data[0]/$data[2]";
+	    
+	    opendir(workDir, "./");
+	    my @unsorted = readdir workDir;
+	    closedir workDir;
+	    my @files = sort @unsorted;
+	    
+	    open(OUT, ">files_$data[1]\_$data[0]\_$data[2]");
+	    foreach my $file (@files){
+		if($file =~ /fastq\.gz$/ && $file =~ m/^(.*)(R\d+)(.*)$/){
+		    if($2 eq 'R1'){
+			my $file_R2 = $file;
+			$file_R2 =~ s/^(.*)R1(.*)$/$1R2$2/;
+			
+			if($data[4] =~ /pe/i){
+			    print OUT "$file\t$file_R2\n";
+			}
+			elsif($data[4] =~ /se/i){
+			    print OUT "$file\n";
+			}
 		    }
 		}
 	    }
-	}
-	close OUT;
+	    close OUT;
 	
-	my @currentTime = &getTime();
-	print LOG "$currentTime[2]:$currentTime[1]:$currentTime[0], $currentTime[3]\/$currentTime[4]\/$currentTime[5]\tSTARTING READS PROCESSING/ALIGNMENT FOR $data[1]\_$data[0]\_$data[2]\n";
-	
-	if($data[4] =~ /pe/i){
-	    `$Bin/process_reads_pe.pl -file files_$data[1]\_$data[0]\_$data[2] -pre $pre -run $data[1]\_$data[0]\_$data[2] -readgroup "\@RG\\tID:$data[1]\_$data[0]\_$data[2]\_PE\\tPL:Illumina\\tPU:$data[1]\_$data[0]\_$data[2]\\tLB:$data[1]\_$data[0]\\tSM:$data[1]" -species $species -config $config -scheduler $scheduler > files_$data[1]\_$data[0]\_$data[2]\_process_reads_pe.log 2>&1`;
+	    my @currentTime = &getTime();
+	    print LOG "$currentTime[2]:$currentTime[1]:$currentTime[0], $currentTime[3]\/$currentTime[4]\/$currentTime[5]\tSTARTING READS PROCESSING/ALIGNMENT FOR $data[1]\_$data[0]\_$data[2]\n";
 	    
-	    ###`/common/sge/bin/lx24-amd64/qsub /home/mpirun/tools/qCMD $Bin/solexa_PE.pl -file files -pre $pre -run $data[1]\_$data[0]\_$data[2] -readgroup "\@RG\\\tID:$data[1]\_$data[0]\_$data[2]\_PE\\\tPL:Illumina\\\tPU:$data[1]\_$data[0]\_$data[2]\\\tLB:$data[1]\_$data[0]\\\tSM:$data[1]" -species $species -config $config $targeted -scheduler $scheduler`;
+	    if($data[4] =~ /pe/i){
+		`$Bin/process_reads_pe.pl -file files_$data[1]\_$data[0]\_$data[2] -pre $pre -run $data[1]\_$data[0]\_$data[2] -readgroup "\@RG\\tID:$data[1]\_$data[0]\_$data[2]\_PE\\tPL:Illumina\\tPU:$data[1]\_$data[0]\_$data[2]\\tLB:$data[1]\_$data[0]\\tSM:$data[1]" -species $species -config $config -scheduler $scheduler > files_$data[1]\_$data[0]\_$data[2]\_process_reads_pe.log 2>&1`;
+		
+		###`/common/sge/bin/lx24-amd64/qsub /home/mpirun/tools/qCMD $Bin/solexa_PE.pl -file files -pre $pre -run $data[1]\_$data[0]\_$data[2] -readgroup "\@RG\\\tID:$data[1]\_$data[0]\_$data[2]\_PE\\\tPL:Illumina\\\tPU:$data[1]\_$data[0]\_$data[2]\\\tLB:$data[1]\_$data[0]\\\tSM:$data[1]" -species $species -config $config $targeted -scheduler $scheduler`;
+	    }
+	    elsif($data[4] =~ /se/i){
+		`$Bin/process_reads_se.pl -file files_$data[1]\_$data[0]\_$data[2] -pre $pre -run $data[1]\_$data[0]\_$data[2] -readgroup "\@RG\\tID:$data[1]\_$data[0]\_$data[2]\_SE\\tPL:Illumina\\tPU:$data[1]\_$data[0]\_$data[2]\\tLB:$data[1]\_$data[0]\\tSM:$data[1]" -species $species -config $config -scheduler $scheduler > files_$data[1]\_$data[0]\_$data[2]\_process_reads.log 2>&1`;
+	    }
+	    $ran_solexa{$data[1]} = 1;
+	    chdir $curDir;
+	    push @run_merge_jids, "$pre\_$uID\_$data[1]\_$data[0]\_$data[2]\_MERGE";
+	    `/bin/touch $output/progress/reads_files_$data[1]\_$data[0]\_$data[2]\.done`;
 	}
-	elsif($data[4] =~ /se/i){
-	    `$Bin/process_reads_se.pl -file files_$data[1]\_$data[0]\_$data[2] -pre $pre -run $data[1]\_$data[0]\_$data[2] -readgroup "\@RG\\tID:$data[1]\_$data[0]\_$data[2]\_SE\\tPL:Illumina\\tPU:$data[1]\_$data[0]\_$data[2]\\tLB:$data[1]\_$data[0]\\tSM:$data[1]" -species $species -config $config -scheduler $scheduler > files_$data[1]\_$data[0]\_$data[2]\_process_reads.log 2>&1`;
+	else{
+	    print LOG "$currentTime[2]:$currentTime[1]:$currentTime[0], $currentTime[3]\/$currentTime[4]\/$currentTime[5]\tSKIPPING READS PROCESSING/ALIGNMENT FOR $data[1]\_$data[0]\_$data[2]; PREVIOUSLY RAN TO COMPLETION\n";
 	}
-	$ran_solexa{$data[1]} = 1;
-	chdir $curDir;
-	push @run_merge_jids, "$pre\_$uID\_$data[1]\_$data[0]\_$data[2]\_MERGE";
-	`/bin/touch $output/progress/reads_files_$data[1]\_$data[0]\_$data[2]\.done`;
     }
 }
 
@@ -867,11 +875,7 @@ sub mergeStats {
 	$ran_merge = 1;
     }
 
-    if(!-e "$output/progress/$pre\_$uID\_MERGE_CAS.done" || $ran_merge){
-	### NOTE: if any of the merges run, will run this
-	###       no longer checking to see if process_reads ran before running this
-	###       so the asumption is that if any of the merges ran, then likely the reads were reprocessed for at least one sample
-	###       not always true, but this step doesn't take up much in term of resources so not a big loss
+    if(!-e "$output/progress/$pre\_$uID\_MERGE_CAS.done" || $ran_sol){
 	###my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_MERGE_CAS", job_hold => "$pre\_$uID\_CUTADAPT*", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_MERGE_CAS.log");
 	### NOTE: all of the cutadapt jobs should be done because of the job sync on merge jobs
 	###       so don't need this to hold on cutadapt
