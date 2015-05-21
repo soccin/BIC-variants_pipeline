@@ -7,7 +7,7 @@ use lib "$Bin/lib";
 use Schedule;
 use Cluster;
 
-my ($pair, $group, $bamgroup, $config, $nosnps, $targets, $ug, $hybrid, $scheduler, $priority_project, $priority_group, $abra, $help);
+my ($pair, $group, $bamgroup, $config, $nosnps, $targets, $ug, $hybrid, $scheduler, $priority_project, $priority_group, $abra, $help, $step1);
 
 my $pre = 'TEMP';
 my $output = "results";
@@ -21,6 +21,7 @@ GetOptions ('pre=s' => \$pre,
 	    'ug|unifiedgenotyper' => \$ug,
 	    'hybrid' => \$hybrid,
 	    'abra' => \$abra,
+	    'step1' => \$step1,
 	    'bamgroup=s' => \$bamgroup,
  	    'scheduler=s' => \$scheduler,
  	    'priority_project=s' => \$priority_project,
@@ -45,6 +46,7 @@ if(!$group || !$config || !$scheduler || !$targets || !$bamgroup || $help){
 	* PRIORITY_GROUP: lsf notion of priority assigned to groups (default: Pipeline)
 	* -nosnps: if no snps to be called; e.g. when only indelrealigned/recalibrated bams needed
 	* -abra: run abra instead of GATK indelrealigner
+	* -step1: forece the pipeline to start from the first step in pipeline
 	* -hybrid: data aligned to hybrid assembly
 	* haplotypecaller is default; -ug || -unifiedgenotyper to also make unifiedgenotyper variant calls	
 HELP
@@ -289,7 +291,7 @@ while(<IN>){
 	my $aoBams = join(",", @outBams);
 	my $ran_abra = 0;
 	my $abra_jid = '';
-	if(!-e "$output/progress/$pre\_$uID\_$gpair[0]\_ABRA.done"){
+	if(!-e "$output/progress/$pre\_$uID\_$gpair[0]\_ABRA.done" || $step1){
 	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$gpair[0]\_ABRA", cpu => "12", mem => "500", cluster_out => "$output/progress/$pre\_$uID\_$gpair[0]\_ABRA.log");
 	    my $standardParams = Schedule::queuing(%stdParams);	    
 	    ###`$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx100g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $ABRA/abra.jar --in $aiBams --out $aoBams --ref $REF_SEQ --bwa-ref $BWA_INDEX --targets $Bin/targets/abra_hg19.bed --working $output/intFiles/abra_$gpair[0] --threads 12`;
@@ -320,7 +322,7 @@ while(<IN>){
 	foreach my $c (1..22, 'X', 'Y', 'M'){
 	    my $ran_rtc = 0;
 	    my $rtc_jid = '';
-	    if(!-e "$output/progress/$pre\_$uID\_$gpair[0]\_CHR$c\_RTC.done"){
+	    if(!-e "$output/progress/$pre\_$uID\_$gpair[0]\_CHR$c\_RTC.done" || $step1){
 		### mad.q,nce.q have timeout issues with this step
 		my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$gpair[0]\_CHR$c\_RTC", cpu => "10", mem => "5", cluster_out => "$output/progress/$pre\_$uID\_$gpair[0]\_CHR$c\_RTC.log");
 		my $standardParams = Schedule::queuing(%stdParams);
