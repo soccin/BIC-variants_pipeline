@@ -477,6 +477,7 @@ sub processInputs {
     elsif($species =~ /hybrid/i){
 	$species = 'hybrid';
 	$REF_SEQ = "$HG19_MM10_HYBRID_FASTA";
+	$DB_SNP = "$Bin/data/dbsnp_135.hg19__ReTag.vcf";
     }
     elsif($species =~ /drosophila|dm3/i){
 	$species = 'dm3';
