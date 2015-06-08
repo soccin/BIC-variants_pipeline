@@ -168,7 +168,14 @@ while(<CONFIG>){
 	}
 	$PYTHON = $conf[1];
     }
-    elsif($conf[0] =~ /mm9_fasta/i){
+     elsif($conf[0] =~ /^r$/i){
+	if(!-e "$conf[1]/R"){
+	    die "CAN'T FIND R IN $conf[1] $!";
+	}
+	my $path_tmp = $ENV{'PATH'};
+	$ENV{'PATH'} = "$conf[1]:$path_tmp";
+    }
+   elsif($conf[0] =~ /mm9_fasta/i){
 	if(!-e "$conf[1]"){
 	    die "CAN'T FIND $conf[1] $!";
 	}
@@ -201,12 +208,14 @@ close CONFIG;
 my $REF_SEQ = "$MM10_FASTA";
 my $BWA_INDEX = "$MM10_BWA_INDEX";
 my $SNPEFF_DB = 'GRCm38.79';
+my $DBSNP = "";
 
 if($species =~ /mm9/i){
     $REF_SEQ = "$MM9_FASTA";
     $BWA_INDEX = "$MM9_BWA_INDEX";
     ### NO SNPEFF v4 mm9 support ###
     $SNPEFF_DB = '';
+    $DBSNP = "$Bin/data/UCSC_dbSNP128_MM9.bed";
 }
 
 ### make sure all markdup bam files are there before proceeding
@@ -360,7 +369,7 @@ while(<IN>){
 	sleep(3);
 	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$gpair[0]\_BR", job_hold => "$irj", cpu => "6", mem => "30", cluster_out => "$output/progress/$pre\_$uID\_$gpair[0]\_BR.log");
 	my $standardParams = Schedule::queuing(%stdParams);
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx30g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T BaseRecalibrator -l INFO -R $REF_SEQ -S LENIENT --knownSites $Bin/data/UCSC_dbSNP128_MM9.bed --covariate ContextCovariate --covariate CycleCovariate --covariate QualityScoreCovariate --covariate ReadGroupCovariate -rf BadCigar --num_cpu_threads_per_data_thread 6 --out $output/intFiles/$pre\_$gpair[0]\_recal_data.grp $irBams`;
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx30g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T BaseRecalibrator -l INFO -R $REF_SEQ -S LENIENT --knownSites $DBSNP --covariate ContextCovariate --covariate CycleCovariate --covariate QualityScoreCovariate --covariate ReadGroupCovariate -rf BadCigar --num_cpu_threads_per_data_thread 6 --out $output/intFiles/$pre\_$gpair[0]\_recal_data.grp $irBams`;
 	`/bin/touch $output/progress/$pre\_$uID\_$gpair[0]\_BR.done`;
 	$ran_br = 1;
     }

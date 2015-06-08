@@ -163,6 +163,13 @@ while(<CONFIG>){
 	}
 	$PYTHON = $conf[1];
     }
+    elsif($conf[0] =~ /^r$/i){
+	if(!-e "$conf[1]/R"){
+	    die "CAN'T FIND R IN $conf[1] $!";
+	}
+	my $path_tmp = $ENV{'PATH'};
+	$ENV{'PATH'} = "$conf[1]:$path_tmp";
+    }
     elsif($conf[0] =~ /hg19_fasta/i){
 	if(!-e "$conf[1]"){
 	    die "CAN'T FIND $conf[1] $!";
