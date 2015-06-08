@@ -13,7 +13,7 @@ from collections import OrderedDict
 
 #####################################
 ## Usage: /usr/bin/python/ makeCountMatrix.py rootDir patternToSearch outputFileName
-## Example: /usr/bin/python makeCountMatrix.py /ifs/res/liang/RNASeq/Proj2983_MassagueJ "*htseq.count*" Proj2983_MassagueJ_htseq.count_allSamples.txt
+## Example: /usr/bin/python makeCountMatrix.py /ifs/res/liang/RNASeq/Proj2983_MassagueJ .htseq_count Proj2983_MassagueJ_htseq.count_allSamples.txt
 #####################################
 
 def usage():
@@ -70,6 +70,7 @@ def makeMatrix(args):
     ## store all values in an ordered dict, keyed by sample
     matrix = OrderedDict()
 
+    filePattern = '*'+filePattern
     ## find all cutadapt stats files using pattern 
     files = findFiles(rootDir,filePattern)
 
