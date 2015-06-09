@@ -847,7 +847,7 @@ sub mergeStats {
     if(!-e "$output/progress/$pre\_$uID\_ISM_MATRIX.done" || $ran_merge_ism){    
 	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_ISM_MATRIX", job_hold => "$pre\_$uID\_MERGE_ISM", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_ISM_MATRIX.log");
 	my $standardParams = Schedule::queuing(%stdParams);
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PYTHON/python $Bin/qc/mergeInsertSizeHistograms.py $output/intFiles '*InsertSizeMetrics_*.txt' $output/metrics/$pre\_InsertSizeMetrics_Histograms.txt`;
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PYTHON/python $Bin/qc/mergeInsertSizeHistograms.py $output/intFiles InsertSizeMetrics_*.txt $output/metrics/$pre\_InsertSizeMetrics_Histograms.txt`;
 	`/bin/touch $output/progress/$pre\_$uID\_ISM_MATRIX.done`;
 	push @qcpdf_jids, "$pre\_$uID\_ISM_MATRIX";
 	$ran_merge = 1;
@@ -882,7 +882,7 @@ sub mergeStats {
 	###       this hold causes issues on lsf because of the *
 	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_MERGE_CAS", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_MERGE_CAS.log");
 	my $standardParams = Schedule::queuing(%stdParams);
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PYTHON/python $Bin/qc/mergeCutAdaptStats.py . '*CUTADAPT_STATS.txt' $output/metrics/$pre\_CutAdaptStats.txt`;
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PYTHON/python $Bin/qc/mergeCutAdaptStats.py . CUTADAPT_STATS.txt $output/metrics/$pre\_CutAdaptStats.txt`;
 	`/bin/touch $output/progress/$pre\_$uID\_MERGE_CAS.done`;
 	push @qcpdf_jids, "$pre\_$uID\_MERGE_CAS";
     }
