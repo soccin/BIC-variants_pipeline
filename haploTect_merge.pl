@@ -229,12 +229,12 @@ print "cat $output/$pre\_merge_maf2.txt_hugo_modified | $PYTHON/python $Bin/maf/
 print "cat $output/$pre\_haplotect_TCGA_MAF.txt | $PYTHON/python $Bin/maf/pA_reSortCols.py $Bin/maf/finalCols_PORTAL.txt > $output/$pre\_haplotect_PORTAL_MAF.txt\n\n";
 `cat $output/$pre\_haplotect_TCGA_MAF.txt | $PYTHON/python $Bin/maf/pA_reSortCols.py $Bin/maf/finalCols_PORTAL.txt > $output/$pre\_haplotect_PORTAL_MAF.txt`;
 
-### NOTE: not running this step because the header is different than when generating mafs from haplotypecaller and mutect individually
+###       NOTE: This is different than the MAF4.txt because there are different headers here.
 ###       header information is missing everything after the first 39 columns, which is caller specific
-###print "creating clean MAF file\n";
-###print "/bin/cat $output/$pre\_merge_maf2.txt_hugo_modified | $PYTHON/python $Bin/maf/pA_Functional_Oncotator2.py | $PYTHON/python $Bin/maf/pA_reSortCols.py $Bin/maf/finalCols.txt > $output/$pre\_haplotect_MAF.txt\n\n";
+print "creating clean MAF file\n";
+print "/bin/cat $output/$pre\_merge_maf2.txt_hugo_modified | $PYTHON/python $Bin/maf/pA_Functional_Oncotator2.py | $PYTHON/python $Bin/maf/pA_reSortCols.py $Bin/maf/haplotect_abbrev_cols.txt > $output/$pre\_haplotect_merged_MAF.txt\n\n";
 # Create nice MAF with essential columns
-###`/bin/cat $output/$pre\_merge_maf2.txt_hugo_modified | $PYTHON/python $Bin/maf/pA_Functional_Oncotator2.py | $PYTHON/python $Bin/maf/pA_reSortCols.py $Bin/maf/finalCols.txt > $output/$pre\_haplotect_MAF.txt`;
+`/bin/cat $output/$pre\_merge_maf2.txt_hugo_modified | $PYTHON/python $Bin/maf/pA_Functional_Oncotator2.py | $PYTHON/python $Bin/maf/pA_reSortCols.py $Bin/maf/haplotect_abbrev_cols.txt > $output/$pre\_haplotect_merged_MAF.txt`;
 
 print "annotating with cosmic\n";
 print "$PYTHON/python $Bin/maf/maf_annotations/addCosmicAnnotation.py -i $output/$pre\_haplotect_TCGA_MAF.txt -o $output/$pre\_haplotect_TCGA_MAF_COSMIC_STANDARD.txt -f $Bin/data/CosmicMutantExport_v67_241013.tsv\n\n";

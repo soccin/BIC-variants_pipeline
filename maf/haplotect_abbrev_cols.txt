@@ -1,0 +1,8 @@
+ONCOTATOR_GENE_SYMBOL
+Chromosome Start_Position End_Position Strand
+Variant_Classification Variant_Type Reference_Allele Tumor_Seq_Allele1
+Tumor_Seq_Allele2 dbSNP_RS dbSNP_Val_Status Tumor_Sample_Barcode
+Matched_Norm_Sample_Barcode
+t_ref_count
+t_alt_count n_ref_count n_alt_count Caller ONCOTATOR_VARIANT_CLASSIFICATION ONCOTATOR_PROTEIN_CHANGE
+ONCOTATOR_COSMIC_OVERLAPPING ONCOTATOR_DBSNP_RS
