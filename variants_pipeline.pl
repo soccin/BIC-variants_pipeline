@@ -65,7 +65,7 @@ use Cluster;
 ### NOTE: DO NOT SUBMIT THIS WRAPPER SCRIPT TO THE CLUSTER BECAUSE ONCOTATOR STEP WILL FAIL
 ###       DUE TO NODES NOT HAVING NETWORK ACCESS
 
-my ($map, $group, $pair, $config, $help, $nosnps, $removedups, $species, $ug, $scheduler, $abra, $targets);
+my ($map, $group, $pair, $config, $help, $nosnps, $removedups, $species, $ug, $scheduler, $abra, $targets, $mdOnly);
 
 my $pre = 'TEMP';
 my $output = "results";
@@ -82,6 +82,7 @@ GetOptions ('map=s' => \$map,
 	    'nosnps' => \$nosnps,
 	    'removedups' => \$removedups,
 	    'abra' => \$abra,
+	    'mdOnly|mdonly' => \$mdOnly,
 	    'ug|unifiedgenotyper' => \$ug,
  	    'output|out|o=s' => \$output,
  	    'scheduler=s' => \$scheduler,
@@ -107,6 +108,7 @@ if(!$map || !$group || !$species || !$config || !$scheduler || !$targets || $hel
 	* -nosnps: if no snps to be called; e.g. when only indelrealigned/recalibrated bams needed
 	* -removedups: remove duplicate reads instead of just marking them
 	* -abra: run abra instead of GATK indelrealigner
+	* -mdOnly: will stop after markdups step
 	* haplotypecaller is default; -ug || -unifiedgenotyper to also make unifiedgenotyper variant calls	
 HELP
 exit;
@@ -207,6 +209,11 @@ foreach my $md_jid (@md_jids){
 my $mdj = join(",", @md_jids);
 
 mergeStats();
+
+if($mdOnly){
+    exit(0);
+}
+
 generateGroupFile();
 callSNPS();
 
@@ -250,6 +257,9 @@ sub reconstructCL {
     }
     if($abra){
 	$rCL .= " -abra";
+    }
+    if($mdOnly){
+	$rCL .= " -mdOnly";
     }
     if($ug){
 	$rCL .= " -unifiedgenotyper";
