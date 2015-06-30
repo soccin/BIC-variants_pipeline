@@ -165,6 +165,7 @@ print LOG "$currentTime[2]:$currentTime[1]:$currentTime[0], $currentTime[3]\/$cu
 `/bin/mkdir -m 775 -p $output/progress`;
 `/bin/mkdir -m 775 -p $output/metrics`;
 `/bin/mkdir -m 775 -p $output/metrics/fingerprint`;
+`/bin/mkdir -m 775 -p $output/alignments`;
 
 my $ran_sol = 0;
 alignReads();
