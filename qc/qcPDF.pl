@@ -34,7 +34,5 @@ while(<CONFIG>){
 }
 close CONFIG;
 
-print $R;
-print $Bin;
-
+print "$R/R CMD BATCH \"--args path='$path' pre='$pre' bin='$Bin'\" $Bin/qcPDF.R";
 `$R/R CMD BATCH "--args path='$path' pre='$pre' bin='$Bin'" $Bin/qcPDF.R`;
