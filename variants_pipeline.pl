@@ -484,7 +484,7 @@ sub processInputs {
     elsif($species =~ /mouse|mm10/i){
 	$species = 'mm10';
 	$REF_SEQ = "$MM10_FASTA";
-	$DB_SNP = "";
+	$DB_SNP = "$Bin/data/mouse_MM10_dbSNP_NCBI_20150625.vcf";
     }
     elsif($species =~ /hybrid/i){
 	$species = 'hybrid';
