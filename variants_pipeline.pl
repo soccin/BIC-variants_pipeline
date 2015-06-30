@@ -688,6 +688,7 @@ sub processBams {
     foreach my $samp (keys %samp_libs_run){
 	my @sBams = ();
 	my @lib_merge_samp_jids = ();
+	my @mdBams = ();
 	foreach my $lib (keys %{$samp_libs_run{$samp}}){
 	    my @lBams = ();
 	    foreach my $run (keys %{$samp_libs_run{$samp}{$lib}}){
@@ -747,6 +748,18 @@ sub processBams {
 	    }
 	    
 	    push @mdm, "-metrics $output/intFiles/$samp/$lib/$samp\_$lib\_markDuplicatesMetrics.txt";
+	    push @mdBams, "I=$output/intFiles/$samp/$lib/$samp\_$lib\_MD.bam";
+	}
+	
+	if($mdOnly){
+	    my $mdb = join(" ", @mdBams);
+	    if(!-e "$output/progress/$pre\_$uID\_SAMP_MD_MERGE_$samp\.done" || $ran_md){
+		my $mdj = join(",", @md_jids);
+		my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_SAMP_MD_MERGE_$samp", job_hold => "$mdj", cpu => "24", mem => "90", cluster_out => "$output/progress/$pre\_$uID\_SAMP_MD_MERGE_$samp\.log");
+		my $standardParams = Schedule::queuing(%stdParams);
+		`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Djava.io.tmpdir=/scratch/$uID -jar $PICARD/picard.jar MergeSamFiles $mdb O=$output/alignments/$samp\.bam SORT_ORDER=coordinate VALIDATION_STRINGENCY=LENIENT TMP_DIR=/scratch/$uID CREATE_INDEX=true USE_THREADING=false MAX_RECORDS_IN_RAM=5000000`;
+		`/bin/touch $output/progress/$pre\_$uID\_SAMP_MD_MERGE_$samp\.done`;
+	    }
 	}
 	
 	my $rin = join(" ", @sBams);
@@ -757,29 +770,18 @@ sub processBams {
 	if(scalar(@sBams) == 1){
 	    my @bname = split(/=/, $sBams[0]);
 	    $bamForStats = "$bname[1]";
-
-	    if($mdOnly){
-		my $lmsj = join(",", @lib_merge_samp_jids);
-		my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_SAMP_MERGE_$samp", job_hold => "$rmj,$lmsj", cpu => "24", mem => "90", cluster_out => "$output/progress/$pre\_$uID\_SAMP_MERGE_$samp\.log");
-		my $standardParams = Schedule::queuing(%stdParams);
-		`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Djava.io.tmpdir=/scratch/$uID -jar $PICARD/picard.jar MergeSamFiles $rin O=$output/alignments/$samp\.bam SORT_ORDER=coordinate VALIDATION_STRINGENCY=LENIENT TMP_DIR=/scratch/$uID CREATE_INDEX=true USE_THREADING=false MAX_RECORDS_IN_RAM=5000000`;
-		`/bin/touch $output/progress/$pre\_$uID\_SAMP_MERGE_$samp\.done`;
-	    }
 	}
 	else{
 	    if(!-e "$output/progress/$pre\_$uID\_SAMP_MERGE_$samp\.done" || $ran_solexa{$samp}){
-		my $bamForStats = "$output/intFiles/$samp/$samp\.bam";
-		if($mdOnly){
-		    $bamForStats = "$output/alignments/$samp\.bam";
-		}
 		my $lmsj = join(",", @lib_merge_samp_jids);
 		my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_SAMP_MERGE_$samp", job_hold => "$rmj,$lmsj", cpu => "24", mem => "90", cluster_out => "$output/progress/$pre\_$uID\_SAMP_MERGE_$samp\.log");
 		my $standardParams = Schedule::queuing(%stdParams);
-		`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Djava.io.tmpdir=/scratch/$uID -jar $PICARD/picard.jar MergeSamFiles $rin O=$bamForStats SORT_ORDER=coordinate VALIDATION_STRINGENCY=LENIENT TMP_DIR=/scratch/$uID CREATE_INDEX=true USE_THREADING=false MAX_RECORDS_IN_RAM=5000000`;
+		`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Djava.io.tmpdir=/scratch/$uID -jar $PICARD/picard.jar MergeSamFiles $rin O=$output/intFiles/$samp/$samp\.bam SORT_ORDER=coordinate VALIDATION_STRINGENCY=LENIENT TMP_DIR=/scratch/$uID CREATE_INDEX=true USE_THREADING=false MAX_RECORDS_IN_RAM=5000000`;
 		`/bin/touch $output/progress/$pre\_$uID\_SAMP_MERGE_$samp\.done`;
 		push @samp_merge_samp_jids, "$pre\_$uID\_SAMP_MERGE_$samp";
 		$ran_samp_merge = 1;
 	    }
+	    $bamForStats = "$output/intFiles/$samp/$samp\.bam";
 	}
 	
 	my $smsj = join(",", @samp_merge_samp_jids);
