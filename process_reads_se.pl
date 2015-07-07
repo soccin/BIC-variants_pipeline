@@ -237,7 +237,7 @@ while (<IN>){
 	    if(!-e "progress/$pre\_$uID\_CUTADAPT_$rfile\.done" || $ran_rsplit){
 		my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_CUTADAPT_$rfile", job_hold => "$rsplit_jid", cpu => "1", mem => "1", cluster_out => "progress/$pre\_$uID\_CUTADAPT_$rfile\.log");
 		my $standardParams = Schedule::queuing(%stdParams);
-		`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $additionalParams $PYTHON/python "$CUTADAPT/cutadapt -f fastq -a AGATCGGAAGAGCACACGTCT -O 10 -m $minReadLength -o $count/$rcount/$rfile\_CT.fastq -q 3 $count/$rfile >$count/$rcount/$rfile\_CUTADAPT\_STATS.txt"`;
+		`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $additionalParams "$PYTHON/python $CUTADAPT/cutadapt -f fastq -a AGATCGGAAGAGCACACGTCT -O 10 -m $minReadLength -o $count/$rcount/$rfile\_CT.fastq -q 3 $count/$rfile >$count/$rcount/$rfile\_CUTADAPT\_STATS.txt"`;
 		`/bin/touch progress/$pre\_$uID\_CUTADAPT_$rfile\.done`;
 		$ca_jid = "$pre\_$uID\_CUTADAPT_$rfile";
 		$ran_cutadapt = 1;
@@ -247,7 +247,7 @@ while (<IN>){
 		sleep(3);
 		my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_BWA_$rfile", job_hold => "$ca_jid", cpu => "12", mem => "12", cluster_out => "progress/$pre\_$uID\_BWA_$rfile\.log");
 		my $standardParams = Schedule::queuing(%stdParams);
-		`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $additionalParams "$BWA/bwa mem -PM -R \'$readgroup\' -t 12 $bwaDB $count/$rcount/$rfile\_CT.fastq ">$count/$rcount/$rfile\_CT.fastq_$species\.bwa.sam"`;
+		`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $additionalParams "$BWA/bwa mem -PM -R \'$readgroup\' -t 12 $bwaDB $count/$rcount/$rfile\_CT.fastq >$count/$rcount/$rfile\_CT.fastq_$species\.bwa.sam"`;
 		`/bin/touch progress/$pre\_$uID\_BWA_$rfile\.done`;
 		push @bwa_jids, "$pre\_$uID\_BWA_$rfile";
 		$ran_bwa = 1;
