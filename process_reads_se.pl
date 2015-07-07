@@ -3,6 +3,9 @@
 use strict;
 use Getopt::Long qw(GetOptions);
 use FindBin qw($Bin); 
+use lib "$Bin/lib";
+use Schedule;
+use Cluster;
 
 #### new casava splits fastqs into batches of 4m reads
 ### this will process each fastq
