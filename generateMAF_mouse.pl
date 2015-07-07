@@ -132,14 +132,14 @@ else{
 }
 
 print "filtering for snpeff functioal annotations\n";
-print "cat $vcf\_$somatic\_maf0.txt | $Bin/maf/pA_Functional_Snpeff.py > $vcf\_$somatic\_maf1.txt\n\n";
-`cat $vcf\_$somatic\_maf0.txt | $Bin/maf/pA_Functional_Snpeff.py > $vcf\_$somatic\_maf1.txt`;
+print "cat $vcf\_$somatic\_maf0.txt | $PYTHON/python $Bin/maf/pA_Functional_Snpeff.py > $vcf\_$somatic\_maf1.txt\n\n";
+`cat $vcf\_$somatic\_maf0.txt | $PYTHON/python $Bin/maf/pA_Functional_Snpeff.py > $vcf\_$somatic\_maf1.txt`;
 
 print "converting to new MAF format using species $species ... \n";
-print "$Bin/maf/oldMAF2tcgaMAF.py $species $vcf\_$somatic\_maf1.txt $vcf\_$somatic\_TCGA_MAF.txt\n\n";
+print "$PYTHON/python $Bin/maf/oldMAF2tcgaMAF.py $species $vcf\_$somatic\_maf1.txt $vcf\_$somatic\_TCGA_MAF.txt\n\n";
 ### Convert old (NDS) MAF to official TCGA MAF
 ### NOTE; DON'T FORGET <> AROUND INPUT FILE (maf0.txt)
-`$Bin/maf/oldMAF2tcgaMAF.py $species $vcf\_$somatic\_maf1.txt $vcf\_$somatic\_TCGA_MAF.txt`;
+`$PYTHON/python $Bin/maf/oldMAF2tcgaMAF.py $species $vcf\_$somatic\_maf1.txt $vcf\_$somatic\_TCGA_MAF.txt`;
 
 if($delete_temp){
     `/bin/rm $vcf\_PAIRED.maf $vcf\_$somatic\_maf0.txt $vcf\_$somatic\_maf0.log $vcf\_UNPAIRED.maf $vcf\_$somatic\_UNFILTERED.txt $vcf\_$somatic\_rescued.txt $vcf\_$somatic\_maf1.txt`;

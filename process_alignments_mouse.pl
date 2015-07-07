@@ -862,12 +862,12 @@ sub generateMaf{
 	if($type =~ /unifiedgenotyper|ug|haplotypecaller|hc/i){
 	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$jna\_MAF_UNPAIRED", job_hold => "$hold", cpu => "4", mem => "8", internet => "1", cluster_out => "$output/progress/$pre\_$uID\_$jna\_MAF_UNPAIRED.log");
 	    my $standardParams = Schedule::queuing(%stdParams);
-	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $standardParams->{internet} $additionalParams $Bin/generateMAF_mouse.pl -vcf $vcf -species mm9 -config $config -caller $type -delete_temp`;
+	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $standardParams->{internet} $additionalParams $Bin/generateMAF_mouse.pl -vcf $vcf -species $species -config $config -caller $type -delete_temp`;
 	}
     }
     else{
 	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$jna\_MAF_UNPAIRED", job_hold => "$hold", cpu => "4", mem => "8", internet => "1", cluster_out => "$output/progress/$pre\_$uID\_$jna\_MAF_UNPAIRED.log");
 	my $standardParams = Schedule::queuing(%stdParams);
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $standardParams->{internet} $additionalParams $Bin/generateMAF_mouse.pl -vcf $vcf -species mm9 -config $config -caller $type -delete_temp`;
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $standardParams->{internet} $additionalParams $Bin/generateMAF_mouse.pl -vcf $vcf -species $species -config $config -caller $type -delete_temp`;
     }
 }
