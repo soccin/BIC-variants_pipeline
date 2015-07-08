@@ -50,8 +50,11 @@ def printMatrix(matrix,outFile):
             r1info = info["R1"]
             r2info = info["R2"]
             r1pct = format((r1info['trimmed']/r1info['processed'])*100,'.2f')
-            r2pct = format((r2info['trimmed']/r2info['processed'])*100,'.2f')
-            r = [id]+r1info.values()+[r1pct]+r2info.values()+[r2pct]
+            try:
+                r2pct = format((r2info['trimmed']/r2info['processed'])*100,'.2f')
+            except ZeroDivisionError:
+                r2pct = "0.0"
+            r = [id]+[r1info['processed'],r1info['trimmed']]+[r1pct]+[r2info['processed'],r2info['trimmed']]+[r2pct]
             print>>out,"\t".join([str(x) for x in r])
     return
 
