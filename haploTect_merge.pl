@@ -254,7 +254,12 @@ print "$PYTHON/python $Bin/maf/maf_annotations/addMAannotation.py -i $output/$pr
 ## Delete Temp Files
 ##
 if($delete_temp){
-    my @files = glob( $output . '/*maf[012]*' );
+    my @files = glob( $output . '/*maf[012]*');
+    for my $fname (@files) {
+        print "Removing: $fname \n";
+        unlink($fname);
+    }
+    @files = glob ("$output/*mutect_calls* $output/*Haplotype*");
     for my $fname (@files) {
         print "Removing: $fname \n";
         unlink($fname);
