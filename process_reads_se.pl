@@ -23,6 +23,7 @@ use Cluster;
 my ($file, $species, $config, $scheduler, $help, $priority_project, $priority_group);
 my $pre = 'TEMP';
 my $run = 'TEMP_RUN';
+my $r1adaptor = 'AGATCGGAAGAGCACACGTCT';
 my $readgroup = '@RG\tID:TEMP_ID\tPL:Illumina\tPU:TEMP_PU\tLB:TEMP_LBSM:TEMP_SM';
 GetOptions ('file=s' => \$file,
 	    'pre=s' => \$pre,
@@ -30,6 +31,7 @@ GetOptions ('file=s' => \$file,
 	    'run=s' => \$run,
 	    'config=s' => \$config,
  	    'scheduler=s' => \$scheduler,
+	    'r1adaptor=s' => \$r1adaptor,
 	    'readgroup=s' => \$readgroup) or exit(1);
 
 if(!$file || !$config || !$species || !$scheduler || $help){
@@ -42,6 +44,7 @@ if(!$file || !$config || !$species || !$scheduler || $help){
 	* CONFIG: file listing paths to programs needed for pipeline; full path to config file needed (REQUIRED)
 	* SCHEDULER: currently support for SGE and LSF (REQUIRED)
 	* RUN: RUN IDENTIFIER (default: TEMP_RUN)
+	* R1ADAPTOR to specify R1 adaptor sequence (default: AGATCGGAAGAGCACACGTCT)
 	* READGROUP: string containing information for ID, PL, PU, LB, and SM e.g. '\@RG\\tID:s_CH_20__1_LOLA_1018_PE\\tPL:Illumina\\tPU:s_CH_20__1_LOLA_1018\\tLB:s_CH_20__1\\t SM:s_CH_20'; WARNING: INCOMPLETE INFORMATION WILL CAUSE GATK ISSSUES (default: '\@RG\\tID:TEMP_ID\\tPL:Illumina\\tPU:TEMP_PU\\tLB:TEMP_LB\\tSM:TEMP_SM')
 HELP
 exit;
@@ -237,7 +240,7 @@ while (<IN>){
 	    if(!-e "progress/$pre\_$uID\_CUTADAPT_$rfile\.done" || $ran_rsplit){
 		my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_CUTADAPT_$rfile", job_hold => "$rsplit_jid", cpu => "1", mem => "1", cluster_out => "progress/$pre\_$uID\_CUTADAPT_$rfile\.log");
 		my $standardParams = Schedule::queuing(%stdParams);
-		`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $additionalParams "$PYTHON/python $CUTADAPT/cutadapt -f fastq -a AGATCGGAAGAGCACACGTCT -O 10 -m $minReadLength -o $count/$rcount/$rfile\_CT.fastq -q 3 $count/$rfile >$count/$rcount/$rfile\_CUTADAPT\_STATS.txt"`;
+		`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $additionalParams "$PYTHON/python $CUTADAPT/cutadapt -f fastq -a $r1adaptor -O 10 -m $minReadLength -o $count/$rcount/$rfile\_CT.fastq -q 3 $count/$rfile >$count/$rcount/$rfile\_CUTADAPT\_STATS.txt"`;
 		`/bin/touch progress/$pre\_$uID\_CUTADAPT_$rfile\.done`;
 		$ca_jid = "$pre\_$uID\_CUTADAPT_$rfile";
 		$ran_cutadapt = 1;

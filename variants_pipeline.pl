@@ -71,6 +71,8 @@ my $pre = 'TEMP';
 my $output = "results";
 my $priority_project = "ngs";
 my $priority_group = "Pipeline";
+my $r1adaptor = 'AGATCGGAAGAGCACACGTCT';
+my $r2adaptor = 'AGATCGGAAGAGCGTCGTGTA';
 
 GetOptions ('map=s' => \$map,
 	    'group=s' => \$group,
@@ -88,6 +90,8 @@ GetOptions ('map=s' => \$map,
  	    'scheduler=s' => \$scheduler,
  	    'priority_project=s' => \$priority_project,
  	    'priority_group=s' => \$priority_group,
+	    'r1adaptor=s' => \$r1adaptor,
+	    'r2adaptor=s' => \$r2adaptor,
 	    'species=s' => \$species) or exit(1);
 
 if(!$map || !$group || !$species || !$config || !$scheduler || !$targets || $help){
@@ -109,6 +113,8 @@ if(!$map || !$group || !$species || !$config || !$scheduler || !$targets || $hel
 	* -removedups: remove duplicate reads instead of just marking them
 	* -abra: run abra instead of GATK indelrealigner
 	* -mdOnly: will stop after markdups step
+	* R1ADAPTOR to specify R1 adaptor sequence (default: AGATCGGAAGAGCACACGTCT)
+	* R2ADAPTOR to specify R1 adaptor sequence (default: AGATCGGAAGAGCGTCGTGTA)
 	* haplotypecaller is default; -ug || -unifiedgenotyper to also make unifiedgenotyper variant calls	
 HELP
 exit;
@@ -273,6 +279,14 @@ sub reconstructCL {
 	$rCL .= " -species $species";
     }
     
+    if($r1adaptor){
+	$rCL .= " -r1adaptor $r1adaptor";
+    }
+
+    if($r2adaptor){
+	$rCL .= " -r2adaptor $r2adaptor";
+    }
+
     my $numArgs = $#ARGV + 1;
     foreach my $argnum (0 .. $#ARGV) {
 	$rCL .= " $ARGV[$argnum]";
@@ -663,12 +677,12 @@ sub alignReads {
 	    print LOG "$currentTime[2]:$currentTime[1]:$currentTime[0], $currentTime[3]\/$currentTime[4]\/$currentTime[5]\tSTARTING READS PROCESSING/ALIGNMENT FOR $data[1]\_$data[0]\_$data[2]\n";
 	    
 	    if($data[4] =~ /pe/i){
-		`$Bin/process_reads_pe.pl -file files_$data[1]\_$data[0]\_$data[2] -pre $pre -run $data[1]\_$data[0]\_$data[2] -readgroup "\@RG\\tID:$data[1]\_$data[0]\_$data[2]\_PE\\tPL:Illumina\\tPU:$data[1]\_$data[0]\_$data[2]\\tLB:$data[1]\_$data[0]\\tSM:$data[1]" -species $species -config $config -scheduler $scheduler > files_$data[1]\_$data[0]\_$data[2]\_process_reads_pe.log 2>&1`;
+		`$Bin/process_reads_pe.pl -file files_$data[1]\_$data[0]\_$data[2] -pre $pre -run $data[1]\_$data[0]\_$data[2] -readgroup "\@RG\\tID:$data[1]\_$data[0]\_$data[2]\_PE\\tPL:Illumina\\tPU:$data[1]\_$data[0]\_$data[2]\\tLB:$data[1]\_$data[0]\\tSM:$data[1]" -species $species -config $config -scheduler $scheduler -r1adaptor $r1adaptor -r2adaptor $r2adaptor > files_$data[1]\_$data[0]\_$data[2]\_process_reads_pe.log 2>&1`;
 		
 		###`/common/sge/bin/lx24-amd64/qsub /home/mpirun/tools/qCMD $Bin/solexa_PE.pl -file files -pre $pre -run $data[1]\_$data[0]\_$data[2] -readgroup "\@RG\\\tID:$data[1]\_$data[0]\_$data[2]\_PE\\\tPL:Illumina\\\tPU:$data[1]\_$data[0]\_$data[2]\\\tLB:$data[1]\_$data[0]\\\tSM:$data[1]" -species $species -config $config $targeted -scheduler $scheduler`;
 	    }
 	    elsif($data[4] =~ /se/i){
-		`$Bin/process_reads_se.pl -file files_$data[1]\_$data[0]\_$data[2] -pre $pre -run $data[1]\_$data[0]\_$data[2] -readgroup "\@RG\\tID:$data[1]\_$data[0]\_$data[2]\_SE\\tPL:Illumina\\tPU:$data[1]\_$data[0]\_$data[2]\\tLB:$data[1]\_$data[0]\\tSM:$data[1]" -species $species -config $config -scheduler $scheduler > files_$data[1]\_$data[0]\_$data[2]\_process_reads.log 2>&1`;
+		`$Bin/process_reads_se.pl -file files_$data[1]\_$data[0]\_$data[2] -pre $pre -run $data[1]\_$data[0]\_$data[2] -readgroup "\@RG\\tID:$data[1]\_$data[0]\_$data[2]\_SE\\tPL:Illumina\\tPU:$data[1]\_$data[0]\_$data[2]\\tLB:$data[1]\_$data[0]\\tSM:$data[1]" -species $species -config $config -scheduler $scheduler -r1adaptor $r1adaptor > files_$data[1]\_$data[0]\_$data[2]\_process_reads.log 2>&1`;
 	    }
 	    $ran_solexa{$data[1]} = 1;
 	    chdir $curDir;

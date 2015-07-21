@@ -26,12 +26,16 @@ my ($file, $species, $config, $scheduler, $help, $priority_project, $priority_gr
 my $pre = 'TEMP';
 my $run = 'TEMP_RUN';
 my $readgroup = "\@RG\tID:TEMP_ID\tPL:Illumina\tPU:TEMP_PU\tLB:TEMP_LBSM:TEMP_SM";
+my $r1adaptor = 'AGATCGGAAGAGCACACGTCT';
+my $r2adaptor = 'AGATCGGAAGAGCGTCGTGTA';
 GetOptions ('file=s' => \$file,
 	    'pre=s' => \$pre,
 	    'species=s' => \$species,
 	    'run=s' => \$run,
 	    'config=s' => \$config,
  	    'scheduler=s' => \$scheduler,
+	    'r1adaptor=s' => \$r1adaptor,
+	    'r2adaptor=s' => \$r2adaptor,
 	    'readgroup=s' => \$readgroup) or exit(1);
 
 if(!$file || !$config || !$species || !$scheduler || $help){
@@ -46,6 +50,8 @@ if(!$file || !$config || !$species || !$scheduler || $help){
 	* RUN: RUN IDENTIFIER (default: TEMP_RUN)
 	* PRIORITY_PROJECT: sge notion of priority assigned to projects (default: ngs)
 	* PRIORITY_GROUP: lsf notion of priority assigned to groups (default: Pipeline)
+	* R1ADAPTOR to specify R1 adaptor sequence (default: AGATCGGAAGAGCACACGTCT)
+	* R2ADAPTOR to specify R1 adaptor sequence (default: AGATCGGAAGAGCGTCGTGTA)
 	* READGROUP: string containing information for ID, PL, PU, LB, and SM e.g. '\@RG\\tID:s_CH_20__1_LOLA_1018_PE\\tPL:Illumina\\tPU:s_CH_20__1_LOLA_1018\\tLB:s_CH_20__1\\t SM:s_CH_20'; WARNING: INCOMPLETE INFORMATION WILL CAUSE GATK ISSSUES (default: '\@RG\\tID:TEMP_ID\\tPL:Illumina\\tPU:TEMP_PU\\tLB:TEMP_LB\\tSM:TEMP_SM')
 HELP
 exit;
@@ -297,13 +303,13 @@ while (<IN>){
 	    if(!-e "progress/$pre\_$uID\_CUTADAPT_$rfile\.done" || $ran_rsplit1 || $ran_rsplit2){
 		my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_CUTADAPT_$rfile", job_hold => "$rsj", cpu => "1", mem => "1", cluster_out => "progress/$pre\_$uID\_CUTADAPT_$rfile\.log");
 		my $standardParams = Schedule::queuing(%stdParams);
-		`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams "$PYTHON/python $CUTADAPT/cutadapt -f fastq -a AGATCGGAAGAGCACACGTCT -O 10 -m $minReadLength -q 3 --paired-output $count/$rcount/$r2file\_TEMP.fastq -o $count/$rcount/$rfile\_TEMP.fastq $count/$rfile $count/$r2file >$count/$rcount/$rfile\_CUTADAPT\_STATS.txt"`;
+		`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams "$PYTHON/python $CUTADAPT/cutadapt -f fastq -a $r1adaptor -O 10 -m $minReadLength -q 3 --paired-output $count/$rcount/$r2file\_TEMP.fastq -o $count/$rcount/$rfile\_TEMP.fastq $count/$rfile $count/$r2file >$count/$rcount/$rfile\_CUTADAPT\_STATS.txt"`;
 
 		sleep(3);
 
 		my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_CUTADAPT_$r2file", job_hold => "$pre\_$uID\_CUTADAPT_$rfile", cpu => "1", mem => "1", cluster_out => "progress/$pre\_$uID\_CUTADAPT_$r2file\.log");
 		my $standardParams = Schedule::queuing(%stdParams);
-		`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams "$PYTHON/python $CUTADAPT/cutadapt -f fastq -a AGATCGGAAGAGCGTCGTGTA -O 10 -m $minReadLength -q 3 --paired-output $count/$rcount/$rfile\_CT_PE.fastq -o $count/$rcount/$r2file\_CT_PE.fastq $count/$rcount/$r2file\_TEMP.fastq $count/$rcount/$rfile\_TEMP.fastq >$count/$rcount/$r2file\_CUTADAPT\_STATS.txt"`;
+		`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams "$PYTHON/python $CUTADAPT/cutadapt -f fastq -a $r2adaptor -O 10 -m $minReadLength -q 3 --paired-output $count/$rcount/$rfile\_CT_PE.fastq -o $count/$rcount/$r2file\_CT_PE.fastq $count/$rcount/$r2file\_TEMP.fastq $count/$rcount/$rfile\_TEMP.fastq >$count/$rcount/$r2file\_CUTADAPT\_STATS.txt"`;
 		$ca_jid = "$pre\_$uID\_CUTADAPT_$r2file";
 		`/bin/touch progress/$pre\_$uID\_CUTADAPT_$rfile\.done`;
 		$ran_cutadapt = 1;
