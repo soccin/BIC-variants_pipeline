@@ -34,6 +34,8 @@ GetOptions ('file=s' => \$file,
 	    'run=s' => \$run,
 	    'config=s' => \$config,
  	    'scheduler=s' => \$scheduler,
+ 	    'priority_project=s' => \$priority_project,
+ 	    'priority_group=s' => \$priority_group,
 	    'r1adaptor=s' => \$r1adaptor,
 	    'r2adaptor=s' => \$r2adaptor,
 	    'readgroup=s' => \$readgroup) or exit(1);
