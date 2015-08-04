@@ -65,7 +65,7 @@ use Cluster;
 ### NOTE: DO NOT SUBMIT THIS WRAPPER SCRIPT TO THE CLUSTER BECAUSE ONCOTATOR STEP WILL FAIL
 ###       DUE TO NODES NOT HAVING NETWORK ACCESS
 
-my ($map, $group, $pair, $config, $help, $nosnps, $removedups, $species, $ug, $scheduler, $abra, $targets, $mdOnly);
+my ($map, $group, $pair, $config, $help, $nosnps, $removedups, $species, $ug, $scheduler, $abra, $targets, $mdOnly, $noMD);
 
 my $pre = 'TEMP';
 my $output = "results";
@@ -85,6 +85,7 @@ GetOptions ('map=s' => \$map,
 	    'removedups' => \$removedups,
 	    'abra' => \$abra,
 	    'mdOnly|mdonly' => \$mdOnly,
+	    'noMD|nomd|nomarkdups|noMarkdups' => \$noMD,
 	    'ug|unifiedgenotyper' => \$ug,
  	    'output|out|o=s' => \$output,
  	    'scheduler=s' => \$scheduler,
@@ -112,7 +113,8 @@ if(!$map || !$group || !$species || !$config || !$scheduler || !$targets || $hel
 	* -nosnps: if no snps to be called; e.g. when only indelrealigned/recalibrated bams needed
 	* -removedups: remove duplicate reads instead of just marking them
 	* -abra: run abra instead of GATK indelrealigner
-	* -mdOnly: will stop after markdups step
+	* -mdOnly: will stop after markdups step (e.g. chip seq analysis)
+	* -noMD: will not run MarkDups
 	* R1ADAPTOR to specify R1 adaptor sequence (default: AGATCGGAAGAGCACACGTCT)
 	* R2ADAPTOR to specify R1 adaptor sequence (default: AGATCGGAAGAGCGTCGTGTA)
 	* haplotypecaller is default; -ug || -unifiedgenotyper to also make unifiedgenotyper variant calls	
@@ -207,6 +209,7 @@ my @hs_jids = ();
 my @is_jids = ();
 my @as_jids = ();
 my @cog_jids = ();
+my %bamsggf = ();
 
 processBams();
 foreach my $md_jid (@md_jids){
@@ -266,6 +269,9 @@ sub reconstructCL {
     }
     if($mdOnly){
 	$rCL .= " -mdOnly";
+    }
+    if($noMD){
+	$rCL .= " -noMD";
     }
     if($ug){
 	$rCL .= " -unifiedgenotyper";
@@ -722,14 +728,21 @@ sub processBams {
 	    ###       IN A COHORT NEEDED TO HAVE THEIR READS REPROCESSED
 	    if(scalar(@lBams) == 1){
 		push @sBams, "$fin";
-		if(!-e "$output/progress/$pre\_$uID\_$samp\_$lib\_MARKDUPS.done" || $ran_solexa{$samp}){
-		    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$samp\_$lib\_MARKDUPS", job_hold => "$rmj", cpu => "3", mem => "30", cluster_out => "$output/progress/$pre\_$uID\_$samp\_$lib\_MARKDUPS.log");
-		    my $standardParams = Schedule::queuing(%stdParams);
-		    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Djava.io.tmpdir=/scratch/$uID -jar $PICARD/picard.jar MarkDuplicates $fin OUTPUT=$output/intFiles/$samp/$lib/$samp\_$lib\_MD.bam METRICS_FILE=$output/intFiles/$samp/$lib/$samp\_$lib\_markDuplicatesMetrics.txt TMP_DIR=/scratch/$uID VALIDATION_STRINGENCY=LENIENT REMOVE_DUPLICATES=$rmdups CREATE_INDEX=true MAX_RECORDS_IN_RAM=5000000`;
-
-		    `/bin/touch $output/progress/$pre\_$uID\_$samp\_$lib\_MARKDUPS.done`;
-		    push @md_jids, "$pre\_$uID\_$samp\_$lib\_MARKDUPS";
-		    $ran_md = 1;
+		if($noMD){
+		    my @lbt = split(/=/, $lBams[0]);
+		    $bamsggf{$samp}{$lib} = "$lbt[1]";
+		}
+		else{
+		    if(!-e "$output/progress/$pre\_$uID\_$samp\_$lib\_MARKDUPS.done" || $ran_solexa{$samp}){
+			my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$samp\_$lib\_MARKDUPS", job_hold => "$rmj", cpu => "3", mem => "30", cluster_out => "$output/progress/$pre\_$uID\_$samp\_$lib\_MARKDUPS.log");
+			my $standardParams = Schedule::queuing(%stdParams);
+			`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Djava.io.tmpdir=/scratch/$uID -jar $PICARD/picard.jar MarkDuplicates $fin OUTPUT=$output/intFiles/$samp/$lib/$samp\_$lib\_MD.bam METRICS_FILE=$output/intFiles/$samp/$lib/$samp\_$lib\_markDuplicatesMetrics.txt TMP_DIR=/scratch/$uID VALIDATION_STRINGENCY=LENIENT REMOVE_DUPLICATES=$rmdups CREATE_INDEX=true MAX_RECORDS_IN_RAM=5000000`;
+			
+			`/bin/touch $output/progress/$pre\_$uID\_$samp\_$lib\_MARKDUPS.done`;
+			push @md_jids, "$pre\_$uID\_$samp\_$lib\_MARKDUPS";
+			$ran_md = 1;
+		    }
+		    $bamsggf{$samp}{$lib} = "$output/intFiles/$samp/$lib/$samp\_$lib\_MD.bam"; 
 		}
 	    }
 	    else{
@@ -742,22 +755,29 @@ sub processBams {
 		    `/bin/touch $output/progress/$pre\_$uID\_LIB_MERGE_$samp\_$lib\.done`;
 		    $ran_lb_merge = 1;
 		    push @lib_merge_samp_jids, "$pre\_$uID\_LIB_MERGE_$samp\_$lib";
+		    push @md_jids, "$pre\_$uID\_LIB_MERGE_$samp\_$lib";		    
 		    sleep(3);
 		}
 		
-		if(!-e "$output/progress/$pre\_$uID\_LIB_MERGE_$samp\_$lib\.done" || $ran_lb_merge){
-		    my $lb_merge_hold = "";
-		    if($ran_lb_merge){
-			$lb_merge_hold = "$pre\_$uID\_LIB_MERGE_$samp\_$lib";
-		    }		
+		if($noMD){
+		    $bamsggf{$samp}{$lib} = "$output/intFiles/$samp/$lib/$samp\_$lib\.bam";
+		}
+		else{
+		    if(!-e "$output/progress/$pre\_$uID\_LIB_MERGE_$samp\_$lib\.done" || $ran_lb_merge){
+			my $lb_merge_hold = "";
+			if($ran_lb_merge){
+			    $lb_merge_hold = "$pre\_$uID\_LIB_MERGE_$samp\_$lib";
+			}		
 			
-		    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$samp\_$lib\_MARKDUPS", job_hold => "$lb_merge_hold", cpu => "3", mem => "30", cluster_out => "$output/progress/$pre\_$uID\_$samp\_$lib\_MARKDUPS.log");
-		    my $standardParams = Schedule::queuing(%stdParams);
-		    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Djava.io.tmpdir=/scratch/$uID -jar $PICARD/picard.jar MarkDuplicates INPUT=$output/intFiles/$samp/$lib/$samp\_$lib\.bam OUTPUT=$output/intFiles/$samp/$lib/$samp\_$lib\_MD.bam METRICS_FILE=$output/intFiles/$samp/$lib/$samp\_$lib\_markDuplicatesMetrics.txt TMP_DIR=/scratch/$uID VALIDATION_STRINGENCY=LENIENT REMOVE_DUPLICATES=$rmdups CREATE_INDEX=true MAX_RECORDS_IN_RAM=5000000`;
-
-		    `/bin/touch $output/progress/$pre\_$uID\_$samp\_$lib\_MARKDUPS.done`;
-		    push @md_jids, "$pre\_$uID\_$samp\_$lib\_MARKDUPS";
-		    $ran_md = 1;
+			my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$samp\_$lib\_MARKDUPS", job_hold => "$lb_merge_hold", cpu => "3", mem => "30", cluster_out => "$output/progress/$pre\_$uID\_$samp\_$lib\_MARKDUPS.log");
+			my $standardParams = Schedule::queuing(%stdParams);
+			`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Djava.io.tmpdir=/scratch/$uID -jar $PICARD/picard.jar MarkDuplicates INPUT=$output/intFiles/$samp/$lib/$samp\_$lib\.bam OUTPUT=$output/intFiles/$samp/$lib/$samp\_$lib\_MD.bam METRICS_FILE=$output/intFiles/$samp/$lib/$samp\_$lib\_markDuplicatesMetrics.txt TMP_DIR=/scratch/$uID VALIDATION_STRINGENCY=LENIENT REMOVE_DUPLICATES=$rmdups CREATE_INDEX=true MAX_RECORDS_IN_RAM=5000000`;
+			
+			`/bin/touch $output/progress/$pre\_$uID\_$samp\_$lib\_MARKDUPS.done`;
+			push @md_jids, "$pre\_$uID\_$samp\_$lib\_MARKDUPS";
+			$ran_md = 1;
+		    }
+		    $bamsggf{$samp}{$lib} = "$output/intFiles/$samp/$lib/$samp\_$lib\_MD.bam";  
 		}
 	    }
 	    
@@ -848,14 +868,16 @@ sub mergeStats {
     my %addParams = (scheduler => "$scheduler", runtime => "50", priority_project=> "$priority_project", priority_group=> "$priority_group", rerun => "1", iounits => "1");
     my $additionalParams = Schedule::additionalParams(%addParams);
 
-    my $mdfiles = join(" ", @mdm);
-    if(!-e "$output/progress/$pre\_$uID\_MERGE_MDM.done" || $ran_md){
-	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_MERGE_MDM", job_hold => "$mdj", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_MERGE_MDM.log");
-	my $standardParams = Schedule::queuing(%stdParams);
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/qc/mergePicardMetrics.pl $mdfiles ">$output/metrics/$pre\_markDuplicatesMetrics.txt"`;
-	`/bin/touch $output/progress/$pre\_$uID\_MERGE_MDM.done`;
-	push @qcpdf_jids, "$pre\_$uID\_MERGE_MDM";
-	$ran_merge = 1;
+    if(!$noMD){
+	my $mdfiles = join(" ", @mdm);
+	if(!-e "$output/progress/$pre\_$uID\_MERGE_MDM.done" || $ran_md){
+	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_MERGE_MDM", job_hold => "$mdj", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_MERGE_MDM.log");
+	    my $standardParams = Schedule::queuing(%stdParams);
+	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/qc/mergePicardMetrics.pl $mdfiles ">$output/metrics/$pre\_markDuplicatesMetrics.txt"`;
+	    `/bin/touch $output/progress/$pre\_$uID\_MERGE_MDM.done`;
+	    push @qcpdf_jids, "$pre\_$uID\_MERGE_MDM";
+	    $ran_merge = 1;
+	}
     }
     
     my $hsfiles = join(" ", @hsm);
@@ -941,11 +963,12 @@ sub generateGroupFile {
 	my @groupings = ();
 	foreach my $sample (keys %{$grouping{$grou}}){
 	    foreach my $lib (keys %{$samp_libs_run{$sample}}){
-		if(!-e "$output/intFiles/$sample/$lib/$sample\_$lib\_MD.bam"){
-		    print LOG "$currentTime[2]:$currentTime[1]:$currentTime[0], $currentTime[3]\/$currentTime[4]\/$currentTime[5]\tCAN'T LOCATE $output/intFiles/$sample/$lib/$sample\_$lib\_MD.bam...EXITING VARIANTS PIPELINE FOR PROJECT $pre";
+		if(!-e "$bamsggf{$sample}{$lib}"){
+		    print LOG "$currentTime[2]:$currentTime[1]:$currentTime[0], $currentTime[3]\/$currentTime[4]\/$currentTime[5]\tCAN'T LOCATE $bamsggf{$sample}{$lib}...EXITING VARIANTS PIPELINE FOR PROJECT $pre";
 		    die;
 		}
-		push @groupings, "$output/intFiles/$sample/$lib/$sample\_$lib\_MD.bam";
+		###push @groupings, "$output/intFiles/$sample/$lib/$sample\_$lib\_MD.bam";
+		push @groupings, "$bamsggf{$sample}{$lib}";
 	    }
 	}
 	
