@@ -628,6 +628,11 @@ while ( $processCount < $numberOfProcess ) {
 # 	}
 # }
 
+#--Clean up intermediate files
+
+CleanUpFiles($outdir . "/StrVarAnalysis", $outdir . "/unfiltered");
+
+
 #--Calculate total runtime (current time minus start time)
 $now = time - $now;
 
@@ -2947,7 +2952,14 @@ sub ReadBamList
 }
 
 
-
+sub CleanUpFiles
+{
+	my($src_dir, $dst_dir) = @_;
+        `/bin/mkdir -p $dst_dir`;
+        die "[ERROR]: Fail to create directory: $dst_dir\n" if(!-d $dst_dir);
+	`find $src_dir -name \"*.vcf\" ! -name \"*stdfilter.vcf\" -exec mv {} $dst_dir \\;`;
+	`rm -r $src_dir`;
+}
 
 
 
