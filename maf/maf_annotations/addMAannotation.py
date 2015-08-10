@@ -106,7 +106,7 @@ def annotate():
     ## if connection fails, cache will just 
     ## not be used. instead, all queries will
     ## go to mutationassessor.org
-    mongoserver = "eos"
+    mongoserver = "s01"
     db = None
     try:
         client = MongoClient(mongoserver)
