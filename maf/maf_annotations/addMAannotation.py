@@ -9,6 +9,7 @@ import sys
 import csv
 from collections import namedtuple
 from pymongo import MongoClient
+from pymongo import errors
 
 def getArgs():
 
@@ -112,7 +113,7 @@ def annotate():
         client = MongoClient(mongoserver)
         db = client.genomic_events
         annots = db.annotations
-    except ConnectionFailure, e:
+    except errors.ConnectionFailure, e:
         print>>sys.stderr,"Could not connect to MongoDB!"
 
     standard_fields = ['Func. Impact', 'FI score', 'VC score', 'VS score', 'cancer types in COSMIC@position', "gene's known role in cancer", 'regions@position', 'domain@position', 'domains']
