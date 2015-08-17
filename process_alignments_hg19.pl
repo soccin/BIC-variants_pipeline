@@ -877,7 +877,7 @@ if($pair){
 	my $additionalParams_I = Schedule::additionalParams(%addParams_I);
 	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_HAPLOTECT", job_hold => "$arihcj,$muj", cpu => "4", mem => "8", internet => "1", cluster_out => "$output/progress/$pre\_HAPLOTECT.log");
 	my $standardParams = Schedule::queuing(%stdParams);
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $standardParams->{internet} $additionalParams_I $PERL/perl $Bin/haploTect_merge.pl -pair $pair -hc_vcf $output/variants/haplotypecaller/$pre\_HaplotypeCaller.vcf -pre $pre -output $output/variants/haplotect -mutect_dir $output/variants/mutect -config $config $patientFile -align_dir $output/alignments/`;
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $standardParams->{internet} $additionalParams_I $PERL/perl $Bin/haploTect_merge.pl -pair $pair -hc_vcf $output/variants/haplotypecaller/$pre\_HaplotypeCaller.vcf -pre $pre -output $output/variants/haplotect -mutect_dir $output/variants/mutect -config $config $patientFile -align_dir $output/alignments/ -delete_temp`;
 	`/bin/touch $output/progress/$pre\_HAPLOTECT.done`;
     }
 }
@@ -931,7 +931,7 @@ sub generateMaf{
 	### NOTE: ASKING FOR PE ALLOC 4 TO THROTTLE NUMBER OF JOBS ACCESING ONCOTATOR
 	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$jna\_MAF_PAIRED", job_hold => "$hold", cpu => "4", mem => "8", internet => "1", cluster_out => "$output/progress/$pre\_$uID\_$jna\_MAF_PAIRED.log");
 	    my $standardParams = Schedule::queuing(%stdParams);
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $standardParams->{internet} $additionalParams $Bin/generateMAF.pl -vcf $vcf -pairing $pair -species hg19 -config $config -caller $type $n_sample $t_sample $patientFile -align_dir $output/alignments`;# -delete_temp`;
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $standardParams->{internet} $additionalParams $Bin/generateMAF.pl -vcf $vcf -pairing $pair -species hg19 -config $config -caller $type $n_sample $t_sample $patientFile -align_dir $output/alignments -delete_temp`;
 
 	if($type =~ /unifiedgenotyper|ug|haplotypecaller|hc/i){
 	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$jna\_MAF_UNPAIRED", job_hold => "$hold", cpu => "4", mem => "8", internet => "1", cluster_out => "$output/progress/$pre\_$uID\_$jna\_MAF_UNPAIRED.log");

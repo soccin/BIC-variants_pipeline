@@ -332,8 +332,8 @@ if($patient && $bam_dir){
     print "$Bin/maf/fillout/GetBaseCountsMutliSample/GetBaseCountsMultiSample --fasta $REF_FASTA $bam_inputs --output $output/$pre/_haplotect_TCGA_basecounts.txt --maf $output/$pre\_haplotect_TCGA_MAF.txt --filter_improper_pair 0\n\n";
     `$Bin/maf/fillout/GetBaseCountsMutliSample/GetBaseCountsMultiSample --fasta $REF_FASTA $bam_inputs --output $output/$pre\_haplotect_TCGA_basecounts.txt --maf $output/$pre\_haplotect_TCGA_MAF.txt --filter_improper_pair 0`;
 
-    print "$PYTHON/python $Bin/maf/fillout/dmp2MAF0 -m $output/$pre\_haplotect_TCGA_MAF.txt -p $pairing -P $patient -b $output/$pre\_haplotect_TCGA_basecounts.txt -o $output/$pre\_haplotect_TCGA_MAF_fillout.txt\n";
-    `$PYTHON/python $Bin/maf/fillout/dmp2MAF0 -m $output/$pre\_haplotect_TCGA_MAF.txt -p $pairing -P $patient -b $output/$pre\_haplotect_TCGA_basecounts.txt -o $output/$pre\_haplotect_TCGA_MAF_fillout.txt`;
+    print "$PYTHON/python $Bin/maf/fillout/dmp2portalMAF -m $output/$pre\_haplotect_TCGA_MAF.txt -p $pairing -P $patient -b $output/$pre\_haplotect_TCGA_basecounts.txt -o $output/$pre\_haplotect_TCGA_MAF_fillout.txt\n";
+    `$PYTHON/python $Bin/maf/fillout/dmp2portalMAF -m $output/$pre\_haplotect_TCGA_MAF.txt -p $pairing -P $patient -b $output/$pre\_haplotect_TCGA_basecounts.txt -o $output/$pre\_haplotect_TCGA_MAF_fillout.txt`;
 }
 
 
@@ -342,12 +342,12 @@ if($patient && $bam_dir){
 ## Delete Temp Files
 ##
 if($delete_temp){
-    my @files = glob( $output . '/*maf[012]*');
+    my @files = glob( $output . '/*.maf[012]');
     for my $fname (@files) {
         print "Removing: $fname \n";
         unlink($fname);
     }
-    @files = glob ("$output/*mutect_calls* $output/*Haplotype*");
+    @files = glob ("$output/*mutect_calls* $output/*Haplotype* $output/*maf2.txt*");
     for my $fname (@files) {
         print "Removing: $fname \n";
         unlink($fname);
