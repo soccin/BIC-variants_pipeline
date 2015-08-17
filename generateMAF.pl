@@ -222,40 +222,44 @@ print "$PYTHON/python $Bin/maf/maf_annotations/addMAannotation.py -i $vcf\_$soma
 `$PYTHON/python $Bin/maf/maf_annotations/addMAannotation.py -i $vcf\_$somatic\_TCGA_MAF_COSMIC_DETAILED.txt -o $vcf\_$somatic\_TCGA_MAF_COSMIC_MA_DETAILED.txt -d`;
 
 if($patient && $bam_dir){
-    print "Starting maf fillout\n";
-    # open patient file, get each sample name:
-    # then find file with that name in the alignement directory
-    # make sure it there is only 1 bam per sample
-    # add that to a array
-    open(PATIENT, "$patient") || die "Can't open patient file $patient $!";
-    my $header = <PATIENT>;
-    my @header = split(/\s+/,$header);
+    if($pairing){
 
-    my ($sID_index) = grep {$header[$_] =~ /Sample_ID/} 0..$#header;
-    #print "Sample index: $sID_index\n";
+        print "Starting maf fillout\n";
+        # open patient file, get each sample name:
+        # then find file with that name in the alignement directory
+        # make sure it there is only 1 bam per sample
+        # add that to a array
+        open(PATIENT, "$patient") || die "Can't open patient file $patient $!";
+        my $header = <PATIENT>;
+        my @header = split(/\s+/,$header);
 
-    my @bamList;
+        my ($sID_index) = grep {$header[$_] =~ /Sample_ID/} 0..$#header;
+        #print "Sample index: $sID_index\n";
+
+        my @bamList;
  
-    while(<PATIENT>) {
-        chomp;
-        my @patient=split(/\s+/,$_);
-        #print "Sample: $patient[$sID_index] \n";
-        my $bamFile = `find $bam_dir -name "Proj_*_indelRealigned_recal_$patient[$sID_index].bam"`;
-        chomp($bamFile);
-        #print "Bam file: $bamFile \n";
+        while(<PATIENT>) {
+            chomp;
+            my @patient=split(/\s+/,$_);
+            #print "Sample: $patient[$sID_index] \n";
+            my $bamFile = `find $bam_dir -name "Proj_*_indelRealigned_recal_$patient[$sID_index].bam"`;
+            chomp($bamFile);
+            #print "Bam file: $bamFile \n";
         
-        push(@bamList, "--bam $patient[$sID_index]:$bamFile");
+            push(@bamList, "--bam $patient[$sID_index]:$bamFile");
+        }
+
+        my $bam_inputs = join(" ", @bamList);
+
+        print "$Bin/maf/fillout/GetBaseCountsMutliSample/GetBaseCountsMultiSample --fasta $HG19_FASTA $bam_inputs --output $vcf\_$somatic\_TCGA_basecounts.txt --maf $vcf\_$somatic\_TCGA_MAF.txt --filter_improper_pair 0\n\n";
+        `$Bin/maf/fillout/GetBaseCountsMutliSample/GetBaseCountsMultiSample --fasta $HG19_FASTA $bam_inputs --output $vcf\_$somatic\_TCGA_basecounts.txt --maf $vcf\_$somatic\_TCGA_MAF.txt --filter_improper_pair 0`;
+
+        print "$PYTHON/python $Bin/maf/fillout/dmp2MAF0 -m $vcf\_$somatic\_TCGA_MAF.txt -p $pairing -P $patient -b $vcf\_$somatic\_TCGA_basecounts.txt -o $vcf\_$somatic\_TCGA_MAF_fillout.txt\n";    
+        `$PYTHON/python $Bin/maf/fillout/dmp2MAF0 -m $vcf\_$somatic\_TCGA_MAF.txt -p $pairing -P $patient -b $vcf\_$somatic\_TCGA_basecounts.txt -o $vcf\_$somatic\_TCGA_MAF_fillout.txt`;
+    } else {
+        print "As of right now you cannot do fillout without a pairing file. Please check back for updates.\n";
     }
-
-    my $bam_inputs = join(" ", @bamList);
-
-    print "$Bin/maf/fillout/GetBaseCountsMutliSample/GetBaseCountsMultiSample --fasta $HG19_FASTA $bam_inputs --output $vcf\_$somatic\_TCGA_basecounts.txt --maf $vcf\_$somatic\_TCGA_MAF.txt --filter_improper_pair 0\n\n";
-    `$Bin/maf/fillout/GetBaseCountsMutliSample/GetBaseCountsMultiSample --fasta $HG19_FASTA $bam_inputs --output $vcf\_$somatic\_TCGA_basecounts.txt --maf $vcf\_$somatic\_TCGA_MAF.txt --filter_improper_pair 0`;
-
-    print "$PYTHON/python $Bin/maf/fillout/dmp2MAF0 -m $vcf\_$somatic\_TCGA_MAF.txt -p $pairing -P $patient -b $vcf\_$somatic\_TCGA_basecounts.txt -o $vcf\_$somatic\_TCGA_MAF_fillout.txt\n";    
-    `$PYTHON/python $Bin/maf/fillout/dmp2MAF0 -m $vcf\_$somatic\_TCGA_MAF.txt -p $pairing -P $patient -b $vcf\_$somatic\_TCGA_basecounts.txt -o $vcf\_$somatic\_TCGA_MAF_fillout.txt`;
 }
-
 
 
 if($delete_temp){
