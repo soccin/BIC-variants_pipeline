@@ -65,7 +65,7 @@ use Cluster;
 ### NOTE: DO NOT SUBMIT THIS WRAPPER SCRIPT TO THE CLUSTER BECAUSE ONCOTATOR STEP WILL FAIL
 ###       DUE TO NODES NOT HAVING NETWORK ACCESS
 
-my ($map, $group, $pair, $config, $help, $nosnps, $removedups, $species, $ug, $scheduler, $abra, $targets, $mdOnly, $noMD);
+my ($map, $group, $pair, $patient, $config, $help, $nosnps, $removedups, $species, $ug, $scheduler, $abra, $targets, $mdOnly, $noMD);
 
 my $pre = 'TEMP';
 my $output = "results";
@@ -77,7 +77,8 @@ my $r2adaptor = 'AGATCGGAAGAGCGTCGTGTA';
 GetOptions ('map=s' => \$map,
 	    'group=s' => \$group,
 	    'pair=s' => \$pair,
-	    'pre=s' => \$pre,
+	    'patient=s' => \$patient,
+            'pre=s' => \$pre,
 	    'config=s' => \$config,
 	    'targets=s' => \$targets,
 	    'help' => \$help,
@@ -106,6 +107,7 @@ if(!$map || !$group || !$species || !$config || !$scheduler || !$targets || $hel
 	* CONFIG: file listing paths to programs needed for pipeline; full path to config file needed (REQUIRED)
 	* SCHEDULER: currently support for SGE and LSF (REQUIRED)
 	* PAIR: file listing tumor/normal pairing of samples for mutect/maf conversion; if not specified, considered unpaired
+        * PATIENT: if a patient file is given, patient wide fillout will be added to maf file
 	* PRE: output prefix (default: TEMP)
 	* OUTPUT: output results directory (default: results)
 	* PRIORITY_PROJECT: sge notion of priority assigned to projects (default: ngs)
@@ -242,6 +244,9 @@ sub reconstructCL {
     }
     if($pair){
 	$rCL .= " -pair $pair";
+    }
+    if($patient){
+        $rCL .= " -patient $patient";
     }
     if($config){
 	$rCL .= " -config $config";
@@ -543,7 +548,7 @@ sub processInputs {
 	}
 	close PAIR;
     }
-    
+
     my %mapping_samples = ();
     open(MA, "$map") or die "Can't open mapping file $map $!";
     while(<MA>){
@@ -568,6 +573,39 @@ sub processInputs {
     }
     close MA;
     
+    # Check patient sample has fields needed
+    # Patient file needs only "Sample_ID", "Patient_ID", "Class", and "Bait_version"
+    my %patient_samples = ();
+    if($patient){
+        open(PATIENT, "$patient") or die "Can't open patient file $patient $!";
+        my $h = <PATIENT>;
+        my @h = split(/\s+/, $h);
+        my ($sID_index) = grep {$h[$_] =~ /Sample_ID/} 0..$#h;
+
+        my @mandatory_headers = ("Sample_ID", "Patient_ID", "Class", "Bait_version");
+        foreach my $loopVal (@mandatory_headers){
+            if(! grep(/^$loopVal$/, @h)) {
+                die "Missing header value $loopVal in patient file $patient $!";
+            }
+        }
+        while(<PATIENT>){
+            my @line = split(/\s+/,$_);
+            my $sid = $line[$sID_index];
+            if(!$mapping_samples{$sid}) {
+                 die "mapping file $map missing sample $sid found in patient file $patient $!";
+            }
+
+            if(!$grouping_samples{$sid}) {
+                 die "groupi;ng file $group missing sample $sid found in patient file $patient $!";
+            }
+
+            if(!$pairing_samples{$sid}) {
+                 die "pairing file $pair missing sample $sid found in patient file $patient $!";
+            }
+        }
+        close PATIENT;
+    }
+ 
     foreach my $gro (keys %grouping_samples){
 	if(!$mapping_samples{$gro}){
 	    die "grouping file $group contains sample $gro that isn't in mapping file $map $!";
@@ -995,6 +1033,11 @@ sub callSNPS {
     if($pair){
 	$paired = "-pair $pair";
     }
+
+    my $patientFile = '';
+    if($patient){
+        $patientFile = "-patient $patient";
+    }
     
     my $run_ug = '';
     if($ug){
@@ -1019,10 +1062,10 @@ sub callSNPS {
     my $standardParams = Schedule::queuing(%stdParams);
     
     if($species =~ /hg19/i){
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/process_alignments_hg19.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra $run_step1`;
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/process_alignments_hg19.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra $run_step1 $patientFile`;
     }
     elsif($species =~ /hybrid/i){
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/process_alignments_hg19.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -hybrid -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra $run_step1`;
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/process_alignments_hg19.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -hybrid -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra $run_step1 $patientFile`;
     }
     elsif($species =~ /mm9|mm10/i){
 	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/process_alignments_mouse.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group -species $species $run_abra $run_step1`;

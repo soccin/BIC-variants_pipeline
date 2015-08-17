@@ -15,7 +15,9 @@ SCALPEL			/opt/common/CentOS_6/scalpel/scalpel-0.2.2
 SNPEFF			/opt/common/CentOS_6/snpEff/snpEff_v4_1e
 SOMATICSNIPER		/opt/common/CentOS_6/somaticsniper/somatic-sniper-1.0.4
 STRELKA			/opt/common/CentOS_6/strelka/strelka_1.0.11
+TABIX			/opt/common/CentOS_6/samtools/samtools-1.2/htslib-1.2.1
 VARSCAN			/opt/common/CentOS_6/varscan/v2.3.7
+VEP			/opt/common/CentOS_6/vep/v79
 VIRMID			/opt/common/CentOS_6/virmid/Virmid-1.1.1
 HG19_BWA_INDEX		/ifs/depot/assemblies/H.sapiens/hg19/index/bwa/0.7.4-r385/hg19.fasta
 HG19_FASTA		/ifs/depot/assemblies/H.sapiens/hg19/hg19.fasta

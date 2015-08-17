@@ -10,11 +10,13 @@ use FindBin qw($Bin);
 ### NOTE: CAN'T RUN ON NODE BECAUSE NO NETWORK ACCESS FOR ONCOTATOR
 ### NOTE2: DESIGNED TO WORK FOR ONCOTATOR ANNOTATED MAFS
 
-my ($vcf, $pairing, $species, $config, $caller, $normal_sample, $tumor_sample, $delete_temp);
+my ($vcf, $pairing, $patient, $bam_dir, $species, $config, $caller, $normal_sample, $tumor_sample, $delete_temp);
 GetOptions ('vcf=s' => \$vcf,
 	    'species=s' => \$species,
 	    'config=s' => \$config,
 	    'caller=s' => \$caller,
+            'align_dir=s' => \$bam_dir,
+            'patient=s' => \$patient,
 	    'normal_sample=s' => \$normal_sample,
 	    'tumor_sample=s' => \$tumor_sample,
 	    'delete_temp' => \$delete_temp,
@@ -37,6 +39,21 @@ if($pairing){
     }
 }
 
+if($patient) {
+    if(!-e $patient){
+        die "$patient DOES NOT EXIST";
+    }
+    if(!$bam_dir){
+        die "If patient file is given, you must supply alignment directory for fillout.";
+    }
+}
+
+if($bam_dir){
+    if(!-e $bam_dir){
+        die "$bam_dir DOES NOT EXIST";
+    }
+}
+
 if($species !~ /hg19/i){
     die "Only support for hg19";
 }
@@ -45,6 +62,7 @@ if($caller !~ /unifiedgenotyper|ug|haplotypecaller|hc|mutect|varscan|somaticsnip
     die "Only support for unifiedgenotyper(ug), haplotypecaller(hc), mutect, varscan, and somaticsniper";
 }
 
+my $HG19_FASTA = '';
 my $ONCOTATOR = '';
 my $PYTHON = '';
 my $PERL = '';
@@ -58,6 +76,12 @@ while(<CONFIG>){
 	    die "CAN'T FIND oncotateMaf.sh IN $conf[1] $!";
 	}
 	$ONCOTATOR = $conf[1];
+    }
+    elsif($conf[0] =~ /hg19_fasta/i){
+        if(!-e "$conf[1]"){
+          die "CAN'T FIND $conf[1] $!";
+        }
+        $HG19_FASTA = $conf[1];
     }
     elsif($conf[0] =~ /python/i){
 	if(!-e "$conf[1]/python"){
@@ -196,6 +220,43 @@ print "$PYTHON/python $Bin/maf/maf_annotations/addMAannotation.py -i $vcf\_$soma
 print "$PYTHON/python $Bin/maf/maf_annotations/addMAannotation.py -i $vcf\_$somatic\_TCGA_MAF_COSMIC_DETAILED.txt -o $vcf\_$somatic\_TCGA_MAF_COSMIC_MA_DETAILED.txt -d\n\n";
 `$PYTHON/python $Bin/maf/maf_annotations/addMAannotation.py -i $vcf\_$somatic\_TCGA_MAF_COSMIC_STANDARD.txt -o $vcf\_$somatic\_TCGA_MAF_COSMIC_MA_STANDARD.txt`;
 `$PYTHON/python $Bin/maf/maf_annotations/addMAannotation.py -i $vcf\_$somatic\_TCGA_MAF_COSMIC_DETAILED.txt -o $vcf\_$somatic\_TCGA_MAF_COSMIC_MA_DETAILED.txt -d`;
+
+if($patient && $bam_dir){
+    print "Starting maf fillout\n";
+    # open patient file, get each sample name:
+    # then find file with that name in the alignement directory
+    # make sure it there is only 1 bam per sample
+    # add that to a array
+    open(PATIENT, "$patient") || die "Can't open patient file $patient $!";
+    my $header = <PATIENT>;
+    my @header = split(/\s+/,$header);
+
+    my ($sID_index) = grep {$header[$_] =~ /Sample_ID/} 0..$#header;
+    #print "Sample index: $sID_index\n";
+
+    my @bamList;
+ 
+    while(<PATIENT>) {
+        chomp;
+        my @patient=split(/\s+/,$_);
+        #print "Sample: $patient[$sID_index] \n";
+        my $bamFile = `find $bam_dir -name "Proj_*_indelRealigned_recal_$patient[$sID_index].bam"`;
+        chomp($bamFile);
+        #print "Bam file: $bamFile \n";
+        
+        push(@bamList, "--bam $patient[$sID_index]:$bamFile");
+    }
+
+    my $bam_inputs = join(" ", @bamList);
+
+    print "$Bin/maf/fillout/GetBaseCountsMutliSample/GetBaseCountsMultiSample --fasta $HG19_FASTA $bam_inputs --output $vcf\_$somatic\_TCGA_basecounts.txt --maf $vcf\_$somatic\_TCGA_MAF.txt --filter_improper_pair 0\n\n";
+    `$Bin/maf/fillout/GetBaseCountsMutliSample/GetBaseCountsMultiSample --fasta $HG19_FASTA $bam_inputs --output $vcf\_$somatic\_TCGA_basecounts.txt --maf $vcf\_$somatic\_TCGA_MAF.txt --filter_improper_pair 0`;
+
+    print "$PYTHON/python $Bin/maf/fillout/dmp2MAF0 -m $vcf\_$somatic\_TCGA_MAF.txt -p $pairing -P $patient -b $vcf\_$somatic\_TCGA_basecounts.txt -o $vcf\_$somatic\_TCGA_MAF_fillout.txt\n";    
+    `$PYTHON/python $Bin/maf/fillout/dmp2MAF0 -m $vcf\_$somatic\_TCGA_MAF.txt -p $pairing -P $patient -b $vcf\_$somatic\_TCGA_basecounts.txt -o $vcf\_$somatic\_TCGA_MAF_fillout.txt`;
+}
+
+
 
 if($delete_temp){
     `/bin/rm $vcf\_PAIRED.maf $vcf\_$somatic\_maf0.txt $vcf\_$somatic\_maf0.log $vcf\_UNPAIRED.maf $vcf\_$somatic\_UNFILTERED.txt $vcf\_$somatic\_maf1.txt $vcf\_$somatic\_maf2.txt $vcf\_$somatic\_maf3.txt $vcf\_$somatic\_MAF3_HUGO.log $vcf\_$somatic\_maf3.txt_ambiguous $vcf\_$somatic\_maf3.txt_hugo_modified $vcf\_$somatic\_TCGA_MAF_COSMIC_STANDARD.txt $vcf\_$somatic\_TCGA_MAF_COSMIC_DETAILED.txt $vcf\_$somatic\_UNFILTERED.txt $vcf\_$somatic\_rescued.txt $vcf\_$somatic\_maf0_rescue.log`;
