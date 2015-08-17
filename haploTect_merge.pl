@@ -6,7 +6,7 @@ use FindBin qw($Bin);
 use File::Path qw(make_path);
 use File::Basename;
 
-my ($pairing, $hc_vcf, $help, $mutect_dir, $pre, $output, $delete_temp, $config);
+my ($pairing, $hc_vcf, $help, $mutect_dir, $bam_dir, $patient, $pre, $output, $delete_temp, $config);
 
 # Default output = results/variants/FinalReport
 # get current directory
@@ -21,6 +21,8 @@ print "$commandline\n\n";
 GetOptions ('pair=s' => \$pairing,
             'hc_vcf=s' => \$hc_vcf,
             'mutect_dir=s' => \$mutect_dir,
+            'align_dir=s' => \$bam_dir,
+            'patient=s' => \$patient,
             'pre=s' => \$pre,
             'output=s' => \$output,
             'delete_temp' => \$delete_temp,
@@ -36,7 +38,10 @@ if(!$hc_vcf || !$mutect_dir || !$pre || !$config || $help){
     -pair\tFile listing tumor/normal pairing of samples for mutect/maf conversion; if not specified, considered unpaired
     -hc_vcf\tHaplotype caller's vcf output file
     -mutect_dir\tDirectory were MuTect output is found
+    -config\tConfiguration file
     -pre\tProject ID Ex: Proj_4500
+    -patient\tPatient file (for optional fillout)
+    -align_dir\tDirectory where the aligned bams are found (for optional fillout)
     -output\toutput directory where the merge intermediate and final files will be (default : results/variants/FinalReport)
     -delete_temp\tDelete the intermediate files.
     
@@ -52,6 +57,22 @@ if( ! -e $hc_vcf || -z $hc_vcf){
 if( ! -d $mutect_dir ){
     die "The mutect directory either does not exist or is not a directory. ($mutect_dir)\n";
 }
+
+if($patient) {
+    if(!-e $patient){
+        die "$patient DOES NOT EXIST";
+    }
+    if(!$bam_dir){
+        die "If patient file is given, you must supply alignment directory for fillout.";
+    }
+}
+
+if($bam_dir){
+    if(!-e $bam_dir){
+        die "$bam_dir DOES NOT EXIST";
+    }
+}
+
 
 ## Grab mutect vcf files from mutect dir
 opendir(DIR, $mutect_dir);
@@ -77,6 +98,9 @@ umask $orig_umask;
 my $ONCOTATOR = '';
 my $PYTHON = '';
 my $PERL = '';
+my $VEP = '';
+my $HG19_FASTA = '';
+
 open(CONFIG, "$config") or warn "CAN'T OPEN CONFIG FILE $config SO USING DEFAULT SETTINGS";
 while(<CONFIG>){
     chomp;
@@ -100,8 +124,39 @@ while(<CONFIG>){
 	}
 	$PERL = $conf[1];
     }
+    elsif($conf[0] =~ /vep/i){
+        if(!-e "$conf[1]/variant_effect_predictor.pl"){
+            die "CAN'T FIND VEP IN $conf[1] $!";
+        }
+        $VEP = $conf[1];
+    }
+    elsif($conf[0] =~ /samtools/i){
+        if(!-e "$conf[1]/samtools"){
+            die "CAN'T FIND samtools IN $conf[1] $!";
+        }
+        my $path_tmp = $ENV{'PATH'};
+        $ENV{'PATH'} = "$conf[1]:$path_tmp";
+    }
+    elsif($conf[0] =~ /tabix/i){
+        if(!-e "$conf[1]/tabix"){
+            die "CAN'T FIND tabix IN $conf[1] $!";
+        }
+        my $path_tmp = $ENV{'PATH'};
+        $ENV{'PATH'} = "$conf[1]:$path_tmp";
+    }
+    elsif($conf[0] =~ /hg19_fasta/i){
+        if(!-e "$conf[1]"){
+            die "CAN'T FIND $conf[1] $!";
+        }
+        $HG19_FASTA = $conf[1];
+    }
 }
 close CONFIG;
+
+## FOR RIGHT NOW, ONLY HG19 IS BEING USED
+
+my $REF_FASTA = $HG19_FASTA;
+
 
 ##
 ## Softlink necessary files to output dir. Change the variables to the softlinked area.
@@ -163,7 +218,6 @@ print "$PYTHON/python $Bin/maf/indelOnly.py < $hc_vcf\_HC.maf2 > $hc_vcf\_qSomHC
 ##
 ## Get DMP re-filtered MAF from MuTect
 ##
-
 for my $vcf (@mutect_vcfs){
     my $linked_vcf = "$output/$vcf";
     my $linked_txt = $linked_vcf;
@@ -248,6 +302,40 @@ print "$PYTHON/python $Bin/maf/maf_annotations/addMAannotation.py -i $output/$pr
 `$PYTHON/python $Bin/maf/maf_annotations/addMAannotation.py -i $output/$pre\_haplotect_TCGA_MAF_COSMIC_STANDARD.txt -o $output/$pre\_haplotect_TCGA_MAF_COSMIC_MA_STANDARD.txt`;
 `$PYTHON/python $Bin/maf/maf_annotations/addMAannotation.py -i $output/$pre\_haplotect_TCGA_MAF_COSMIC_DETAILED.txt -o $output/$pre\_haplotect_TCGA_MAF_COSMIC_MA_DETAILED.txt -d`;
 
+if($patient && $bam_dir){
+    print "Starting maf fillout\n";
+    # open patient file, get each sample name:
+    # then find file with that name in the alignement directory
+    # make sure it there is only 1 bam per sample
+    # add that to a array
+    open(PATIENT, "$patient") || die "Can't open patient file $patient $!";
+    my $header = <PATIENT>;
+    my @header = split(/\s+/,$header);
+
+    my ($sID_index) = grep {$header[$_] =~ /Sample_ID/} 0..$#header;
+    #print "Sample index: $sID_index\n";
+    my @bamList;
+
+    while(<PATIENT>) {
+        chomp;
+        my @patient=split(/\s+/,$_);
+        #print "Sample: $patient[$sID_index] \n";
+        my $bamFile = `find $bam_dir -name "Proj_*_indelRealigned_recal_$patient[$sID_index].bam"`;
+        chomp($bamFile);
+        #print "Bam file: $bamFile \n";
+
+        push(@bamList, "--bam $patient[$sID_index]:$bamFile");
+    }
+
+    my $bam_inputs = join(" ", @bamList);
+
+    print "$Bin/maf/fillout/GetBaseCountsMutliSample/GetBaseCountsMultiSample --fasta $REF_FASTA $bam_inputs --output $output/$pre/_haplotect_TCGA_basecounts.txt --maf $output/$pre\_haplotect_TCGA_MAF.txt --filter_improper_pair 0\n\n";
+    `$Bin/maf/fillout/GetBaseCountsMutliSample/GetBaseCountsMultiSample --fasta $REF_FASTA $bam_inputs --output $output/$pre\_haplotect_TCGA_basecounts.txt --maf $output/$pre\_haplotect_TCGA_MAF.txt --filter_improper_pair 0`;
+
+    print "$PYTHON/python $Bin/maf/fillout/dmp2MAF0 -m $output/$pre\_haplotect_TCGA_MAF.txt -p $pairing -P $patient -b $output/$pre\_haplotect_TCGA_basecounts.txt -o $output/$pre\_haplotect_TCGA_MAF_fillout.txt\n";
+    `$PYTHON/python $Bin/maf/fillout/dmp2MAF0 -m $output/$pre\_haplotect_TCGA_MAF.txt -p $pairing -P $patient -b $output/$pre\_haplotect_TCGA_basecounts.txt -o $output/$pre\_haplotect_TCGA_MAF_fillout.txt`;
+}
+
 
 ##
 ##
@@ -265,8 +353,6 @@ if($delete_temp){
         unlink($fname);
     }
 }
-
-
 
 
 
