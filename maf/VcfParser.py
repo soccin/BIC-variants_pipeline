@@ -1,3 +1,4 @@
+from __future__ import print_function
 import sys
 import re
 import csv
@@ -30,11 +31,11 @@ class VcfParser:
                 # Skip blank lines
                 continue
             elif len(F)!=2:
-                print >>sys.stderr, "Invalid Pairing File Line"
-                print >>sys.stderr, "["+line[:-1]+"]"
+                print("Invalid Pairing File Line", file=sys.stderr)
+                print(sys.stderr, "["+line[:-1]+"]", file=sys.stderr)
                 return None
 
-            if re.match('NA', F[0], re.IGNORECASE) or re.match('NA', F[1], re.IGNORECASE):
+            if re.match('^NA$', F[0], re.IGNORECASE) or re.match('^NA$', F[1], re.IGNORECASE):
                 continue
 
             pairMap[F[1]].append(F[0])

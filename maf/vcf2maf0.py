@@ -2,7 +2,7 @@
 """ convert vcf to pseudo-MAF format
 
 """
-
+from __future__ import print_function
 import sys
 import re
 import csv
@@ -29,7 +29,7 @@ somaticCallers = ["MUT",  "SS", "STR"] ##important for dealing with vcfs that ju
 args = parser.parse_args()
 
 if len(sys.argv) <= 1:
-    print >>sys.stderr, """The program takes the following arguments:
+    print("""The program takes the following arguments:
 -c, --caller: The caller used for the VCF. Currently this takes values varscan, unifiedgenotyper, haplotypecaller, mutect, somaticsniper.
 -i, --inputFile: the vcf file to transform.
 -o, --outputFile: the name of the output file. OPTIONAL. If not provided, it will output to VCF_NAME.maf
@@ -37,26 +37,26 @@ if len(sys.argv) <= 1:
 -aF, --additionalFile: specify the mutect .txt file if the not default.
 -n, --normal: the sample name of the NORMAL. Required for somatic callers. Only useful for certain somatic callers.
 -t, --tumor: the sample name of the TUMOR. Required for somatic callers. Only useful for certain somatic callers.i
--v, --verbose: If specified, create a verbose maf that includes vcf entries with no reads"""
-    sys.exit()
+-v, --verbose: If specified, create a verbose maf that includes vcf entries with no reads""", file=sys.stderr)
+    sys.exit(64)
 if callers.has_key(args.caller):
     1 
 else:
     choices = callers.keys()
     choices.sort()
     choices = ",".join(choices) 
-    print >>sys.stderr, "The caller", args.caller, "is not a valid choice. Valid caller options are: ", choices
-    sys.exit()
+    print("The caller", args.caller, "is not a valid choice. Valid caller options are: ", choices, file=sys.stderr)
+    sys.exit(64)
 
 if args.inputFile:
     input=args.inputFile
 else:
-    print >>sys.stderr,"This version of the caller requires an input file, provided with the -i flag."
-    sys.exit()
+    print("This version of the caller requires an input file, provided with the -i flag.", file=sys.stderr)
+    sys.exit(64)
 
 if callers[args.caller] in somaticCallers and not (args.tumor and args.normal):
-    print >>sys.stderr,"For a somatic caller, you must give the tumor and normal with the -t and -n arguments"
-    sys.exit()
+    print("For a somatic caller, you must give the tumor and normal with the -t and -n arguments", file=sys.stderr)
+    sys.exit(64)
 
 if args.outputFile:
     output=args.outputFile
@@ -70,7 +70,8 @@ pairMap=None
 if args.pairing:
     pairMap=VcfParser.VcfParser.parsePairFile(args.pairing)
     if not pairMap:
-      sys.exit()
+      print("ERROR: Pairing file creates a null mapping")
+      sys.exit(78)
 fo = sys.stdout
 if output != "stdout":
     fo = open(output, 'w')
@@ -82,6 +83,7 @@ sample_fields=["GT","GQ","ALT_FREQ","AD_REF","AD_ALT"]
 portal_fields=["Mutation_Status","Validation_Status"]
 
 parser = None
+
 
 if callers[args.caller] == "MUT":
   parser = VcfParser.MutectParser(fi, pairMap, args.tumor, args.normal )
@@ -113,7 +115,6 @@ sample_fields.append("CALLER")
 mafout.writerow(header+sample_fields+uniq_infos+uniq_formats+sample_uniq_formats+portal_fields)
 
 parser.parse(GeneralizedRead, fo)
-
 
 fi.close()
 if output != "stdout":
