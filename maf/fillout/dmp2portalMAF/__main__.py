@@ -8,7 +8,7 @@ import os.path
 from collections import defaultdict
 from lib import *
 
-validCallers=["hc", "haplotypecaller", "mt", "mutect"]
+validCallers=["hc", "haplotypecaller", "mt", "mutect", "haplotect"] # haplotect is special.  INDELs == haplotype caller, SNPS == muTect (untill I fix)
 
 def validFile(filename):
     if not os.path.exists(filename):
@@ -107,21 +107,28 @@ eventDb=dict()
 
 # This is still grabbing information from base counts file
 for rec in bunchStream(cin):
+    caller=args.caller
     varType=getVarType(rec)
     startPos=rec.Start
     if varType=="INS":
         endPos=str(int(rec.Start)+1)
         refAllele="-"
         altAllele=rec.Alt[1:]
+        if caller == "haplotect":
+            caller="haplotypecaller"
     elif varType=="DEL":
         startPos=str(int(rec.Start)+1)
         refAllele=rec.Ref[1:]
         endPos=str(int(startPos)+len(refAllele)-1)
         altAllele="-"
+        if caller == "haplotect":
+            caller="haplotypecaller"
     else:
         endPos=str(int(rec.Start)+len(rec.Ref)-1)
         refAllele=rec.Ref
         altAllele=rec.Alt
+        if caller == "haplotect":
+            caller="mutect"
 
     maf=TCGA_MAF_Ext(Hugo_Symbol=rec.Gene,
         Center=CenterTag,

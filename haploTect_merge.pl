@@ -332,8 +332,8 @@ if($patient && $bam_dir){
     print "$Bin/maf/fillout/GetBaseCountsMutliSample/GetBaseCountsMultiSample --fasta $REF_FASTA $bam_inputs --output $output/$pre/_haplotect_TCGA_basecounts.txt --maf $output/$pre\_haplotect_TCGA_MAF.txt --filter_improper_pair 0\n\n";
     `$Bin/maf/fillout/GetBaseCountsMutliSample/GetBaseCountsMultiSample --fasta $REF_FASTA $bam_inputs --output $output/$pre\_haplotect_TCGA_basecounts.txt --maf $output/$pre\_haplotect_TCGA_MAF.txt --filter_improper_pair 0`;
 
-    print "$PYTHON/python $Bin/maf/fillout/dmp2portalMAF -m $output/$pre\_haplotect_TCGA_MAF.txt -p $pairing -P $patient -b $output/$pre\_haplotect_TCGA_basecounts.txt -o $output/$pre\_haplotect_TCGA_MAF_fillout.txt\n";
-    `$PYTHON/python $Bin/maf/fillout/dmp2portalMAF -m $output/$pre\_haplotect_TCGA_MAF.txt -p $pairing -P $patient -b $output/$pre\_haplotect_TCGA_basecounts.txt -o $output/$pre\_haplotect_TCGA_MAF_fillout.txt`;
+    print "$PYTHON/python $Bin/maf/fillout/dmp2portalMAF -m $output/$pre\_haplotect_TCGA_MAF.txt -p $pairing -P $patient -c haplotect -b $output/$pre\_haplotect_TCGA_basecounts.txt -o $output/$pre\_haplotect_TCGA_MAF_fillout.txt\n";
+    `$PYTHON/python $Bin/maf/fillout/dmp2portalMAF -m $output/$pre\_haplotect_TCGA_MAF.txt -p $pairing -P $patient -c haplotect -b $output/$pre\_haplotect_TCGA_basecounts.txt -o $output/$pre\_haplotect_TCGA_MAF_fillout.txt`;
 }
 
 
