@@ -8,33 +8,46 @@ import os.path
 from collections import defaultdict
 from lib import *
 
+validCallers=["hc", "haplotypecaller", "mt", "mutect"]
+
 def validFile(filename):
     if not os.path.exists(filename):
         print>>sys.stderr,"".join(["Error, ",filename," does not exists. Please check file and rerun script."])
         sys.exit(1)
 
+def validCaller(c):
+    if c not in validCallers:
+        print >> sys.stderr, "".join(["[ERROR] ", c, " is not a valid caller. Valid caller are: ", ", ".join(validCallers), "\n"])
+        sys.exit(1) 
+
 parser=argparse.ArgumentParser()
 parser.add_argument("-m","--maf",help="Original Maf File", required=True)
-parser.add_argument("-p","--pairing",help="Pairing File", required=True)
+parser.add_argument("-p","--pairing",help="Pairing File")
 parser.add_argument("-P","--patient",help="Patient File", required=True)
 parser.add_argument("-b","--baseCounts",help="Base Counts File", required=True)
 parser.add_argument("-o","--output",help="Output Maf Filename", required=True)
+parser.add_argument("-c","--caller",help="Caller that generated variants", required=True)
 args=parser.parse_args()
 
 # verify maf, pairing, and patient are all files.
+validCaller(args.caller)
 validFile(args.maf)
-validFile(args.pairing)
 validFile(args.patient)
 
-PAIRINGFILE=args.pairing
-PATIENTFILE=args.patient
-
-# Get tumor normal pairs
 pairs=dict()
-with open(PAIRINGFILE) as fp:
-    for line in fp:
-        (normal,tumor)=line.strip().split("\t")
-        pairs[tumor]=normal
+
+if args.pairing:
+    validFile(args.pairing)
+    PAIRINGFILE=args.pairing
+
+    # Get tumor normal pairs
+    with open(PAIRINGFILE) as fp:
+        for line in fp:
+            (normal,tumor)=line.strip().split("\t")
+            pairs[tumor]=normal
+
+
+PATIENTFILE=args.patient
 
 origMafInfo=dict()
 # Grab a bunch of information from original maf so I can match the maf record
@@ -125,10 +138,15 @@ for rec in bunchStream(cin):
 
     event=getEventSig(maf)
     key=(event,sampleDb[rec.Sample].Patient_ID)
+    ## If the event is not recorded for that patient ID,
     if key not in eventDb:
+        ## save that event (and patient ID)
         eventDb[key]=dict(MAF=maf,mutSamples=set())
 
+        #grab set of samples that belong to patient group
         sampleGroup=set(patientGroups[sampleDb[rec.Sample].Patient_ID])
+
+
         for si in patientGroups[sampleDb[rec.Sample].Patient_ID]:
             if si in pairs:
                 sampleGroup.add(pairs[si])
@@ -145,9 +163,13 @@ for ei in sorted(eventDb):
     # for each mutated sample at that position
     for si in eventDb[ei]["mutSamples"]:
         maf1=copy.copy(eventDb[ei])["MAF"]
-        maf1=fillSampleMAFFields(maf1,si,ei,eventDb,pairs)
+        maf1=fillSampleMAFFields(maf1,si,ei,eventDb,pairs, args.caller)
 
-        if sampleDb[pairs[si]].Class=="Normal":
+        # changes mutaiton status based on if this is unpaired, paired with matched normal, or 
+        # paired with pooled nomral
+        if si not in pairs:
+            maf1.Mutation_Status = "UNPAIRED"
+        elif sampleDb[pairs[si]].Class=="Normal":
             maf1.Mutation_Status = "SOMATIC"
         else:
             maf1.Mutation_Status = "SOMATIC_VS_POOL"
@@ -177,7 +199,7 @@ for ei in sorted(eventDb):
         #
         if sampleDb[si].Class.upper().find("NORMAL")==-1:
             maf1=copy.copy(eventDb[ei])["MAF"]
-            maf1=fillSampleMAFFields(maf1,si,ei,eventDb,pairs)
+            maf1=fillSampleMAFFields(maf1,si,ei,eventDb,pairs,args.caller)
             maf1.Mutation_Status = "NONE"
             maf1.Tumor_Seq_Allele1=maf1.Reference_Allele
             output.write(str(maf1)+"\n")

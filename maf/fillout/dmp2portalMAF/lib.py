@@ -30,15 +30,22 @@ def getVarType(s):
 def getEventSig(maf):
     return (maf.Chromosome,maf.Start_Position,maf.Reference_Allele,maf.Tumor_Seq_Allele2)
 
-def fillSampleMAFFields(maf,si,ei,eventDb,pairs):
+def fillSampleMAFFields(maf,si,ei,eventDb,pairs,caller):
     maf.Tumor_Sample_Barcode=si
-    matchedNormal=pairs[si]
+    if si in pairs:
+        matchedNormal=pairs[si]
+        maf.n_ref_count=eventDb[ei][matchedNormal]["RD"]
+        maf.n_alt_count=eventDb[ei][matchedNormal]["AD"]
+
+    else:
+        # add REF.hg19 or whatever if the sample isn't in "pairs"
+        matchedNormal="REF." + maf.NCBI_Build
+        maf.n_ref_count="NA"
+        maf.n_ref_count="NA"
     maf.Matched_Norm_Sample_Barcode= matchedNormal
     maf.t_ref_count=eventDb[ei][si]["RD"]
     maf.t_alt_count=eventDb[ei][si]["AD"]
-    maf.n_ref_count=eventDb[ei][matchedNormal]["RD"]
-    maf.n_alt_count=eventDb[ei][matchedNormal]["AD"]
-    maf.Caller="mutect"
+    maf.Caller=caller
     return maf
 
 class TCGA_MAF_Ext(TCGA_MAF.TCGA_MAF):

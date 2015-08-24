@@ -222,7 +222,7 @@ print "$PYTHON/python $Bin/maf/maf_annotations/addMAannotation.py -i $vcf\_$soma
 `$PYTHON/python $Bin/maf/maf_annotations/addMAannotation.py -i $vcf\_$somatic\_TCGA_MAF_COSMIC_DETAILED.txt -o $vcf\_$somatic\_TCGA_MAF_COSMIC_MA_DETAILED.txt -d`;
 
 if($patient && $bam_dir){
-    if($pairing){
+    #if($pairing){
 
         print "Starting maf fillout\n";
         # open patient file, get each sample name:
@@ -254,10 +254,12 @@ if($patient && $bam_dir){
         print "$Bin/maf/fillout/GetBaseCountsMutliSample/GetBaseCountsMultiSample --fasta $HG19_FASTA $bam_inputs --output $vcf\_$somatic\_TCGA_basecounts.txt --maf $vcf\_$somatic\_TCGA_MAF.txt --filter_improper_pair 0\n\n";
         `$Bin/maf/fillout/GetBaseCountsMutliSample/GetBaseCountsMultiSample --fasta $HG19_FASTA $bam_inputs --output $vcf\_$somatic\_TCGA_basecounts.txt --maf $vcf\_$somatic\_TCGA_MAF.txt --filter_improper_pair 0`;
 
-        print "$PYTHON/python $Bin/maf/fillout/dmp2portalMAF -m $vcf\_$somatic\_TCGA_MAF.txt -p $pairing -P $patient -b $vcf\_$somatic\_TCGA_basecounts.txt -o $vcf\_$somatic\_TCGA_MAF_fillout.txt\n";    
-        `$PYTHON/python $Bin/maf/fillout/dmp2portalMAF -m $vcf\_$somatic\_TCGA_MAF.txt -p $pairing -P $patient -b $vcf\_$somatic\_TCGA_basecounts.txt -o $vcf\_$somatic\_TCGA_MAF_fillout.txt`;
+    if($pairing){
+        print "$PYTHON/python $Bin/maf/fillout/dmp2portalMAF -m $vcf\_$somatic\_TCGA_MAF.txt -p $pairing -P $patient -c $caller -b $vcf\_$somatic\_TCGA_basecounts.txt -o $vcf\_$somatic\_TCGA_MAF_fillout.txt\n";    
+        `$PYTHON/python $Bin/maf/fillout/dmp2portalMAF -m $vcf\_$somatic\_TCGA_MAF.txt -p $pairing -P $patient -c $caller -b $vcf\_$somatic\_TCGA_basecounts.txt -o $vcf\_$somatic\_TCGA_MAF_fillout.txt`;
     } else {
-        print "As of right now you cannot do fillout without a pairing file. Please check back for updates.\n";
+        print "$PYTHON/python $Bin/maf/fillout/dmp2portalMAF -m $vcf\_$somatic\_TCGA_MAF.txt -P $patient -c $caller -b $vcf\_$somatic\_TCGA_basecounts.txt -o $vcf\_$somatic\_TCGA_MAF_fillout.txt\n";
+        `$PYTHON/python $Bin/maf/fillout/dmp2portalMAF -m $vcf\_$somatic\_TCGA_MAF.txt -P $patient -c $caller -b $vcf\_$somatic\_TCGA_basecounts.txt -o $vcf\_$somatic\_TCGA_MAF_fillout.txt`;
     }
 }
 
