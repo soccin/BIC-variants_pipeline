@@ -96,12 +96,12 @@ GetOptions ('map=s' => \$map,
 	    'r2adaptor=s' => \$r2adaptor,
 	    'species=s' => \$species) or exit(1);
 
-if(!$map || !$group || !$species || !$config || !$scheduler || !$targets || $help){
+if(!$map || !$species || !$config || !$scheduler || !$targets || $help){
     print <<HELP;
 
-    USAGE: variants_pipeline.pl -map MAP -group GROUP -pair PAIR -pre PRE -config CONFIG -species SPECIES -scheduler SCHEDULER -targets TARGETS
+    USAGE: variants_pipeline.pl -map MAP -pair PAIR -pre PRE -config CONFIG -species SPECIES -scheduler SCHEDULER -targets TARGETS
 	* MAP: file listing sample information for processing (REQUIRED)
-	* GROUP: file listing grouping of samples for realign/recal steps (REQUIRED)
+	* GROUP: file listing grouping of samples for realign/recal steps (REQUIRED, unless using -mdOnly flag)
 	* SPECIES: only hg19 (default: human), mm9, mm10 (default: mouse), hybrid (hg19+mm10), mm10_custom and dm3 currently supported (REQUIRED)
 	* TARGETS: name of targets assay; will search for targets/baits ilists and targets padded file in $Bin/targets/TARGETS (REQUIRED)
 	* CONFIG: file listing paths to programs needed for pipeline; full path to config file needed (REQUIRED)
@@ -562,16 +562,23 @@ sub processInputs {
 	$REF_SEQ = "$DM3_FASTA";
 	$DB_SNP = "";
     }
-        
-    open(GROUP, "$group") or die "Can't open grouping file $group $!";
-    while(<GROUP>){
-	chomp;
-	
-	my @data = split(/\s+/, $_);
-	$grouping{$data[1]}{$data[0]} = 1;
-	$grouping_samples{$data[0]} = 1;
+      
+    if($group){
+	open(GROUP, "$group") or die "Can't open grouping file $group $!";
+	while(<GROUP>){
+	    chomp;
+	    
+	    my @data = split(/\s+/, $_);
+	    $grouping{$data[1]}{$data[0]} = 1;
+	    $grouping_samples{$data[0]} = 1;
+	}
+	close GROUP;
     }
-    close GROUP;
+    else{
+	if(!$mdOnly){
+	    die "grouping file required to run pipeline $!";
+	}
+    }
     
     my %pairing_samples = ();
     if($pair){
@@ -607,11 +614,13 @@ sub processInputs {
 	    $mapaths{$data[3]} = 1;
 	}
 	else{
-	    die "fastq path is in the mapping file $map multiple times $!";
+	    die "fastq path $data[3] is in the mapping file $map multiple times $!";
 	}
 
-	if(!$grouping_samples{$data[1]}){
-	    die "grouping file $group missing sample $data[1] found in mapping file $map $!";
+	if($group){
+	    if(!$grouping_samples{$data[1]}){
+		die "grouping file $group missing sample $data[1] found in mapping file $map $!";
+	    }
 	}
 	
 	if($pair){
@@ -623,8 +632,10 @@ sub processInputs {
     close MA;
     
     foreach my $gro (keys %grouping_samples){
-	if(!$mapping_samples{$gro}){
-	    die "grouping file $group contains sample $gro that isn't in mapping file $map $!";
+	if($group){
+	    if(!$mapping_samples{$gro}){
+		die "grouping file $group contains sample $gro that isn't in mapping file $map $!";
+	    }
 	}
 	
 	if($pair){
@@ -667,14 +678,16 @@ sub processInputs {
         close PATIENT;
     }
  
-    foreach my $gro (keys %grouping_samples){
-	if(!$mapping_samples{$gro}){
-	    die "grouping file $group contains sample $gro that isn't in mapping file $map $!";
-	}
-	
-	if($pair){
-	    if(!$pairing_samples{$gro}){
-		die "grouping file $group contains sample $gro that isn't in pairing file $pair $!";
+    if($group){
+	foreach my $gro (keys %grouping_samples){
+	    if(!$mapping_samples{$gro}){
+		die "grouping file $group contains sample $gro that isn't in mapping file $map $!";
+	    }
+	    
+	    if($pair){
+		if(!$pairing_samples{$gro}){
+		    die "grouping file $group contains sample $gro that isn't in pairing file $pair $!";
+		}
 	    }
 	}
     }
