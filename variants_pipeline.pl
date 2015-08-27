@@ -78,7 +78,7 @@ GetOptions ('map=s' => \$map,
 	    'group=s' => \$group,
 	    'pair=s' => \$pair,
 	    'patient=s' => \$patient,
-            'pre=s' => \$pre,
+	    'pre=s' => \$pre,
 	    'config=s' => \$config,
 	    'targets=s' => \$targets,
 	    'help' => \$help,
@@ -102,7 +102,7 @@ if(!$map || !$group || !$species || !$config || !$scheduler || !$targets || $hel
     USAGE: variants_pipeline.pl -map MAP -group GROUP -pair PAIR -pre PRE -config CONFIG -species SPECIES -scheduler SCHEDULER -targets TARGETS
 	* MAP: file listing sample information for processing (REQUIRED)
 	* GROUP: file listing grouping of samples for realign/recal steps (REQUIRED)
-	* SPECIES: only hg19 (default: human), mm9, mm10 (default: mouse), hybrid (hg19+mm10) and dm3 currently supported (REQUIRED)
+	* SPECIES: only hg19 (default: human), mm9, mm10 (default: mouse), hybrid (hg19+mm10), mm10_custom and dm3 currently supported (REQUIRED)
 	* TARGETS: name of targets assay; will search for targets/baits ilists and targets padded file in $Bin/targets/TARGETS (REQUIRED)
 	* CONFIG: file listing paths to programs needed for pipeline; full path to config file needed (REQUIRED)
 	* SCHEDULER: currently support for SGE and LSF (REQUIRED)
@@ -133,6 +133,7 @@ my $HG19_FASTA = '';
 my $HG19_MM10_HYBRID_FASTA = '';
 my $MM9_FASTA = '';
 my $MM10_FASTA = '';
+my $MM10_CUSTOM_FASTA = '';
 my $DM3_FASTA = '';
 
 my $targets_ilist = "$Bin/targets/$targets/$targets\_targets.ilist";
@@ -204,7 +205,7 @@ my @cogm = ();
 my $ran_hs = 0;
 my $ran_is = 0;
 my $ran_as = 0;
-my $ran_md = 0;
+my $ran_md_glob = 0;
 my $ran_cog = 0;
 my @md_jids = ();
 my @hs_jids = ();
@@ -423,57 +424,92 @@ sub verifyConfig{
 	}
 	elsif($conf[0] =~ /hg19_fasta/i){
 	    if(!-e "$conf[1]"){
-		die "CAN'T FIND $conf[1] $!";
+		if($species =~ /hg19/i){
+		    die "CAN'T FIND $conf[1] $!";
+		}
 	    }
 	    $HG19_FASTA = $conf[1];
 	}
  	elsif($conf[0] =~ /hg19_bwa_index/i){
 	    if(!-e "$conf[1]\.bwt" || !-e "$conf[1]\.pac" || !-e "$conf[1]\.ann" || !-e "$conf[1]\.amb" || !-e "$conf[1]\.sa"){
-		die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR HG19 WITH PREFIX $conf[1] $!";
+		if($species =~ /hg19/i){
+		    die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR HG19 WITH PREFIX $conf[1] $!";
+		}
 	    }
 	}
 	elsif($conf[0] =~ /hg19_mm10_hybrid_fasta/i){
 	    if(!-e "$conf[1]"){
-		die "CAN'T FIND $conf[1] $!";
+		if($species =~ /hybrid/i){
+		    die "CAN'T FIND $conf[1] $!";
+		}
 	    }
 	    $HG19_MM10_HYBRID_FASTA = $conf[1];
 	}
  	elsif($conf[0] =~ /hg19_mm10_hybrid_bwa_index/i){
 	    if(!-e "$conf[1]\.bwt" || !-e "$conf[1]\.pac" || !-e "$conf[1]\.ann" || !-e "$conf[1]\.amb" || !-e "$conf[1]\.sa"){
-		die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR HG19-MM9 HYBRID WITH PREFIX $conf[1] $!";
+		if($species =~ /hybrid/i){
+		    die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR HG19-MM9 HYBRID WITH PREFIX $conf[1] $!";
+		}
 	    }
 	}
 	elsif($conf[0] =~ /mm9_fasta/i){
 	    if(!-e "$conf[1]"){
-		die "CAN'T FIND $conf[1] $!";
+		if($species =~ /mm9/i){
+		    die "CAN'T FIND $conf[1] $!";
+		}
 	    }
 	    $MM9_FASTA = $conf[1];
 	}
  	elsif($conf[0] =~ /mm9_bwa_index/i){
 	    if(!-e "$conf[1]\.bwt" || !-e "$conf[1]\.pac" || !-e "$conf[1]\.ann" || !-e "$conf[1]\.amb" || !-e "$conf[1]\.sa"){
-		die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR MM9 WITH PREFIX $conf[1] $!";
+		if($species =~ /mm9/i){
+		    die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR MM9 WITH PREFIX $conf[1] $!";
+		}
 	    }
 	}
 	elsif($conf[0] =~ /mm10_fasta/i){
 	    if(!-e "$conf[1]"){
-		die "CAN'T FIND $conf[1] $!";
+		if($species =~ /^mm10$/i){
+		    die "CAN'T FIND $conf[1] $!";
+		}
 	    }
 	    $MM10_FASTA = $conf[1];
 	}
  	elsif($conf[0] =~ /mm10_bwa_index/i){
 	    if(!-e "$conf[1]\.bwt" || !-e "$conf[1]\.pac" || !-e "$conf[1]\.ann" || !-e "$conf[1]\.amb" || !-e "$conf[1]\.sa"){
-		die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR MM10 WITH PREFIX $conf[1] $!";
+		if($species =~ /^mm10$/i){
+		    die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR MM10 WITH PREFIX $conf[1] $!";
+		}
+	    }
+	}
+	elsif($conf[0] =~ /mm10_custom_fasta/i){
+	    if(!-e "$conf[1]"){
+		if($species =~ /mm10_custom/i){
+		    die "CAN'T FIND $conf[1] $!";
+		}
+	    }
+	    $MM10_CUSTOM_FASTA = $conf[1];
+	}
+	elsif($conf[0] =~ /mm10_custom_bwa_index/i){
+	    if(!-e "$conf[1]\.bwt" || !-e "$conf[1]\.pac" || !-e "$conf[1]\.ann" || !-e "$conf[1]\.amb" || !-e "$conf[1]\.sa"){
+		if($species =~ /mm10_custom/i){
+		    die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR MM10 WITH PREFIX $conf[1] $!";
+		}
 	    }
 	}
 	elsif($conf[0] =~ /dm3_fasta/i){
 	    if(!-e "$conf[1]"){
-		###die "CAN'T FIND $conf[1] $!";
+		if($species =~ /dm3/i){
+		    die "CAN'T FIND $conf[1] $!";
+		}
 	    }
 	    $DM3_FASTA = $conf[1];
 	}
  	elsif($conf[0] =~ /dm3_bwa_index/i){
 	    if(!-e "$conf[1]\.bwt" || !-e "$conf[1]\.pac" || !-e "$conf[1]\.ann" || !-e "$conf[1]\.amb" || !-e "$conf[1]\.sa"){
-		###die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR DM3 WITH PREFIX $conf[1] $!";
+		if($species =~ /dm3/i){
+		    die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR DM3 WITH PREFIX $conf[1] $!";
+		}
 	    }
 	}
    }
@@ -485,8 +521,8 @@ sub processInputs {
 	$pre = "s_$pre";
     }
     
-    if($species !~ /human|hg19|mouse|mm9|mm10|drosophila|dm3|hybrid/i){
-	die "Species must be human (hg19), mouse (mm9/mm10) or drosophila (dm3)";
+    if($species !~ /human|hg19|mouse|mm9|mm10|mm10_custom|drosophila|dm3|hybrid/i){
+	die "Species must be human (hg19), mouse (mm9|mm10|mm10_custom) or drosophila (dm3)";
     }
     
     if($scheduler =~ /lsf/i){
@@ -506,9 +542,14 @@ sub processInputs {
 	$REF_SEQ = "$MM9_FASTA";
 	$DB_SNP = "";
     }
-    elsif($species =~ /mouse|mm10/i){
+    elsif($species =~ /mouse|^mm10$/i){
 	$species = 'mm10';
 	$REF_SEQ = "$MM10_FASTA";
+	$DB_SNP = "$Bin/data/mouse_MM10_dbSNP_NCBI_20150625.vcf";
+    }
+    elsif($species =~ /mm10_custom/i){
+	$species = 'mm10_custom';
+	$REF_SEQ = "$MM10_CUSTOM_FASTA";
 	$DB_SNP = "$Bin/data/mouse_MM10_dbSNP_NCBI_20150625.vcf";
     }
     elsif($species =~ /hybrid/i){
@@ -548,8 +589,9 @@ sub processInputs {
 	}
 	close PAIR;
     }
-
+    
     my %mapping_samples = ();
+    my %mapaths = ();
     open(MA, "$map") or die "Can't open mapping file $map $!";
     while(<MA>){
 	chomp;
@@ -560,7 +602,14 @@ sub processInputs {
 	if(!-d $data[3]){
 	    die "$data[3] does not exist\n";
 	}
-	
+
+	if(!$mapaths{$data[3]}){
+	    $mapaths{$data[3]} = 1;
+	}
+	else{
+	    die "fastq path is in the mapping file $map multiple times $!";
+	}
+
 	if(!$grouping_samples{$data[1]}){
 	    die "grouping file $group missing sample $data[1] found in mapping file $map $!";
 	}
@@ -572,6 +621,18 @@ sub processInputs {
 	}
     }
     close MA;
+    
+    foreach my $gro (keys %grouping_samples){
+	if(!$mapping_samples{$gro}){
+	    die "grouping file $group contains sample $gro that isn't in mapping file $map $!";
+	}
+	
+	if($pair){
+	    if(!$pairing_samples{$gro}){
+		die "grouping file $group contains sample $gro that isn't in pairing file $pair $!";
+	    }
+	}
+    }
     
     # Check patient sample has fields needed
     # Patient file needs only "Sample_ID", "Patient_ID", "Class", and "Bait_version"
@@ -617,7 +678,7 @@ sub processInputs {
 	    }
 	}
     }
-    
+
     if($pair){
 	foreach my $pai (keys %pairing_samples){
 	    if(!$mapping_samples{$pai}){
@@ -737,6 +798,7 @@ sub alignReads {
 	    print LOG "$currentTime[2]:$currentTime[1]:$currentTime[0], $currentTime[3]\/$currentTime[4]\/$currentTime[5]\tSKIPPING READS PROCESSING/ALIGNMENT FOR $data[1]\_$data[0]\_$data[2]; PREVIOUSLY RAN TO COMPLETION\n";
 	}
     }
+    close IN;
 }
 
 sub processBams {
@@ -749,6 +811,7 @@ sub processBams {
 	my @mdBams = ();
 	foreach my $lib (keys %{$samp_libs_run{$samp}}){
 	    my @lBams = ();
+	    my $ran_md = 0;
 	    foreach my $run (keys %{$samp_libs_run{$samp}{$lib}}){
 		if(!-e "$output/intFiles/$samp/$lib/$run/$samp\_$lib\_$run\.bam"){
 		    my @currentTime = &getTime();
@@ -779,6 +842,7 @@ sub processBams {
 			`/bin/touch $output/progress/$pre\_$uID\_$samp\_$lib\_MARKDUPS.done`;
 			push @md_jids, "$pre\_$uID\_$samp\_$lib\_MARKDUPS";
 			$ran_md = 1;
+			$ran_md_glob = 1;
 		    }
 		    $bamsggf{$samp}{$lib} = "$output/intFiles/$samp/$lib/$samp\_$lib\_MD.bam"; 
 		}
@@ -814,6 +878,7 @@ sub processBams {
 			`/bin/touch $output/progress/$pre\_$uID\_$samp\_$lib\_MARKDUPS.done`;
 			push @md_jids, "$pre\_$uID\_$samp\_$lib\_MARKDUPS";
 			$ran_md = 1;
+			$ran_md_glob = 1;
 		    }
 		    $bamsggf{$samp}{$lib} = "$output/intFiles/$samp/$lib/$samp\_$lib\_MD.bam";  
 		}
@@ -825,7 +890,7 @@ sub processBams {
 	
 	if($mdOnly){
 	    my $mdb = join(" ", @mdBams);
-	    if(!-e "$output/progress/$pre\_$uID\_SAMP_MD_MERGE_$samp\.done" || $ran_md){
+	    if(!-e "$output/progress/$pre\_$uID\_SAMP_MD_MERGE_$samp\.done" || $ran_md_glob){
 		my $mdj = join(",", @md_jids);
 		my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_SAMP_MD_MERGE_$samp", job_hold => "$mdj", cpu => "24", mem => "90", cluster_out => "$output/progress/$pre\_$uID\_SAMP_MD_MERGE_$samp\.log");
 		my $standardParams = Schedule::queuing(%stdParams);
@@ -908,7 +973,7 @@ sub mergeStats {
 
     if(!$noMD){
 	my $mdfiles = join(" ", @mdm);
-	if(!-e "$output/progress/$pre\_$uID\_MERGE_MDM.done" || $ran_md){
+	if(!-e "$output/progress/$pre\_$uID\_MERGE_MDM.done" || $ran_md_glob){
 	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_MERGE_MDM", job_hold => "$mdj", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_MERGE_MDM.log");
 	    my $standardParams = Schedule::queuing(%stdParams);
 	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/qc/mergePicardMetrics.pl $mdfiles ">$output/metrics/$pre\_markDuplicatesMetrics.txt"`;
@@ -1050,7 +1115,7 @@ sub callSNPS {
     }
     
     my $run_step1 = '';
-    if($ran_md){
+    if($ran_md_glob){
 	$run_step1 = '-step1';
     }
 
@@ -1067,7 +1132,7 @@ sub callSNPS {
     elsif($species =~ /hybrid/i){
 	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/process_alignments_hg19.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -hybrid -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra $run_step1 $patientFile`;
     }
-    elsif($species =~ /mm9|mm10/i){
+    elsif($species =~ /mm9|^mm10$|mm10_custom/i){
 	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/process_alignments_mouse.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group -species $species $run_abra $run_step1`;
     }
     elsif($species =~ /dm3/i){

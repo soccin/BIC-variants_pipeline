@@ -27,5 +27,7 @@ MM9_BWA_INDEX	/ifs/depot/assemblies/M.musculus/mm9/index/bwa/0.7.4-r385/mm9.fast
 MM9_FASTA	/ifs/depot/assemblies/M.musculus/mm9/mm9.fasta
 MM10_BWA_INDEX	/ifs/depot/assemblies/M.musculus/mm10/index/bwa/0.7.8/mm10.fasta
 MM10_FASTA	/ifs/depot/assemblies/M.musculus/mm10/mm10.fasta
+MM10_CUSTOM_BWA_INDEX
+MM10_CUSTOM_FASTA
 DM3_BWA_INDEX
 DM3_FASTA

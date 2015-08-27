@@ -718,9 +718,9 @@ if($pair){
 
 	###my $ran_mpileup = 0;
 	###if(!-e "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_MPILEUP.done" || $ran_ssf){  
-	    ###`/common/sge/bin/lx24-amd64/qsub -N $pre\_$uID\_$data[0]\_$data[1]\_MPILEUP -hold_jid $ssfj -pe alloc 2 -l virtual_free=2G -q lau.q,lcg.q,nce.q $Bin/qCMD $SAMTOOLS/samtools mpileup -f $REF_SEQ -d 500000 $output/alignments/$pre\_indelRealigned_recal\_$data[0]\.bam ">$output/intFiles/$pre\_indelRealigned_recal\_$data[0]\.bam.mpileup"`;
+	    ###`/common/sge/bin/lx24-amd64/qsub -N $pre\_$uID\_$data[0]\_$data[1]\_MPILEUP -hold_jid $ssfj -pe alloc 2 -l virtual_free=2G -q lau.q,lcg.q,nce.q $Bin/qCMD $SAMTOOLS/samtools mpileup -A -f $REF_SEQ -d 500000 -o $output/intFiles/$pre\_indelRealigned_recal\_$data[0]\.bam.mpileup $output/alignments/$pre\_indelRealigned_recal\_$data[0]\.bam`;
 
-	    ###`/common/sge/bin/lx24-amd64/qsub -N $pre\_$uID\_$data[0]\_$data[1]\_MPILEUP -hold_jid $ssfj -pe alloc 2 -l virtual_free=2G -q lau.q,lcg.q,nce.q $Bin/qCMD $SAMTOOLS/samtools mpileup -f $REF_SEQ -d 500000 $output/alignments/$pre\_indelRealigned_recal\_$data[1]\.bam ">$output/intFiles/$pre\_indelRealigned_recal\_$data[1]\.bam.mpileup"`;
+	    ###`/common/sge/bin/lx24-amd64/qsub -N $pre\_$uID\_$data[0]\_$data[1]\_MPILEUP -hold_jid $ssfj -pe alloc 2 -l virtual_free=2G -q lau.q,lcg.q,nce.q $Bin/qCMD $SAMTOOLS/samtools mpileup -A -f $REF_SEQ -d 500000 -o $output/intFiles/$pre\_indelRealigned_recal\_$data[1]\.bam.mpileup $output/alignments/$pre\_indelRealigned_recal\_$data[1]\.bam`;
 	    ###`/bin/touch $output/progress/$pre\_$uID\_$data[0]\_$data[1]\_MPILEUP.done`;
 	    ###$ran_mpileup = 1;
 	###}	    
@@ -729,6 +729,7 @@ if($pair){
 	### NEED TO CREATE A DIRECTORY FOR EACH TUMOR/NORMAL PAIR
 	### SINCE A DISEASE BAM CAN BE USED IN MULTIPLE COMPARISONS
 	### virmid fails if directory already exists
+	### NOTE: strelka doesn't work on hybrid because asembly is too large
 	my $ran_virmid = 0;
 	if(!-e "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_VIRMID.done" || $ran_ssf){  
 	    sleep(3);
@@ -883,7 +884,7 @@ if($pair){
 }
 
 open(GROUP, "$group") || die "CAN'T OPEN SAMPLE GROUPING FILE $group $!";
-open(BLIST, ">$output/intFiles/$pre\_bam_list.txt") || die "CAN'T WRITE TO SAMPLE BAM LIST FILE $output/intFiles/$pre\_bam_list.txt $!";
+open(BLIST, ">$output/intFiles/$pre\_sv_bam_list.txt") || die "CAN'T WRITE TO SAMPLE BAM LIST FILE $output/intFiles/$pre\_sv_bam_list.txt $!";
 while(<GROUP>){
     chomp;
 
@@ -901,7 +902,7 @@ if(!-e "$output/progress/$pre\_$uID\_STRVAR.done" || $ran_ssf){
 
     my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_STRVAR", job_hold => "$ssfj", cpu => "1", mem => "10", cluster_out => "$output/progress/$pre\_$uID\_STRVAR.log");
     my $standardParams = Schedule::queuing(%stdParams);
-    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/RunStructuralVariantPipeline_Delly.pl -pre $pre -pair $pair -bam_list $curDir/$output/intFiles/$pre\_bam_list.txt -out $curDir/$output/strvar -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group`;
+    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/RunStructuralVariantPipeline_Delly.pl -pre $pre -pair $pair -bam_list $curDir/$output/intFiles/$pre\_sv_bam_list.txt -out $curDir/$output/strvar -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group`;
     `/bin/touch $output/progress/$pre\_$uID\_STRVAR.done`;
 }
 
