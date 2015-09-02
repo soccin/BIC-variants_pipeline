@@ -630,7 +630,7 @@ while ( $processCount < $numberOfProcess ) {
 
 #--Clean up intermediate files
 
-CleanUpFiles($outdir . "/StrVarAnalysis", $outdir . "/unfiltered");
+CleanUpFiles($outdir);
 
 
 #--Calculate total runtime (current time minus start time)
@@ -2954,10 +2954,19 @@ sub ReadBamList
 
 sub CleanUpFiles
 {
-	my($src_dir, $dst_dir) = @_;
-        `/bin/mkdir -p $dst_dir`;
+	my ($result_dir) = @_;
+        my $src_dir = $result_dir . "/StrVarAnalysis";
+	my $dst_dir = $result_dir . "/unfiltered";
+	my $tmp_dir = $result_dir . "/tmp";
+	`/bin/mkdir -p $dst_dir`;
+	`/bin/mkdir -p $tmp_dir`;
         die "[ERROR]: Fail to create directory: $dst_dir\n" if(!-d $dst_dir);
+	die "[ERROR]: Fail to create directory: $tmp_dir\n" if(!-d $tmp_dir);
+
 	`find $src_dir -name \"*.vcf\" ! -name \"*stdfilter.vcf\" -exec mv {} $dst_dir \\;`;
+
+	`find $result_dir -maxdepth 1 -type f ! -name \"*AllAnnotatedSVs*\" -exec mv {} $tmp_dir \\;`;
+
 	`rm -r $src_dir`;
 }
 
