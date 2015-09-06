@@ -99,7 +99,7 @@ GetOptions ('map=s' => \$map,
 if(!$map || !$species || !$config || !$scheduler || !$targets || $help){
     print <<HELP;
 
-    USAGE: variants_pipeline.pl -map MAP -pair PAIR -pre PRE -config CONFIG -species SPECIES -scheduler SCHEDULER -targets TARGETS
+    USAGE: variants_pipeline.pl -config CONFIG -species SPECIES -scheduler SCHEDULER -targets TARGETS
 	* MAP: file listing sample information for processing (REQUIRED)
 	* GROUP: file listing grouping of samples for realign/recal steps (REQUIRED, unless using -mdOnly flag)
 	* SPECIES: only hg19 (default: human), mm9, mm10 (default: mouse), hybrid (hg19+mm10), mm10_custom and dm3 currently supported (REQUIRED)
@@ -522,7 +522,7 @@ sub processInputs {
     }
     
     if($species !~ /human|hg19|mouse|mm9|mm10|mm10_custom|drosophila|dm3|hybrid/i){
-	die "Species must be human (hg19), mouse (mm9|mm10|mm10_custom) or drosophila (dm3)";
+	die "Species must be human (hg19), mouse (mm9|mm10|mm10_custom) or drosophila (dm3) $!";
     }
     
     if($scheduler =~ /lsf/i){
@@ -630,21 +630,7 @@ sub processInputs {
 	}
     }
     close MA;
-    
-    foreach my $gro (keys %grouping_samples){
-	if($group){
-	    if(!$mapping_samples{$gro}){
-		die "grouping file $group contains sample $gro that isn't in mapping file $map $!";
-	    }
-	}
-	
-	if($pair){
-	    if(!$pairing_samples{$gro}){
-		die "grouping file $group contains sample $gro that isn't in pairing file $pair $!";
-	    }
-	}
-    }
-    
+        
     # Check patient sample has fields needed
     # Patient file needs only "Sample_ID", "Patient_ID", "Class", and "Bait_version"
     my %patient_samples = ();
@@ -1139,16 +1125,13 @@ sub callSNPS {
     my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_SNP_PIPE", job_hold => "$mdj", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_SNP_PIPE.log");
     my $standardParams = Schedule::queuing(%stdParams);
     
-    if($species =~ /hg19/i){
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/process_alignments_hg19.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra $run_step1 $patientFile`;
-    }
-    elsif($species =~ /hybrid/i){
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/process_alignments_hg19.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -hybrid -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra $run_step1 $patientFile`;
+    if($species =~ /hg19|hybrid/i){
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/process_alignments_hg19.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra $run_step1 $patientFile -species $species`;
     }
     elsif($species =~ /mm9|^mm10$|mm10_custom/i){
 	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/process_alignments_mouse.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group -species $species $run_abra $run_step1`;
     }
     elsif($species =~ /dm3/i){
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/process_alignments_dm3.pl -pre $pre -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra $run_step1`;
+	###`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/process_alignments_dm3.pl -pre $pre -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra $run_step1`;
     }
 }

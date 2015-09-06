@@ -11,6 +11,7 @@ my ($patient, $pair, $group, $bamgroup, $config, $nosnps, $targets, $ug, $hybrid
 
 my $pre = 'TEMP';
 my $output = "results";
+my $species = 'hg19';
 
 GetOptions ('pre=s' => \$pre,
 	    'pair=s' => \$pair,
@@ -28,15 +29,17 @@ GetOptions ('pre=s' => \$pre,
  	    'priority_project=s' => \$priority_project,
  	    'priority_group=s' => \$priority_group,
 	    'help' => \$help,
+	    'species=s' => \$species,
  	    'output|out|o=s' => \$output) or exit(1);
 
 
 if(!$group || !$config || !$scheduler || !$targets || !$bamgroup || $help){
     print <<HELP;
 
-    USAGE: process_alignments_hg19.pl -group GROUP -pair PAIR -pre PRE -config CONFIG -species SPECIES -scheduler SCHEDULER -targets TARGETS
+    USAGE: process_alignments_hg19.pl -group GROUP -bampgroup BAMBROUP -config CONFIG -scheduler SCHEDULER -targets TARGETS
 	* GROUP: file listing grouping of samples for realign/recal steps (REQUIRED)
 	* BAMGROUP: files listing bams to be processed together; every bam for each group on 1 line, comma-separated (required)
+	* SPECIES: only hg19 (default), hybrid (hg19+mm10)
 	* TARGETS: name of targets assay; will search for targets/baits ilists and targets padded file in $Bin/targets/TARGETS (REQUIRED)
 	* CONFIG: file listing paths to programs needed for pipeline; full path to config file needed (REQUIRED)
 	* SCHEDULER: currently support for SGE and LSF (REQUIRED)
@@ -151,18 +154,24 @@ while(<CONFIG>){
 	    die "CAN'T FIND java IN $conf[1] $!";
 	}
 	$JAVA = $conf[1];
+	my $path_tmp = $ENV{'PATH'};
+	$ENV{'PATH'} = "$conf[1]:$path_tmp";
     }
     elsif($conf[0] =~ /perl/i){
 	if(!-e "$conf[1]/perl"){
 	    die "CAN'T FIND perl IN $conf[1] $!";
 	}
 	$PERL = $conf[1];
+	my $path_tmp = $ENV{'PATH'};
+	$ENV{'PATH'} = "$conf[1]:$path_tmp";
     }
     elsif($conf[0] =~ /python/i){
 	if(!-e "$conf[1]/python"){
 	    die "CAN'T FIND python IN $conf[1] $!";
 	}
 	$PYTHON = $conf[1];
+	my $path_tmp = $ENV{'PATH'};
+	$ENV{'PATH'} = "$conf[1]:$path_tmp";
     }
     elsif($conf[0] =~ /^r$/i){
 	if(!-e "$conf[1]/R"){
@@ -173,25 +182,33 @@ while(<CONFIG>){
     }
     elsif($conf[0] =~ /hg19_fasta/i){
 	if(!-e "$conf[1]"){
-	    die "CAN'T FIND $conf[1] $!";
+	    if($species =~ /hg19/i){
+		die "CAN'T FIND $conf[1] $!";
+	    }
 	}
 	$HG19_FASTA = $conf[1];
     }
     elsif($conf[0] =~ /hg19_mm10_hybrid_fasta/i){
 	if(!-e "$conf[1]"){
-	    die "CAN'T FIND $conf[1] $!";
+	    if($species =~ /hybrid/i){
+		die "CAN'T FIND $conf[1] $!";
+	    }
 	}
 	$HG19_MM10_HYBRID_FASTA = $conf[1];
     }
     elsif($conf[0] =~ /hg19_bwa_index/i){
 	if(!-e "$conf[1]"){
-	    die "CAN'T FIND hg19 bwa index with prefix $conf[1] $!";
+	    if($species =~ /hg19/i){
+		die "CAN'T FIND hg19 bwa index with prefix $conf[1] $!";
+	    }
 	}
 	$HG19_BWA_INDEX = $conf[1];
     }
     elsif($conf[0] =~ /hg19_mm10_hybrid_bwa_index/i){
-	if(!-e "$conf[1]"){
-	    ###die "CAN'T FIND hg19-mm10 hybrid bwa index with prefix $conf[1] $!";
+	if(!-e "$conf[1]\.bwt" || !-e "$conf[1]\.pac" || !-e "$conf[1]\.ann" || !-e "$conf[1]\.amb" || !-e "$conf[1]\.sa"){
+	    if($species =~ /hybrid/i){
+		die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR HG19-MM9 HYBRID WITH PREFIX $conf[1] $!";
+	    }
 	}
 	$HG19_MM10_HYBRID_BWA_INDEX = $conf[1];
     }
@@ -201,9 +218,12 @@ close CONFIG;
 my $REF_SEQ = "$HG19_FASTA";
 my $BWA_INDEX = "$HG19_BWA_INDEX";
 my $DB_SNP = "$Bin/data/dbsnp_135.hg19__ReTag.vcf";
-if($hybrid){
+if($species =~ /$hybrid/i){
     $REF_SEQ = "$HG19_MM10_HYBRID_FASTA";
     $BWA_INDEX = "$HG19_MM10_HYBRID_BWA_INDEX";
+}
+elsif($species !~ /hg19|hybrid/){
+    die "ONLY SUPPORT FOR hg19 or hybrd assemblies $!";
 }
 
 ### make sure all markdup bam files are there before proceeding
