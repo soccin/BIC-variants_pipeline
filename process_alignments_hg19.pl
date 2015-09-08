@@ -7,7 +7,7 @@ use lib "$Bin/lib";
 use Schedule;
 use Cluster;
 
-my ($patient, $pair, $group, $bamgroup, $config, $nosnps, $targets, $ug, $hybrid, $scheduler, $priority_project, $priority_group, $abra, $help, $step1);
+my ($patient, $pair, $group, $bamgroup, $config, $nosnps, $targets, $ug, $scheduler, $priority_project, $priority_group, $abra, $help, $step1);
 
 my $pre = 'TEMP';
 my $output = "results";
@@ -21,7 +21,6 @@ GetOptions ('pre=s' => \$pre,
 	    'targets=s' => \$targets,
 	    'nosnps' => \$nosnps,
 	    'ug|unifiedgenotyper' => \$ug,
-	    'hybrid' => \$hybrid,
 	    'abra' => \$abra,
 	    'step1' => \$step1,
 	    'bamgroup=s' => \$bamgroup,
@@ -39,7 +38,7 @@ if(!$group || !$config || !$scheduler || !$targets || !$bamgroup || $help){
     USAGE: process_alignments_hg19.pl -group GROUP -bampgroup BAMBROUP -config CONFIG -scheduler SCHEDULER -targets TARGETS
 	* GROUP: file listing grouping of samples for realign/recal steps (REQUIRED)
 	* BAMGROUP: files listing bams to be processed together; every bam for each group on 1 line, comma-separated (required)
-	* SPECIES: only hg19 (default), hybrid (hg19+mm10)
+	* SPECIES: only hg19 (default), hybrid (hg19_mm10)
 	* TARGETS: name of targets assay; will search for targets/baits ilists and targets padded file in $Bin/targets/TARGETS (REQUIRED)
 	* CONFIG: file listing paths to programs needed for pipeline; full path to config file needed (REQUIRED)
 	* SCHEDULER: currently support for SGE and LSF (REQUIRED)
@@ -51,7 +50,6 @@ if(!$group || !$config || !$scheduler || !$targets || !$bamgroup || $help){
 	* -nosnps: if no snps to be called; e.g. when only indelrealigned/recalibrated bams needed
 	* -abra: run abra instead of GATK indelrealigner
 	* -step1: forece the pipeline to start from the first step in pipeline
-	* -hybrid: data aligned to hybrid assembly
 	* haplotypecaller is default; -ug || -unifiedgenotyper to also make unifiedgenotyper variant calls	
 HELP
 exit;
@@ -182,7 +180,7 @@ while(<CONFIG>){
     }
     elsif($conf[0] =~ /hg19_fasta/i){
 	if(!-e "$conf[1]"){
-	    if($species =~ /hg19/i){
+	    if($species =~ /^hg19$/i){
 		die "CAN'T FIND $conf[1] $!";
 	    }
 	}
@@ -190,7 +188,7 @@ while(<CONFIG>){
     }
     elsif($conf[0] =~ /hg19_mm10_hybrid_fasta/i){
 	if(!-e "$conf[1]"){
-	    if($species =~ /hybrid/i){
+	    if($species =~ /hybrid|hg19_mm10/i){
 		die "CAN'T FIND $conf[1] $!";
 	    }
 	}
@@ -198,7 +196,7 @@ while(<CONFIG>){
     }
     elsif($conf[0] =~ /hg19_bwa_index/i){
 	if(!-e "$conf[1]"){
-	    if($species =~ /hg19/i){
+	    if($species =~ /^hg19$/i){
 		die "CAN'T FIND hg19 bwa index with prefix $conf[1] $!";
 	    }
 	}
@@ -206,7 +204,7 @@ while(<CONFIG>){
     }
     elsif($conf[0] =~ /hg19_mm10_hybrid_bwa_index/i){
 	if(!-e "$conf[1]\.bwt" || !-e "$conf[1]\.pac" || !-e "$conf[1]\.ann" || !-e "$conf[1]\.amb" || !-e "$conf[1]\.sa"){
-	    if($species =~ /hybrid/i){
+	    if($species =~ /hybrid|hg19_mm10/i){
 		die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR HG19-MM9 HYBRID WITH PREFIX $conf[1] $!";
 	    }
 	}
@@ -218,11 +216,11 @@ close CONFIG;
 my $REF_SEQ = "$HG19_FASTA";
 my $BWA_INDEX = "$HG19_BWA_INDEX";
 my $DB_SNP = "$Bin/data/dbsnp_135.hg19__ReTag.vcf";
-if($species =~ /$hybrid/i){
+if($species =~ /hybrid|hg19_mm10/i){
     $REF_SEQ = "$HG19_MM10_HYBRID_FASTA";
     $BWA_INDEX = "$HG19_MM10_HYBRID_BWA_INDEX";
 }
-elsif($species !~ /hg19|hybrid/){
+elsif($species !~ /hg19|hybrid|hg19_mm10/){
     die "ONLY SUPPORT FOR hg19 or hybrd assemblies $!";
 }
 
@@ -454,6 +452,9 @@ if(!-e "$output/progress/$pre\_$uID\_MQ.done" || $ran_ssf){
         my $samp = $sn[-1];
         $samp =~ s/\.bam//g;
         $samp =~ s/$pre\_indelRealigned_recal_//g;
+
+
+	print "ref_seq_for_MQ: $REF_SEQ\n";
 
 	if(!-e "$output/progress/$pre\_$uID\_MQ_METRICS_$samp\.done" || $ran_ssf){
 	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_MQ_METRICS_$samp", job_hold => "$ssfj", cpu => "1", mem => "10", cluster_out => "$output/progress/$pre\_$uID\_MQ_METRICS_$samp\.log");
