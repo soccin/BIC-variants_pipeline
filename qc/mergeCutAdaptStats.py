@@ -31,9 +31,9 @@ def findFiles(rootDir,pattern):
         if fnmatch.filter(files, pattern):
             for file in fnmatch.filter(files, pattern):
                 filepaths.append(os.path.join(path,file))
-        else:
-            if "Proj" in path.split("/")[-1] and "-" in path.split("/")[-1]:
-                print>>sys.stderr, "WARNING: No files matching pattern %s found in %s" %(pattern, path)
+        #else:
+        #    if "Proj" in path.split("/")[-1] and "-" in path.split("/")[-1]:
+        #        print>>sys.stderr, "WARNING: No files matching pattern %s found in %s" %(pattern, path)
 
     return filepaths
 
@@ -86,7 +86,11 @@ def makeMatrix(args):
             else:
                 samp = file[file.find('intFiles')+9:].split("/")[0]
                 fName = file.split("/")[-1]
-                rNum = fName[:fName.find(".fastq")].split("_")[-2]
+                #rNum = fName[:fName.find(".fastq")].split("_")[-2]
+                try:
+                    rNum = re.search('_R[1|2]_',fName).group(0).replace('_','')
+                except:
+                    print>>sys.stderr,"ERROR: Can not distinguish R1 from R2 in file name: ",fName
                 if not samp in matrix:
                     matrix[samp] = {'R1':{'processed':0.0,'trimmed':0.0}, \
                                     'R2':{'processed':0.0,'trimmed':0.0} \
