@@ -28,15 +28,18 @@ def validateColNames(allColNames):
 def separateHeader(iterable):
     "Separates the header from the rest of the table; returns each as separate entity"
     it = iter(iterable)
+    header = '#'
+    while header[0][0] == '#':
+        header = it.next()
     #return header, remainder of table
-    return it.next(), it
+    return header, it
 
-def get_table(header_with_body, ntuple=None):
+def get_table(header,body, ntuple=None):
     '''Takes as an argument a csv reader object of all data in
     file. Create a namedtuple based on header row;
     '''
-    header, body = separateHeader(header_with_body)
-    header = validateColNames(header)
+    #header, body = separateHeader(header_with_body)
+    #header = validateColNames(header)
     ntuple = ntuple or namedtuple('MutationRecord', header)
     for row in body:
         if len(row)<len(header):
@@ -94,7 +97,10 @@ def indexCosmicRecords(cosmicFile):
     cosmicData = csv.reader(file,delimiter='\t')
 
     indexedCosmic = {}
-    for rec in get_table(cosmicData):
+    header, body = separateHeader(cosmicData)
+    header = validateColNames(header)
+ 
+    for rec in get_table(header,body):
         ## ignore records with unknown ref/alt
         if not rec.mutation_cds == "c.?" and 'N/A' not in rec.mutation_cds:   
             ## isolate the mutation from its CDS coordinates
@@ -126,18 +132,21 @@ def annotateMAF(inputMAF, annotatedMAF, mafHeader, cosmicHeader, detailed, index
                 header = mafHeader.replace("\n","").split("\t") + ["COS_primary_site","COS_primary_histology","COS_mutation_id","COS_mutation_satic_status"]
             writer.writerow(header)
 
+            header2, body = separateHeader(mafData)
+            #header2 = validateColNames(header)
 
-            for rec in get_table(mafData):
+            for rec in get_table(header2,body):
+                #print rec
                 total_records += 1
-                chr = rec.chromosome.replace("chr","")
-                genomic_position = chr + ":" + rec.start_position + "-" + rec.end_position
-                ref = rec.reference_allele
-                alt1 = rec.tumor_seq_allele1
-                alt2 = rec.tumor_seq_allele2
+                chr = rec.Chromosome.replace("chr","")
+                genomic_position = chr + ":" + rec.Start_Position + "-" + rec.End_Position
+                ref = rec.Reference_Allele
+                alt1 = rec.Tumor_Seq_Allele1
+                alt2 = rec.Tumor_Seq_Allele2
 
-                if rec.variant_type == "DEL":
+                if rec.Variant_Type == "DEL":
                     alt1 = alt2 = "?"
-                elif rec.variant_type == "INS":
+                elif rec.Variant_Type == "INS":
                     ref = "?"
 
                 rec_key1 = "_".join([genomic_position, ref, alt1])
@@ -154,6 +163,7 @@ def annotateMAF(inputMAF, annotatedMAF, mafHeader, cosmicHeader, detailed, index
                 annotated_record = rec
 
                 if matched_record:
+                    print matched_record
                     matched_records += 1
                     if detailed:
                         ## add ALL COSMIC fields to MAF
@@ -230,11 +240,14 @@ def main():
     indexedCosmic = indexCosmicRecords(cosmicFile)
 
     ## temporary hack to get headers; got errors when trying to do it using getTable generator
+    mafHeader = cosmicHeader = '#'
     with open(inputMAF,'rU') as maf:
-        mafHeader = maf.next()
+        while mafHeader[0][0] == '#':
+            mafHeader = maf.next()
 
     with open(cosmicFile, 'rU') as cosmic:
-        cosmicHeader = cosmic.next()
+        while cosmicHeader[0][0] == '#':
+            cosmicHeader = cosmic.next()
         cosmicHeader = validateColNames(cosmicHeader.strip().split("\t"))
         cosmicHeader = ["COS_"+h for h in cosmicHeader]
         print cosmicHeader

@@ -158,31 +158,32 @@ def annotate():
 
             query_counter = 0
 
-            for rec in get_table(validateColNames(header),body):
-                chr = rec.chromosome.replace("chr","")
+            #for rec in get_table(validateColNames(header),body):
+            for rec in get_table(header, body):
+                chr = rec.Chromosome.replace("chr","")
                 alt = ''
     
-                if not rec.tumor_seq_allele1 == rec.reference_allele:
-                    alt = rec.tumor_seq_allele1
-                elif not rec.tumor_seq_allele2 == rec.reference_allele:
-                    alt = rec.tumor_seq_allele2
+                if not rec.Tumor_Seq_Allele1 == rec.Reference_Allele:
+                    alt = rec.Tumor_Seq_Allele1
+                elif not rec.Tumor_Seq_Allele2 == rec.Reference_Allele:
+                    alt = rec.Tumor_Seq_Allele2
 
                 ## mutation assessor does not support indels, as far as I can tell, 
                 ## so only generate a query for single nucleotide substitutions
-                if len(alt)==1 and len(rec.reference_allele)==1: 
+                if len(alt)==1 and len(rec.Reference_Allele)==1: 
                     results = None 
                     if db:       
                         ## check cache before attemptying to run web query
                         results = annots.find_one({'build':build,\
                                                'source':'mutation_assessor',\
                                                'chr':'chr'+chr,\
-                                               'start':int(rec.start_position),\
-                                               'ref':rec.reference_allele,\
+                                               'start':int(rec.Start_Position),\
+                                               'ref':rec.Reference_Allele,\
                                                'alt':alt})#,\
                                                #'version':maVersion})
                     if not results:
                         ## run query & parse results if not already cached
-                        query = ",".join([query_prefix,chr,rec.start_position,rec.reference_allele,alt]) + query_suffix
+                        query = ",".join([query_prefix,chr,rec.Start_Position,rec.Reference_Allele,alt]) + query_suffix
                         results = createMongoRecord(urllib2.urlopen(query, None, 60).read(),maVersion)
                         if resultsComplete(results): ## check that query ran to completion before adding results to cache
                             annots.insert(results)
