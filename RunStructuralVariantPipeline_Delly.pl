@@ -2967,7 +2967,8 @@ sub CleanUpFiles
 
 	`find $result_dir -maxdepth 1 -type f ! -name \"*AllAnnotatedSVs*\" -exec mv {} $tmp_dir \\;`;
 
-	`rm -r $src_dir`;
+	`mv $src_dir $tmp_dir`;
+
 }
 
 
