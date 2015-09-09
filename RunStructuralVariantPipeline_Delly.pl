@@ -2005,8 +2005,6 @@ sub CallStructuralVariants {
 		}
 	#}
 
-	exit 0 if (scalar(@FilterData) == 0); #no valid pairing found, no need to run the following steps
-
 	&WaitToFinish( $outdir, @notifyNames );
 	open( NFH, ">", "$outdir/$NormalUsed" )
 	  || die "Cannot open NormalUsedinSVFile:$outdir/$NormalUsed;$!\n";
@@ -2926,12 +2924,25 @@ sub ReadNormalTumorPair
     while(<PF>){
             chomp;
             my @data = split(/\s+/);
-            if($data[0] && $data[1] && ($data[0] !~ /^NA$/i) && ($data[1] !~ /^NA$/i) )     
+            if($data[0] && $data[1])     
             {
+                if( ($data[0] !~ /^NA$/i) && ($data[1] !~ /^NA$/i) )    
+                {
                     $NormalTumorPair{$data[1]} = $data[0];
+                }
+                else
+                {
+                    print "Skipping invalid pair: $data[0] : $data[1]\n";
+                }
             }
     }
     close PF;
+
+    if(scalar(keys %NormalTumorPair) == 0) #no valid pairing found
+    {
+	print "No valid pairing found, the structural variation pipeline won't run.\n";
+        exit 0;
+    }
 }
 
 sub ReadBamList
