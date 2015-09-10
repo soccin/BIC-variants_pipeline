@@ -170,7 +170,7 @@ for ei in sorted(eventDb):
     # for each mutated sample at that position
     for si in eventDb[ei]["mutSamples"]:
         maf1=copy.copy(eventDb[ei])["MAF"]
-        maf1=fillSampleMAFFields(maf1,si,ei,eventDb,pairs, args.caller)
+        maf1=fillSampleMAFFields(maf1,si,ei,eventDb,pairs, caller)
 
         # changes mutaiton status based on if this is unpaired, paired with matched normal, or 
         # paired with pooled nomral
@@ -206,7 +206,7 @@ for ei in sorted(eventDb):
         #
         if sampleDb[si].Class.upper().find("NORMAL")==-1:
             maf1=copy.copy(eventDb[ei])["MAF"]
-            maf1=fillSampleMAFFields(maf1,si,ei,eventDb,pairs,args.caller)
+            maf1=fillSampleMAFFields(maf1,si,ei,eventDb,pairs,caller)
             maf1.Mutation_Status = "NONE"
             maf1.Tumor_Seq_Allele1=maf1.Reference_Allele
             output.write(str(maf1)+"\n")
