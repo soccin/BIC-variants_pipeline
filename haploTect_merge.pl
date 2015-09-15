@@ -262,45 +262,75 @@ for my $vcf (@mutect_vcfs){
 }
 
 ## link oncotator and oncotate!
-symlink("$ONCOTATOR/db.properties", "./db.properties");
-print "$ONCOTATOR/oncotateMaf.sh $output/$pre\_merge_maf0.txt $output/$pre\_merge_maf1.txt\n\n";
-`$ONCOTATOR/oncotateMaf.sh $output/$pre\_merge_maf0.txt $output/$pre\_merge_maf1.txt`;
+#symlink("$ONCOTATOR/db.properties", "./db.properties");
+#print "$ONCOTATOR/oncotateMaf.sh $output/$pre\_merge_maf0.txt $output/$pre\_merge_maf1.txt\n\n";
+#`$ONCOTATOR/oncotateMaf.sh $output/$pre\_merge_maf0.txt $output/$pre\_merge_maf1.txt`;
 
-## fix Hugo?
-print "$PYTHON/python $Bin/maf/pA_fixHugo.py <$output/$pre\_merge_maf1.txt >$output/$pre\_merge_maf2.txt\n\n";
-`$PYTHON/python $Bin/maf/pA_fixHugo.py <$output/$pre\_merge_maf1.txt >$output/$pre\_merge_maf2.txt`;
 
+print "\n#######\n#######\nStarting VEP. \n";
+# these are names needed for the "retain-cols" option in VEP
+my $VEP_COLUMN_NAMES = "Center,Verification_Status,Validation_Status,Mutation_Status,Sequencing_Phase,Sequence_Source,Validation_Method,Score,BAM_file,Sequencer,Tumor_Sample_UUID,Match_Norm_Sample_UUID,Caller";
+
+## Create tmp and ref directory. Delete these later*
+if( ! -d "$output/tmp/" ){
+    print "$output/tmp/ does not exist. Will create it now\n";
+    mkdir("$output/tmp", 0755) or die "Making tmp didn't work $!";
+}
+if( ! -d "$output/ref/" ){
+    print "$output/ref/ does not exist. Will create it now\n";
+    mkdir("$output/ref", 0755) or die "Making tmp didn't work $!";
+}
+
+my $ref_base = basename($REF_FASTA);
+
+# softlink reference
+symlink($REF_FASTA, "$output/ref/$ref_base");
+symlink("$REF_FASTA.fai", "$output/ref/$ref_base.fai");
+
+
+## vep-forks is at 4 because that is how many CPUs we ask for
+print "\n/opt/common/CentOS_6/bin/v1/perl /opt/common/CentOS_6/vcf2maf/v1.5.4/maf2maf.pl --tmp-dir $output/tmp --ref-fasta $output/ref/$ref_base --vep-forks 4 --vep-path $VEP --vep-data $VEP --retain-cols $VEP_COLUMN_NAMES --input-maf $output/$pre\_merge_maf0.txt --output-maf $output/$pre\_merge_maf0.VEP\n\n";
+
+`/opt/common/CentOS_6/bin/v1/perl /opt/common/CentOS_6/vcf2maf/v1.5.4/maf2maf.pl --tmp-dir $output/tmp --ref-fasta $output/ref/$ref_base --vep-forks 4 --vep-path $VEP --vep-data $VEP --retain-cols $VEP_COLUMN_NAMES --input-maf $output/$pre\_merge_maf0.txt --output-maf $output/$pre\_merge_maf0.VEP > $output/$pre\_merge_maf0.log 2>&1`;
+
+
+
+##
+##
+## NOTE: This was to help oncotator results be updated. Since we switched to VEP, this should not be necessary anymore.
+##
 ## Update hugo symbol
-print "$PERL/perl $Bin/update_gene_names_and_ids.pl $output/$pre\_merge_maf2.txt\n\n";
+#print "$PERL/perl $Bin/update_gene_names_and_ids.pl $output/$pre\_merge_maf0.VEP\n\n";
 #`/bin/rm $Bin/lib/hugo_data.tsv`;
-`$PERL/perl $Bin/update_gene_names_and_ids.pl $output/$pre\_merge_maf2.txt > $output/$pre\_merge_maf2_hugo.log 2>&1`;
+#`$PERL/perl $Bin/update_gene_names_and_ids.pl $output/$pre\_merge_maf0.VEP > $output/$pre\_merge_VEP_maf_hugo.log 2>&1`;
 
-## Grep for functional events YO!
-print "cat $output/$pre\_merge_maf2.txt_hugo_modified | $PYTHON/python $Bin/maf/pA_Functional_Oncotator2.py > $output/$pre\_haplotect_TCGA_MAF.txt\n\n";
-`cat $output/$pre\_merge_maf2.txt_hugo_modified | $PYTHON/python $Bin/maf/pA_Functional_Oncotator2.py > $output/$pre\_haplotect_TCGA_MAF.txt`;
+
+#This removes any records that don't have a gene name at the front
+`grep -v ^Unknown $output/$pre\_merge_maf0.VEP > $output/$pre\_haplotect_VEP_MAF.txt`;
+`grep -v ^# $output/$pre\_haplotect_VEP_MAF.txt | cut -f-34 > $output/$pre\_haplotect_TCGA_MAF.txt`;
 
 ## creating MAF for cbio portal submission
-print "cat $output/$pre\_haplotect_TCGA_MAF.txt | $PYTHON/python $Bin/maf/pA_reSortCols.py $Bin/maf/finalCols_PORTAL.txt > $output/$pre\_haplotect_PORTAL_MAF.txt\n\n";
-`cat $output/$pre\_haplotect_TCGA_MAF.txt | $PYTHON/python $Bin/maf/pA_reSortCols.py $Bin/maf/finalCols_PORTAL.txt > $output/$pre\_haplotect_PORTAL_MAF.txt`;
+print "$PYTHON/python $Bin/maf/pA_reSortCols.py -i $output/$pre\_haplotect_VEP_MAF.txt -f $Bin/maf/finalCols_PORTAL.txt -o $output/$pre\_haplotect_TCGA_PORTAL_MAF.txt\n\n";
+`$PYTHON/python $Bin/maf/pA_reSortCols.py -i $output/$pre\_haplotect_VEP_MAF.txt -f $Bin/maf/finalCols_PORTAL.txt -o $output/$pre\_haplotect_TCGA_PORTAL_MAF.txt`;
 
 ###       NOTE: This is different than the MAF4.txt because there are different headers here.
 ###       header information is missing everything after the first 39 columns, which is caller specific
 print "creating clean MAF file\n";
-print "/bin/cat $output/$pre\_merge_maf2.txt_hugo_modified | $PYTHON/python $Bin/maf/pA_Functional_Oncotator2.py | $PYTHON/python $Bin/maf/pA_reSortCols.py $Bin/maf/haplotect_abbrev_cols.txt > $output/$pre\_haplotect_merged_MAF.txt\n\n";
+print "$PYTHON/python $Bin/maf/pA_reSortCols.py -i $output/$pre\_haplotect_VEP_MAF.txt -f $Bin/maf/haplotect_abbrev_cols.txt -o $output/$pre\_haplotect_merged_MAF.txt\n\n";
 # Create nice MAF with essential columns
-`/bin/cat $output/$pre\_merge_maf2.txt_hugo_modified | $PYTHON/python $Bin/maf/pA_Functional_Oncotator2.py | $PYTHON/python $Bin/maf/pA_reSortCols.py $Bin/maf/haplotect_abbrev_cols.txt > $output/$pre\_haplotect_merged_MAF.txt`;
+`$PYTHON/python $Bin/maf/pA_reSortCols.py -i $output/$pre\_haplotect_VEP_MAF.txt -f $Bin/maf/haplotect_abbrev_cols.txt -o $output/$pre\_haplotect_merged_MAF.txt`;
 
 print "annotating with cosmic\n";
-print "$PYTHON/python $Bin/maf/maf_annotations/addCosmicAnnotation.py -i $output/$pre\_haplotect_TCGA_MAF.txt -o $output/$pre\_haplotect_TCGA_MAF_COSMIC_STANDARD.txt -f $Bin/data/CosmicMutantExport_v67_241013.tsv\n\n";
-print "$PYTHON/python $Bin/maf/maf_annotations/addCosmicAnnotation.py -i $output/$pre\_haplotect_TCGA_MAF.txt -o $output/$pre\_haplotect_TCGA_MAF_COSMIC_DETAILED.txt -f $Bin/data/CosmicMutantExport_v67_241013.tsv -d\n\n";
-`$PYTHON/python $Bin/maf/maf_annotations/addCosmicAnnotation.py -i $output/$pre\_haplotect_TCGA_MAF.txt -o $output/$pre\_haplotect_TCGA_MAF_COSMIC_STANDARD.txt -f $Bin/data/CosmicMutantExport_v67_241013.tsv`;
-`$PYTHON/python $Bin/maf/maf_annotations/addCosmicAnnotation.py -i $output/$pre\_haplotect_TCGA_MAF.txt -o $output/$pre\_haplotect_TCGA_MAF_COSMIC_DETAILED.txt -f $Bin/data/CosmicMutantExport_v67_241013.tsv -d`;
+print "$PYTHON/python $Bin/maf/maf_annotations/addCosmicAnnotation.py -i $output/$pre\_haplotect_VEP_MAF.txt -o $output/$pre\_haplotect_VEP_COSMIC_MAF_STANDARD.txt -f $Bin/data/CosmicMutantExport_v67_241013.tsv\n\n";
+print "$PYTHON/python $Bin/maf/maf_annotations/addCosmicAnnotation.py -i $output/$pre\_haplotect_VEP_MAF.txt -o $output/$pre\_haplotect_VEP_COSMIC_MAF_DETAILED.txt -f $Bin/data/CosmicMutantExport_v67_241013.tsv -d\n\n";
+`$PYTHON/python $Bin/maf/maf_annotations/addCosmicAnnotation.py -i $output/$pre\_haplotect_VEP_MAF.txt -o $output/$pre\_haplotect_VEP_COSMIC_MAF_STANDARD.txt -f $Bin/data/CosmicMutantExport_v67_241013.tsv`;
+`$PYTHON/python $Bin/maf/maf_annotations/addCosmicAnnotation.py -i $output/$pre\_haplotect_VEP_MAF.txt -o $output/$pre\_haplotect_VEP_COSMIC_MAF_DETAILED.txt -f $Bin/data/CosmicMutantExport_v67_241013.tsv -d`;
 
 print "annotating with mutation assessor\n";
-print "$PYTHON/python $Bin/maf/maf_annotations/addMAannotation.py -i $output/$pre\_haplotect_TCGA_MAF_COSMIC_STANDARD.txt -o $output/$pre\_haplotect_TCGA_MAF_COSMIC_MA_STANDARD.txt\n";
-print "$PYTHON/python $Bin/maf/maf_annotations/addMAannotation.py -i $output/$pre\_haplotect_TCGA_MAF_COSMIC_DETAILED.txt -o $output/$pre\_haplotect_TCGA_MAF_COSMIC_MA_DETAILED.txt -d\n\n";
-`$PYTHON/python $Bin/maf/maf_annotations/addMAannotation.py -i $output/$pre\_haplotect_TCGA_MAF_COSMIC_STANDARD.txt -o $output/$pre\_haplotect_TCGA_MAF_COSMIC_MA_STANDARD.txt`;
-`$PYTHON/python $Bin/maf/maf_annotations/addMAannotation.py -i $output/$pre\_haplotect_TCGA_MAF_COSMIC_DETAILED.txt -o $output/$pre\_haplotect_TCGA_MAF_COSMIC_MA_DETAILED.txt -d`;
+print "$PYTHON/python $Bin/maf/maf_annotations/addMAannotation.py -i $output/$pre\_haplotect_VEP_COSMIC_MAF_STANDARD.txt -o $output/$pre\_haplotect_VEP_COSMIC_MA_MAF_STANDARD.txt\n";
+print "$PYTHON/python $Bin/maf/maf_annotations/addMAannotation.py -i $output/$pre\_haplotect_VEP_COSMIC_MAF_DETAILED.txt -o $output/$pre\_haplotect_VEP_COSMIC_MA_MAF_DETAILED.txt -d\n\n";
+`$PYTHON/python $Bin/maf/maf_annotations/addMAannotation.py -i $output/$pre\_haplotect_VEP_COSMIC_MAF_STANDARD.txt -o $output/$pre\_haplotect_VEP_COSMIC_MA_MAF_STANDARD.txt`;
+`$PYTHON/python $Bin/maf/maf_annotations/addMAannotation.py -i $output/$pre\_haplotect_VEP_COSMIC_MAF_DETAILED.txt -o $output/$pre\_haplotect_VEP_COSMIC_MA_MAF_DETAILED.txt -d`;
 
 if($patient && $bam_dir){
     print "Starting maf fillout\n";
@@ -329,11 +359,11 @@ if($patient && $bam_dir){
 
     my $bam_inputs = join(" ", @bamList);
 
-    print "$Bin/maf/fillout/GetBaseCountsMutliSample/GetBaseCountsMultiSample --fasta $REF_FASTA $bam_inputs --output $output/$pre/_haplotect_TCGA_basecounts.txt --maf $output/$pre\_haplotect_TCGA_MAF.txt --filter_improper_pair 0\n\n";
-    `$Bin/maf/fillout/GetBaseCountsMutliSample/GetBaseCountsMultiSample --fasta $REF_FASTA $bam_inputs --output $output/$pre\_haplotect_TCGA_basecounts.txt --maf $output/$pre\_haplotect_TCGA_MAF.txt --filter_improper_pair 0`;
+    print "$Bin/maf/fillout/GetBaseCountsMutliSample/GetBaseCountsMultiSample --fasta $REF_FASTA $bam_inputs --output $output/$pre/_haplotect_TCGA_basecounts.txt --maf $output/$pre\_haplotect_TCGA_PORTAL_MAF.txt --filter_improper_pair 0\n\n";
+    `$Bin/maf/fillout/GetBaseCountsMutliSample/GetBaseCountsMultiSample --fasta $REF_FASTA $bam_inputs --output $output/$pre\_haplotect_TCGA_basecounts.txt --maf $output/$pre\_haplotect_TCGA_PORTAL_MAF.txt --filter_improper_pair 0`;
 
-    print "$PYTHON/python $Bin/maf/fillout/dmp2portalMAF -m $output/$pre\_haplotect_TCGA_MAF.txt -p $pairing -P $patient -c haplotect -b $output/$pre\_haplotect_TCGA_basecounts.txt -o $output/$pre\_haplotect_TCGA_MAF_fillout.txt\n";
-    `$PYTHON/python $Bin/maf/fillout/dmp2portalMAF -m $output/$pre\_haplotect_TCGA_MAF.txt -p $pairing -P $patient -c haplotect -b $output/$pre\_haplotect_TCGA_basecounts.txt -o $output/$pre\_haplotect_TCGA_MAF_fillout.txt`;
+    print "$PYTHON/python $Bin/maf/fillout/dmp2portalMAF -m $output/$pre\_haplotect_TCGA_PORTAL_MAF.txt -p $pairing -P $patient -c haplotect -b $output/$pre\_haplotect_TCGA_basecounts.txt -o $output/$pre\_haplotect_TCGA_PORTAL_MAF_fillout.txt\n";
+    `$PYTHON/python $Bin/maf/fillout/dmp2portalMAF -m $output/$pre\_haplotect_TCGA_PORTAL_MAF.txt -p $pairing -P $patient -c haplotect -b $output/$pre\_haplotect_TCGA_basecounts.txt -o $output/$pre\_haplotect_TCGA_PORTAL_MAF_fillout.txt`;
 }
 
 
@@ -342,16 +372,20 @@ if($patient && $bam_dir){
 ## Delete Temp Files
 ##
 if($delete_temp){
-    my @files = glob( $output . '/*.maf[012]');
+    my @files = glob( $output . '/*.maf[12]');
     for my $fname (@files) {
         print "Removing: $fname \n";
         unlink($fname);
     }
-    @files = glob ("$output/*mutect_calls* $output/*Haplotype* $output/*maf2.txt*");
+    @files = glob ("$output/*mutect_calls* $output/*Haplotype* $output/*maf2.txt* $output/ref $output/tmp");
+
+
     for my $fname (@files) {
         print "Removing: $fname \n";
         unlink($fname);
     }
+    `rm -r $output/ref $output/tmp`;
+
 }
 
 

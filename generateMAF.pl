@@ -3,12 +3,16 @@
 use strict;
 use Getopt::Long qw(GetOptions);
 use FindBin qw($Bin); 
+use File::Basename;
 
 ### INPUT: vcf file and list of normal/tumor sample pairing information
 ### OUTPUT: 2 maf files; 
 
 ### NOTE: CAN'T RUN ON NODE BECAUSE NO NETWORK ACCESS FOR ONCOTATOR
 ### NOTE2: DESIGNED TO WORK FOR ONCOTATOR ANNOTATED MAFS
+
+## CONSTANT FOR VEP
+my $VEP_COLUMN_NAMES = "Center,Verification_Status,Validation_Status,Mutation_Status,Sequencing_Phase,Sequence_Source,Validation_Method,Score,BAM_file,Sequencer,Tumor_Sample_UUID,Match_Norm_Sample_UUID,Caller";
 
 my ($vcf, $pairing, $patient, $bam_dir, $species, $config, $caller, $normal_sample, $tumor_sample, $delete_temp);
 GetOptions ('vcf=s' => \$vcf,
@@ -66,6 +70,7 @@ my $HG19_FASTA = '';
 my $ONCOTATOR = '';
 my $PYTHON = '';
 my $PERL = '';
+my $VEP = '';
 open(CONFIG, "$config") or warn "CAN'T OPEN CONFIG FILE $config SO USING DEFAULT SETTINGS";
 while(<CONFIG>){
     chomp;
@@ -95,8 +100,32 @@ while(<CONFIG>){
 	}
 	$PERL = $conf[1];
     }
+    elsif($conf[0] =~ /vep/i){
+        if(!-e "$conf[1]/variant_effect_predictor.pl"){
+            die "CAN'T FIND VEP IN $conf[1] $!";
+        }
+        $VEP = $conf[1];
+    }
+    elsif($conf[0] =~ /samtools/i){
+        if(!-e "$conf[1]/samtools"){
+            die "CAN'T FIND samtools IN $conf[1] $!";
+        }
+        my $path_tmp = $ENV{'PATH'};
+        $ENV{'PATH'} = "$conf[1]:$path_tmp";
+    }
+    elsif($conf[0] =~ /tabix/i){
+        if(!-e "$conf[1]/tabix"){
+            die "CAN'T FIND tabix IN $conf[1] $!";
+        }
+        my $path_tmp = $ENV{'PATH'};
+        $ENV{'PATH'} = "$conf[1]:$path_tmp";
+    }
+
 }
 close CONFIG;
+
+## RIGHT NOW ONLY HG19 IS BEING USED IN THIS SCRIPT
+my $REF_FASTA = $HG19_FASTA;
 
 print "converting to MAF and filtering snp calls for coverage/qual\n";
 if($caller =~ /unifiedgenotyper|ug|haplotypecaller|hc/i){
@@ -173,53 +202,82 @@ print "$PYTHON/python $Bin/maf/oldMAF2tcgaMAF.py $species \<$vcf\_$somatic\_maf0
 ### NOTE; DON'T FORGET <> AROUND INPUT FILE (maf0.txt)
 `$PYTHON/python $Bin/maf/oldMAF2tcgaMAF.py $species $vcf\_$somatic\_maf0.txt $vcf\_$somatic\_maf1.txt`;
 
-print "adding oncotator annotations... \n";
-print "$ONCOTATOR/oncotateMaf.sh $vcf\_$somatic\_maf1.txt $vcf\_$somatic\_maf2.txt\n\n";;
+
+
+
+
+#print "adding oncotator annotations... \n";
+#print "$ONCOTATOR/oncotateMaf.sh $vcf\_$somatic\_maf1.txt $vcf\_$somatic\_maf2.txt\n\n";;
 ### Annotate with Oncotator
 ### expects db.properties to be in working directory
 ### NOTE: ALWAYS DOUBLE CHECK TO MAKE SURE ONCOTATOR WENT THROUGH ENTIRE MAF1 FILE
 ###       IT DOESN'T ALWAYS DO SO FOR SOME REASON
-`/bin/ln -s $ONCOTATOR/db.properties .`;
-`$ONCOTATOR/oncotateMaf.sh $vcf\_$somatic\_maf1.txt $vcf\_$somatic\_maf2.txt`;
+#`/bin/ln -s $ONCOTATOR/db.properties .`;
+#`$ONCOTATOR/oncotateMaf.sh $vcf\_$somatic\_maf1.txt $vcf\_$somatic\_maf2.txt`;
 
-print "modifying hugo_symbol column\n";
-print "/bin/cat $vcf\_$somatic\_maf2.txt | $PYTHON/python $Bin/maf/pA_fixHugo.py > $vcf\_$somatic\_maf3.txt\n\n";
-### modify hugo_symbol column
-`/bin/cat $vcf\_$somatic\_maf2.txt | $PYTHON/python $Bin/maf/pA_fixHugo.py > $vcf\_$somatic\_maf3.txt`;
+print "\n#######\n#######\nStarting VEP. \n";
+# these are names needed for the "retain-cols" option in VEP
+# my $VEP_COLUMN_NAMES = "Center,Verification_Status,Validation_Status,Mutation_Status,Sequencing_Phase,Sequence_Source,Validation_Method,Score,BAM_file,Sequencer,Tumor_Sample_UUID,Match_Norm_Sample_UUID,Caller";
+my $output = dirname($vcf);
+# ## Create tmp and ref directory. Delete these later*
+ if( ! -d "$output/tmp_$somatic/" ){
+     print "$output/tmp_$somatic/ does not exist. Will create it now\n";
+         mkdir("$output/tmp_$somatic", 0755) or die "Making tmp_$somatic didn't work $!";
+}
+if( ! -d "$output/ref_$somatic/" ){
+    print "$output/ref_$somatic/ does not exist. Will create it now\n";
+    mkdir("$output/ref_$somatic", 0755) or die "Making ref_$somatic didn't work $!";
+}
 
-print "updating hugo symbol\n";
-print "$PERL/perl $Bin/update_gene_names_and_ids.pl $vcf\_$somatic\_maf3.txt\n\n";
+my $ref_base = basename($REF_FASTA);
+
+# softlink reference
+symlink($REF_FASTA, "$output/ref_$somatic/$ref_base");
+symlink("$REF_FASTA.fai", "$output/ref$somatic/$ref_base.fai");
+
+
+## vep-forks is at 4 because that is how many CPUs we ask for
+print "\n/opt/common/CentOS_6/bin/v1/perl /opt/common/CentOS_6/vcf2maf/v1.5.4/maf2maf.pl --tmp-dir $output/tmp_$somatic --ref-fasta $output/ref_$somatic/$ref_base --vep-forks 4 --vep-path $VEP --vep-data $VEP --retain-cols $VEP_COLUMN_NAMES --input-maf $vcf\_$somatic\_maf1.txt --output-maf $vcf\_$somatic\_maf2_VEP.txt\n\n";
+
+`/opt/common/CentOS_6/bin/v1/perl /opt/common/CentOS_6/vcf2maf/v1.5.4/maf2maf.pl --tmp-dir $output/tmp_$somatic --ref-fasta $output/ref_$somatic/$ref_base --vep-forks 4 --vep-path $VEP --vep-data $VEP --retain-cols $VEP_COLUMN_NAMES --input-maf $vcf\_$somatic\_maf1.txt --output-maf $vcf\_$somatic\_maf2_VEP.txt > $vcf\_$somatic\_maf2_VEP.log 2>&1`;
+                 
+
+# 
+# #
+# # NOTE: This was to help  oncotator results be updated. Since we switched to VEP, this should not be necessary anymore. 
+# #
+#print "updating hugo symbol\n";
+#print "$PERL/perl $Bin/update_gene_names_and_ids.pl $vcf\_$somatic\_maf3.txt\n\n";
 ### update hugo_symbol
 ### deletes old copy and get fresh copy every time
 #`/bin/rm $Bin/lib/hugo_data.tsv`;
-`$PERL/perl $Bin/update_gene_names_and_ids.pl $vcf\_$somatic\_maf3.txt > $vcf\_$somatic\_MAF3_HUGO.log 2>&1`;
+#`$PERL/perl $Bin/update_gene_names_and_ids.pl $vcf\_$somatic\_maf3.txt > $vcf\_$somatic\_MAF3_HUGO.log 2>&1`;
 
 print "creating TCGA-formatted MAF file... \n";
-print "/bin/cat $vcf\_$somatic\_maf3.txt_hugo_modified | $PYTHON/python $Bin/maf/pA_Functional_Oncotator.py\n\n";
-# Create annotated TCGA MAF
-`/bin/cat $vcf\_$somatic\_maf3.txt_hugo_modified | $PYTHON/python $Bin/maf/pA_Functional_Oncotator.py > $vcf\_$somatic\_TCGA_MAF.txt`;
+#This removes any records that don't have a gene name at the front
+`grep -v ^Unknown $vcf\_$somatic\_maf2_VEP.txt  > $vcf\_$somatic\_VEP_MAF.txt`;
+`grep -v ^# $vcf\_$somatic\_VEP_MAF.txt | cut -f-34 > $vcf\_$somatic\_TCGA_MAF.txt`;
 
 print "creating MAF for cbio portal submission";
-print "cat $vcf\_$somatic\_TCGA_MAF.txt | $PYTHON/python $Bin/maf/pA_reSortCols.py $Bin/maf/finalCols_PORTAL.txt > $vcf\_$somatic\_TCGA_MAF_PORTAL.txt\n";
-`cat $vcf\_$somatic\_TCGA_MAF.txt | $PYTHON/python $Bin/maf/pA_reSortCols.py $Bin/maf/finalCols_PORTAL.txt > $vcf\_$somatic\_TCGA_MAF_PORTAL.txt`;
-
+print "$PYTHON/python $Bin/maf/pA_reSortCols.py -i $vcf\_$somatic\_VEP_MAF.txt -f $Bin/maf/finalCols_PORTAL.txt -o $vcf\_$somatic\_TCGA_PORTAL_MAF.txt\n\n";
+`$PYTHON/python $Bin/maf/pA_reSortCols.py -i $vcf\_$somatic\_VEP_MAF.txt -f $Bin/maf/finalCols_PORTAL.txt -o $vcf\_$somatic\_TCGA_PORTAL_MAF.txt`;
 
 print "creating clean MAF file\n";
-print "/bin/cat $vcf\_$somatic\_maf3.txt_hugo_modified | $PYTHON/python $Bin/maf/pA_Functional_Oncotator.py | $PYTHON/python $Bin/maf/pA_reSortCols.py $Bin/maf/finalCols.txt > $vcf\_$somatic\_MAF4.txt\n\n";
+print "$PYTHON/python $Bin/maf/pA_reSortCols.py -i $vcf\_$somatic\_VEP_MAF.txt -f $Bin/maf/finalCols.txt -o $vcf\_$somatic\_MAF4.txt\n\n";
 # Create nice MAF with essential columns
-`/bin/cat $vcf\_$somatic\_maf3.txt_hugo_modified | $PYTHON/python $Bin/maf/pA_Functional_Oncotator.py | $PYTHON/python $Bin/maf/pA_reSortCols.py $Bin/maf/finalCols.txt > $vcf\_$somatic\_MAF4.txt`;
+`$PYTHON/python $Bin/maf/pA_reSortCols.py -i $vcf\_$somatic\_VEP_MAF.txt -f $Bin/maf/finalCols.txt -o $vcf\_$somatic\_MAF4.txt`;
 
 print "annotating with cosmic\n";
-print "$PYTHON/python $Bin/maf/maf_annotations/addCosmicAnnotation.py -i $vcf\_$somatic\_TCGA_MAF.txt -o $vcf\_$somatic\_TCGA_MAF_COSMIC_STANDARD.txt -f $Bin/data/CosmicMutantExport_v67_241013.tsv\n\n";
-print "$PYTHON/python $Bin/maf/maf_annotations/addCosmicAnnotation.py -i $vcf\_$somatic\_TCGA_MAF.txt -o $vcf\_$somatic\_TCGA_MAF_COSMIC_DETAILED.txt -f $Bin/data/CosmicMutantExport_v67_241013.tsv -d\n\n";
-`$PYTHON/python $Bin/maf/maf_annotations/addCosmicAnnotation.py -i $vcf\_$somatic\_TCGA_MAF.txt -o $vcf\_$somatic\_TCGA_MAF_COSMIC_STANDARD.txt -f $Bin/data/CosmicMutantExport_v67_241013.tsv`;
-`$PYTHON/python $Bin/maf/maf_annotations/addCosmicAnnotation.py -i $vcf\_$somatic\_TCGA_MAF.txt -o $vcf\_$somatic\_TCGA_MAF_COSMIC_DETAILED.txt -f $Bin/data/CosmicMutantExport_v67_241013.tsv -d`;
+print "$PYTHON/python $Bin/maf/maf_annotations/addCosmicAnnotation.py -i $vcf\_$somatic\_VEP_MAF.txt -o $vcf\_$somatic\_VEP_COSMIC_MAF_STANDARD.txt -f $Bin/data/CosmicMutantExport_v67_241013.tsv\n\n";
+print "$PYTHON/python $Bin/maf/maf_annotations/addCosmicAnnotation.py -i $vcf\_$somatic\_VEP_MAF.txt -o $vcf\_$somatic\_VEP_COSMIC_MAF_DETAILED.txt -f $Bin/data/CosmicMutantExport_v67_241013.tsv -d\n\n";
+`$PYTHON/python $Bin/maf/maf_annotations/addCosmicAnnotation.py -i $vcf\_$somatic\_VEP_MAF.txt -o $vcf\_$somatic\_VEP_COSMIC_MAF_STANDARD.txt -f $Bin/data/CosmicMutantExport_v67_241013.tsv`;
+`$PYTHON/python $Bin/maf/maf_annotations/addCosmicAnnotation.py -i $vcf\_$somatic\_VEP_MAF.txt -o $vcf\_$somatic\_VEP_COSMIC_MAF_DETAILED.txt -f $Bin/data/CosmicMutantExport_v67_241013.tsv -d`;
 
 print "annotating with mutation assessor\n";
-print "$PYTHON/python $Bin/maf/maf_annotations/addMAannotation.py -i $vcf\_$somatic\_TCGA_MAF_COSMIC_STANDARD.txt -o $vcf\_$somatic\_TCGA_MAF_COSMIC_MA_STANDARD.txt\n";
-print "$PYTHON/python $Bin/maf/maf_annotations/addMAannotation.py -i $vcf\_$somatic\_TCGA_MAF_COSMIC_DETAILED.txt -o $vcf\_$somatic\_TCGA_MAF_COSMIC_MA_DETAILED.txt -d\n\n";
-`$PYTHON/python $Bin/maf/maf_annotations/addMAannotation.py -i $vcf\_$somatic\_TCGA_MAF_COSMIC_STANDARD.txt -o $vcf\_$somatic\_TCGA_MAF_COSMIC_MA_STANDARD.txt`;
-`$PYTHON/python $Bin/maf/maf_annotations/addMAannotation.py -i $vcf\_$somatic\_TCGA_MAF_COSMIC_DETAILED.txt -o $vcf\_$somatic\_TCGA_MAF_COSMIC_MA_DETAILED.txt -d`;
+print "$PYTHON/python $Bin/maf/maf_annotations/addMAannotation.py -i $vcf\_$somatic\_VEP_COSMIC_MAF_STANDARD.txt -o $vcf\_$somatic\_VEP_COSMIC_MA_MAF_STANDARD.txt\n";
+print "$PYTHON/python $Bin/maf/maf_annotations/addMAannotation.py -i $vcf\_$somatic\_VEP_COSMIC_MAF_DETAILED.txt -o $vcf\_$somatic\_VEP_COSMIC_MA_MAF_DETAILED.txt -d\n\n";
+`$PYTHON/python $Bin/maf/maf_annotations/addMAannotation.py -i $vcf\_$somatic\_VEP_COSMIC_MAF_STANDARD.txt -o $vcf\_$somatic\_VEP_COSMIC_MA_MAF_STANDARD.txt`;
+`$PYTHON/python $Bin/maf/maf_annotations/addMAannotation.py -i $vcf\_$somatic\_VEP_COSMIC_MAF_DETAILED.txt -o $vcf\_$somatic\_VEP_COSMIC_MA_MAF_DETAILED.txt -d`;
 
 if($patient && $bam_dir){
     #if($pairing){
@@ -251,19 +309,20 @@ if($patient && $bam_dir){
 
         my $bam_inputs = join(" ", @bamList);
 
-        print "$Bin/maf/fillout/GetBaseCountsMutliSample/GetBaseCountsMultiSample --fasta $HG19_FASTA $bam_inputs --output $vcf\_$somatic\_TCGA_basecounts.txt --maf $vcf\_$somatic\_TCGA_MAF.txt --filter_improper_pair 0\n\n";
-        `$Bin/maf/fillout/GetBaseCountsMutliSample/GetBaseCountsMultiSample --fasta $HG19_FASTA $bam_inputs --output $vcf\_$somatic\_TCGA_basecounts.txt --maf $vcf\_$somatic\_TCGA_MAF.txt --filter_improper_pair 0`;
+        print "$Bin/maf/fillout/GetBaseCountsMutliSample/GetBaseCountsMultiSample --fasta $REF_FASTA $bam_inputs --output $vcf\_$somatic\_TCGA_basecounts.txt --maf $vcf\_$somatic\_TCGA_PORTAL_MAF.txt --filter_improper_pair 0\n\n";
+        `$Bin/maf/fillout/GetBaseCountsMutliSample/GetBaseCountsMultiSample --fasta $REF_FASTA $bam_inputs --output $vcf\_$somatic\_TCGA_basecounts.txt --maf $vcf\_$somatic\_TCGA_PORTAL_MAF.txt --filter_improper_pair 0`;
 
     if($pairing){
-        print "$PYTHON/python $Bin/maf/fillout/dmp2portalMAF -m $vcf\_$somatic\_TCGA_MAF.txt -p $pairing -P $patient -c $caller -b $vcf\_$somatic\_TCGA_basecounts.txt -o $vcf\_$somatic\_TCGA_MAF_fillout.txt\n";    
-        `$PYTHON/python $Bin/maf/fillout/dmp2portalMAF -m $vcf\_$somatic\_TCGA_MAF.txt -p $pairing -P $patient -c $caller -b $vcf\_$somatic\_TCGA_basecounts.txt -o $vcf\_$somatic\_TCGA_MAF_fillout.txt`;
+        print "$PYTHON/python $Bin/maf/fillout/dmp2portalMAF -m $vcf\_$somatic\_TCGA_PORTAL_MAF.txt -p $pairing -P $patient -c $caller -b $vcf\_$somatic\_TCGA_basecounts.txt -o $vcf\_$somatic\_TCGA_PORTAL_MAF_fillout.txt\n";    
+        `$PYTHON/python $Bin/maf/fillout/dmp2portalMAF -m $vcf\_$somatic\_TCGA_MAF.txt -p $pairing -P $patient -c $caller -b $vcf\_$somatic\_TCGA_basecounts.txt -o $vcf\_$somatic\_TCGA_PORTAL_MAF_fillout.txt`;
     } else {
-        print "$PYTHON/python $Bin/maf/fillout/dmp2portalMAF -m $vcf\_$somatic\_TCGA_MAF.txt -P $patient -c $caller -b $vcf\_$somatic\_TCGA_basecounts.txt -o $vcf\_$somatic\_TCGA_MAF_fillout.txt\n";
-        `$PYTHON/python $Bin/maf/fillout/dmp2portalMAF -m $vcf\_$somatic\_TCGA_MAF.txt -P $patient -c $caller -b $vcf\_$somatic\_TCGA_basecounts.txt -o $vcf\_$somatic\_TCGA_MAF_fillout.txt`;
+        print "$PYTHON/python $Bin/maf/fillout/dmp2portalMAF -m $vcf\_$somatic\_TCGA_PORTAL_MAF.txt -P $patient -c $caller -b $vcf\_$somatic\_TCGA_basecounts.txt -o $vcf\_$somatic\_TCGA_PORTAL_MAF_fillout.txt\n";
+        `$PYTHON/python $Bin/maf/fillout/dmp2portalMAF -m $vcf\_$somatic\_TCGA_MAF.txt -P $patient -c $caller -b $vcf\_$somatic\_TCGA_basecounts.txt -o $vcf\_$somatic\_TCGA_PORTAL_MAF_fillout.txt`;
     }
 }
 
 
 if($delete_temp){
-    `/bin/rm $vcf\_PAIRED.maf $vcf\_$somatic\_maf0.log $vcf\_UNPAIRED.maf $vcf\_$somatic\_UNFILTERED.txt $vcf\_$somatic\_maf2.txt $vcf\_$somatic\_maf3.txt $vcf\_$somatic\_MAF3_HUGO.log $vcf\_$somatic\_maf3.txt_ambiguous $vcf\_$somatic\_maf3.txt_hugo_modified $vcf\_$somatic\_TCGA_MAF_COSMIC_STANDARD.txt $vcf\_$somatic\_TCGA_MAF_COSMIC_DETAILED.txt $vcf\_$somatic\_UNFILTERED.txt $vcf\_$somatic\_rescued.txt $vcf\_$somatic\_maf0_rescue.log`;
+    `/bin/rm $vcf\_PAIRED.maf $vcf\_$somatic\_maf0.log $vcf\_UNPAIRED.maf $vcf\_$somatic\_UNFILTERED.txt $vcf\_$somatic\_maf2.txt $vcf\_$somatic\_maf3.txt $vcf\_$somatic\_MAF3_HUGO.log $vcf\_$somatic\_maf3.txt_ambiguous $vcf\_$somatic\_maf3.txt_hugo_modified $vcf\_$somatic\_VEP_COSMIC_MAF_STANDARD.txt $vcf\_$somatic\_VEP_COSMIC_MAF_DETAILED.txt $vcf\_$somatic\_UNFILTERED.txt $vcf\_$somatic\_rescued.txt $vcf\_$somatic\_maf0_rescue.log`;
+    `/bin/rm -r $output/tmp_$somatic $output/ref_$somatic`;
 }
