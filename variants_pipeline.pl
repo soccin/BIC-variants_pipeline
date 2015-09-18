@@ -700,7 +700,7 @@ sub processInputs {
     }
     
     if(!-e $targets_ilist || !-e $baits_ilist || !-e $targets_bed_padded){
-	die "./$targets OR $Bin/targets/$targets MUST CONTAIN THE FOLLOWING FILES: $targets\_targets.ilist; $targets\_baits.ilist; $targets\_targets_plus5bp.bed $!";	
+	die "directory $targets OR $Bin/targets/$targets MUST CONTAIN THE FOLLOWING FILES: $targets\_targets.ilist; $targets\_baits.ilist; $targets\_targets_plus5bp.bed $!";	
     }
 }
 
