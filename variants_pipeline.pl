@@ -103,7 +103,7 @@ if(!$map || !$species || !$config || !$scheduler || !$targets || $help){
 	* MAP: file listing sample information for processing (REQUIRED)
 	* GROUP: file listing grouping of samples for realign/recal steps (REQUIRED, unless using -mdOnly flag)
 	* SPECIES: only hg19 (default: human), mm9, mm10 (default: mouse), hybrid (hg19+mm10), mm10_custom and dm3 currently supported (REQUIRED)
-	* TARGETS: name of targets assay; will search for targets/baits ilists and targets padded file in $Bin/targets/TARGETS (REQUIRED)
+	* TARGETS: name of targets assay; will search for targets/baits ilists and targets padded file in $Bin/targets/TARGETS unless given full path to targets directory (REQUIRED)
 	* CONFIG: file listing paths to programs needed for pipeline; full path to config file needed (REQUIRED)
 	* SCHEDULER: currently support for SGE and LSF (REQUIRED)
 	* PAIR: file listing tumor/normal pairing of samples for mutect/maf conversion; if not specified, considered unpaired
@@ -139,6 +139,15 @@ my $DM3_FASTA = '';
 my $targets_ilist = "$Bin/targets/$targets/$targets\_targets.ilist";
 my $baits_ilist = "$Bin/targets/$targets/$targets\_baits.ilist";
 my $targets_bed_padded = "$Bin/targets/$targets/$targets\_targets_plus5bp.bed";
+my $assay = $targets;
+if(-d $targets){
+    my @path = split(/\//, $targets);
+    $assay = pop @path;
+
+    $targets_ilist = "$targets/$assay\_targets.ilist";
+    $baits_ilist = "$targets/$assay\_baits.ilist";
+    $targets_bed_padded = "$targets/$assay\_targets_plus5bp.bed";
+}
 
 my %grouping = ();
 my %grouping_samples = ();
@@ -691,7 +700,7 @@ sub processInputs {
     }
     
     if(!-e $targets_ilist || !-e $baits_ilist || !-e $targets_bed_padded){
-	die "$Bin/targets/$targets MUST CONTAIN THE FOLLOWING FILES: $targets\_targets.ilist; $targets\_baits.ilist; $targets\_targets_plus5bp.bed $!";	
+	die "./$targets OR $Bin/targets/$targets MUST CONTAIN THE FOLLOWING FILES: $targets\_targets.ilist; $targets\_baits.ilist; $targets\_targets_plus5bp.bed $!";	
     }
 }
 
@@ -924,7 +933,7 @@ sub processBams {
 	if(!-e "$output/progress/$pre\_$uID\_HS_$samp\.done" || $ran_solexa{$samp} || $ran_samp_merge){
 	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_HS_METRICS\_$samp", job_hold => "$rmj,$smsj,$lmsj", cpu => "1", mem => "10", cluster_out => "$output/progress/$pre\_$uID\_HS_$samp\.log");
 	    my $standardParams = Schedule::queuing(%stdParams);
-	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Djava.io.tmpdir=/scratch/$uID -jar $PICARD/picard.jar CalculateHsMetrics INPUT=$bamForStats OUTPUT=$output/intFiles/$pre\_HsMetrics_$samp\.txt REFERENCE_SEQUENCE=$REF_SEQ METRIC_ACCUMULATION_LEVEL=null METRIC_ACCUMULATION_LEVEL=SAMPLE BAIT_INTERVALS=$baits_ilist BAIT_SET_NAME=$targets TARGET_INTERVALS=$targets_ilist VALIDATION_STRINGENCY=LENIENT`;
+	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Djava.io.tmpdir=/scratch/$uID -jar $PICARD/picard.jar CalculateHsMetrics INPUT=$bamForStats OUTPUT=$output/intFiles/$pre\_HsMetrics_$samp\.txt REFERENCE_SEQUENCE=$REF_SEQ METRIC_ACCUMULATION_LEVEL=null METRIC_ACCUMULATION_LEVEL=SAMPLE BAIT_INTERVALS=$baits_ilist BAIT_SET_NAME=$assay TARGET_INTERVALS=$targets_ilist VALIDATION_STRINGENCY=LENIENT`;
 	    `/bin/touch $output/progress/$pre\_$uID\_HS_$samp\.done`;
 	    push @hs_jids, "$pre\_$uID\_HS_METRICS\_$samp";
 	    $ran_hs = 1;
@@ -1048,10 +1057,11 @@ sub mergeStats {
 	push @qcpdf_jids, "$pre\_$uID\_MERGE_CAS";
     }
 
-    if(!-e "$output/progress/$pre\_$uID\_QCPDF.done" || $ran_merge){
-	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_QCPDF", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_QCPDF.log");
+    my $qcpdfj = join(",", @qcpdf_jids);
+   if(!-e "$output/progress/$pre\_$uID\_QCPDF.done" || $ran_merge){
+	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_QCPDF", job_hold => "$qcpdfj", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_QCPDF.log");
 	my $standardParams = Schedule::queuing(%stdParams);
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/qc/qcPDF.pl -path $output/metrics -pre $pre -config $config`;
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/qc/qcPDF.pl -path $output/metrics -pre $pre -config $config`;
 	`/bin/touch $output/progress/$pre\_$uID\_QCPDF.done`;
     }
 }

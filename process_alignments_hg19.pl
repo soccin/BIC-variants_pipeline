@@ -39,7 +39,7 @@ if(!$group || !$config || !$scheduler || !$targets || !$bamgroup || $help){
 	* GROUP: file listing grouping of samples for realign/recal steps (REQUIRED)
 	* BAMGROUP: files listing bams to be processed together; every bam for each group on 1 line, comma-separated (required)
 	* SPECIES: only hg19 (default), hybrid (hg19_mm10)
-	* TARGETS: name of targets assay; will search for targets/baits ilists and targets padded file in $Bin/targets/TARGETS (REQUIRED)
+	* TARGETS: name of targets assay; will search for targets/baits ilists and targets padded file in $Bin/targets/TARGETS unless given full path to targets directory (REQUIRED)
 	* CONFIG: file listing paths to programs needed for pipeline; full path to config file needed (REQUIRED)
 	* SCHEDULER: currently support for SGE and LSF (REQUIRED)
 	* PAIR: file listing tumor/normal pairing of samples for mutect/maf conversion; if not specified, considered unpaired
@@ -240,6 +240,12 @@ while(<BGR>){
 close BGR;
 
 my $targets_bed_padded = "$Bin/targets/$targets/$targets\_targets_plus5bp.bed";
+if(-d $targets){
+    my @path = split(/\//, $targets);
+    my $assay = pop @path;
+    $targets_bed_padded = "$targets/$assay\_targets_plus5bp.bed";
+}
+
 if(!-e "$targets_bed_padded"){
     die "CAN'T LOCATE $targets_bed_padded FOR $targets; REQUIRED FOR SCALPEL $!";
 }
