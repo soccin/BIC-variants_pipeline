@@ -195,9 +195,9 @@ while(<CONFIG>){
 	$HG19_MM10_HYBRID_FASTA = $conf[1];
     }
     elsif($conf[0] =~ /hg19_bwa_index/i){
-	if(!-e "$conf[1]"){
+	if(!-e "$conf[1]\.bwt" || !-e "$conf[1]\.pac" || !-e "$conf[1]\.ann" || !-e "$conf[1]\.amb" || !-e "$conf[1]\.sa"){
 	    if($species =~ /^hg19$/i){
-		die "CAN'T FIND hg19 bwa index with prefix $conf[1] $!";
+		die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR HG19 WITH PREFIX $conf[1] $!";
 	    }
 	}
 	$HG19_BWA_INDEX = $conf[1];

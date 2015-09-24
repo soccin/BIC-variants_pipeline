@@ -8,18 +8,16 @@ use lib "$Bin/lib";
 use Schedule;
 use Cluster;
 
-my ($pair, $group, $bamgroup, $config, $nosnps, $targets, $ug, $scheduler, $priority_project, $priority_group, $abra, $help, $step1);
+my ($pair, $group, $bamgroup, $config, $nosnps, $targets, $ug, $scheduler, $priority_project, $priority_group, $abra, $help, $step1, $DB_SNP);
 
 my $pre = 'TEMP';
 my $output = "results";
-my $species = 'mm10';
 
 GetOptions ('pre=s' => \$pre,
 	    'pair=s' => \$pair,
 	    'group=s' => \$group,
 	    'config=s' => \$config,
 	    'targets=s' => \$targets,
-	    'species=s' => \$species,
 	    'nosnps' => \$nosnps,
 	    'step1' => \$step1,
 	    'ug|unifiedgenotyper' => \$ug,
@@ -28,6 +26,7 @@ GetOptions ('pre=s' => \$pre,
  	    'scheduler=s' => \$scheduler,
  	    'priority_project=s' => \$priority_project,
  	    'priority_group=s' => \$priority_group,
+ 	    'db_snp|dbsnp=s' => \$DB_SNP,
 	    'help' => \$help,
  	    'output|out|o=s' => \$output) or exit(1);
 
@@ -41,9 +40,9 @@ if(!$group || !$config || !$scheduler || !$targets || !$bamgroup || $help){
 	* TARGETS: name of targets assay; will search for targets/baits ilists and targets padded file in $Bin/targets/TARGETS unless given full path to targets directory (REQUIRED)
 	* CONFIG: file listing paths to programs needed for pipeline; full path to config file needed (REQUIRED)
 	* SCHEDULER: currently support for SGE and LSF (REQUIRED)
+	* DB_SNP: VCF file containing known sites of genetic variation (REQUIRED; either here or in config)
 	* PAIR: file listing tumor/normal pairing of samples for mutect/maf conversion; if not specified, considered unpaired
 	* PRE: output prefix (default: TEMP)
-	* SPECIES: mm10 (default), mm10_custom, and mm9
 	* OUTPUT: output results directory (default: results)
 	* PRIORITY_PROJECT: sge notion of priority assigned to projects (default: ngs)
 	* PRIORITY_GROUP: lsf notion of priority assigned to groups (default: Pipeline)
@@ -62,7 +61,6 @@ if($pre =~ /^\d+/){
     $pre = "s_$pre";
 }
 
-my $SNPEFF = '';
 my $ABRA = '';
 my $GATK = '';
 my $PICARD = '';
@@ -76,13 +74,9 @@ my $VIRMID = '';
 my $JAVA = '';
 my $PYTHON = '';
 my $PERL = '';
-my $MM9_FASTA = '';
-my $MM9_BWA_INDEX = '';
-my $MM10_FASTA = '';
-my $MM10_BWA_INDEX = '';
-my $MM10_CUSTOM_FASTA = '';
-my $MM10_CUSTOM_BWA_INDEX = '';
-my $REF_SEQ = '';
+
+my $REF_SEQ = "";
+my $BWA_INDEX = "";
 
 my $curDir = `pwd`;
 chomp $curDir;
@@ -169,83 +163,39 @@ while(<CONFIG>){
 	}
 	$PYTHON = $conf[1];
     }
-     elsif($conf[0] =~ /^r$/i){
+    elsif($conf[0] =~ /^r$/i){
 	if(!-e "$conf[1]/R"){
 	    die "CAN'T FIND R IN $conf[1] $!";
 	}
 	my $path_tmp = $ENV{'PATH'};
 	$ENV{'PATH'} = "$conf[1]:$path_tmp";
     }
-   elsif($conf[0] =~ /mm9_fasta/i){
+    elsif($conf[0] =~ /species_custom_fasta/i){
 	if(!-e "$conf[1]"){
-	    if($species =~ /mm9/i){
-		die "CAN'T FIND $conf[1] $!";
-	    }
+	    die "CAN'T FIND $conf[1] $!";
 	}
-	$MM9_FASTA = $conf[1];
+	$REF_SEQ = $conf[1];
     }
-    elsif($conf[0] =~ /mm9_bwa_index/i){
+    elsif($conf[0] =~ /species_custom_bwa_index/i){
 	if(!-e "$conf[1]\.bwt" || !-e "$conf[1]\.pac" || !-e "$conf[1]\.ann" || !-e "$conf[1]\.amb" || !-e "$conf[1]\.sa"){
-	    if($species =~ /mm9/i){
-		die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR MM9 WITH PREFIX $conf[1] $!";
-	    }
+	    die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR SPECIES CUSTOM WITH PREFIX $conf[1] $!";
 	}
-	$MM9_BWA_INDEX = $conf[1];
+	$BWA_INDEX = $conf[1];
     }
-    elsif($conf[0] =~ /mm10_fasta/i){
+    elsif($conf[0] =~ /species_custom_db_snp/i){
 	if(!-e "$conf[1]"){
-	    if($species =~ /^mm10$/i){
-		die "CAN'T FIND $conf[1] $!";
-	    }
+	    die "CAN'T FIND $conf[1] $!";
 	}
-	$MM10_FASTA = $conf[1];
-    }
-    elsif($conf[0] =~ /mm10_bwa_index/i){
-	if(!-e "$conf[1]\.bwt" || !-e "$conf[1]\.pac" || !-e "$conf[1]\.ann" || !-e "$conf[1]\.amb" || !-e "$conf[1]\.sa"){
-	    if($species =~ /^mm10$/i){
-		die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR MM10 WITH PREFIX $conf[1] $!";
-	    }
+	
+	if($DB_SNP && ($DB_SNP ne $conf[1])){
+	    die "INPUT PARAM FOR DB_SNP $DB_SNP IS NOT THE SAME AS THAT IN THE CONFIG FILE $conf[1] $!";
 	}
-	$MM10_BWA_INDEX = $conf[1];
-    }
-    elsif($conf[0] =~ /mm10_custom_fasta/i){
-	if(!-e "$conf[1]"){
-	    if($species =~ /mm10_custom/i){
-		die "CAN'T FIND $conf[1] $!";
-	    }
-	}
-	$MM10_CUSTOM_FASTA = $conf[1];
-    }
-    elsif($conf[0] =~ /mm10_bwa_index/i){
-	if(!-e "$conf[1]\.bwt" || !-e "$conf[1]\.pac" || !-e "$conf[1]\.ann" || !-e "$conf[1]\.amb" || !-e "$conf[1]\.sa"){
-	    if($species =~ /mm10_custom/i){
-		die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR MM10_CUSTOM WITH PREFIX $conf[1] $!";
-	    }
-	}
-	$MM10_CUSTOM_BWA_INDEX = $conf[1];
-    }
-    elsif($conf[0] =~ /snpeff/i){
-	$SNPEFF = $conf[1];
+	$DB_SNP = $conf[1];
     }
 }
 close CONFIG;
 
-my $REF_SEQ = "$MM10_FASTA";
-my $BWA_INDEX = "$MM10_BWA_INDEX";
-my $SNPEFF_DB = 'GRCm38.79';
-my $DB_SNP = "$Bin/data/mouse_MM10_dbSNP_NCBI_20150625.vcf";
 
-if($species =~ /mm10_custom/i){
-    $REF_SEQ = "$MM10_CUSTOM_FASTA";
-    $BWA_INDEX = "$MM10_CUSTOM_BWA_INDEX";
-}
-elsif($species =~ /mm9/i){
-    $REF_SEQ = "$MM9_FASTA";
-    $BWA_INDEX = "$MM9_BWA_INDEX";
-    ### NO SNPEFF v4 mm9 support ###
-    $SNPEFF_DB = '';
-    $DB_SNP = "$Bin/data/UCSC_dbSNP128_MM9.bed";
-}
 
 ### make sure all markdup bam files are there before proceeding
 open(BGR, "$bamgroup") || die "CAN'T OPEN GROUPING FILE OF MARKDUP BAMS $bamgroup $!";
@@ -485,7 +435,7 @@ if($ug){
 	sleep(3);
 	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_UG_SNP", job_hold => "$prgj", cpu => "12", mem => "48", cluster_out => "$output/progress/$pre\_$uID\_UG_SNP.log");
 	my $standardParams = Schedule::queuing(%stdParams);
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx24g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T UnifiedGenotyper -R $REF_SEQ --reference_sample_name $species $multipleTargets --dbsnp $DB_SNP --downsampling_type NONE --annotateNDA --annotation AlleleBalance --annotation AlleleBalanceBySample --annotation HardyWeinberg --genotype_likelihoods_model SNP --read_filter BadCigar --num_cpu_threads_per_data_thread 12 --out $output/intFiles/$pre\_UnifiedGenotyper_SNP.vcf $irBams2`;
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx24g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T UnifiedGenotyper -R $REF_SEQ --reference_sample_name SPECIES_CUSTOM $multipleTargets --dbsnp $DB_SNP --downsampling_type NONE --annotateNDA --annotation AlleleBalance --annotation AlleleBalanceBySample --annotation HardyWeinberg --genotype_likelihoods_model SNP --read_filter BadCigar --num_cpu_threads_per_data_thread 12 --out $output/intFiles/$pre\_UnifiedGenotyper_SNP.vcf $irBams2`;
 	`/bin/touch $output/progress/$pre\_$uID\_UG_SNP.done`;
 	$ugsj = "$pre\_$uID\_UG_SNP";
 	$ran_ug_snp = 1;
@@ -495,7 +445,7 @@ if($ug){
 	sleep(3);
 	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_UG_INDEL", job_hold => "$prgj", cpu => "12", mem => "48", cluster_out => "$output/progress/$pre\_$uID\_UG_INDEL.log");
 	my $standardParams = Schedule::queuing(%stdParams);
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx24g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T UnifiedGenotyper -R $REF_SEQ --reference_sample_name $species $multipleTargets --downsampling_type NONE --annotateNDA --annotation AlleleBalance --annotation AlleleBalanceBySample --annotation HardyWeinberg --genotype_likelihoods_model INDEL --read_filter BadCigar --num_cpu_threads_per_data_thread 12 --out $output/intFiles/$pre\_UnifiedGenotyper_INDEL.vcf $irBams2`;
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx24g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T UnifiedGenotyper -R $REF_SEQ --reference_sample_name SPECIES_CUSTOM $multipleTargets --downsampling_type NONE --annotateNDA --annotation AlleleBalance --annotation AlleleBalanceBySample --annotation HardyWeinberg --genotype_likelihoods_model INDEL --read_filter BadCigar --num_cpu_threads_per_data_thread 12 --out $output/intFiles/$pre\_UnifiedGenotyper_INDEL.vcf $irBams2`;
 	`/bin/touch $output/progress/$pre\_$uID\_UG_INDEL.done`;
 	$ugij = "$pre\_$uID\_UG_INDEL";
 	$ran_ug_indel = 1;
@@ -506,7 +456,7 @@ if(!-e "$output/progress/$pre\_$uID\_HC.done" || $ran_pr_glob){
     sleep(3);
     my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_HC", job_hold => "$prgj", cpu => "24", mem => "90", cluster_out => "$output/progress/$pre\_$uID\_HC.log");
     my $standardParams = Schedule::queuing(%stdParams);
-    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx90g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T HaplotypeCaller -R $REF_SEQ $multipleTargets --dbsnp $DB_SNP --downsampling_type NONE --annotation AlleleBalanceBySample --annotation ClippingRankSumTest --read_filter BadCigar --num_cpu_threads_per_data_thread 24 --out $output/variants/haplotypecaller/$pre\_HaplotypeCaller_RAW.vcf $irBams2`;
+    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx90g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T HaplotypeCaller -R $REF_SEQ $multipleTargets --dbsnp $DB_SNP --downsampling_type NONE --annotation AlleleBalanceBySample --annotation ClippingRankSumTest --read_filter BadCigar --num_cpu_threads_per_data_thread 24 --out $output/variants/haplotypecaller/$pre\_HaplotypeCaller.vcf $irBams2`;
     `/bin/touch $output/progress/$pre\_$uID\_HC.done`;
     $hcj = "$pre\_$uID\_HC";
     $ran_hc = 1;
@@ -558,39 +508,15 @@ if($ug){
 	my $vfugj = join(",", @vfug_jids);
 	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_CV_UG_SI", job_hold => "$vfugj", cpu => "1", mem => "2", cluster_out => "$output/progress/$pre\_$uID\_CV_UG_SI.log");
 	my $standardParams = Schedule::queuing(%stdParams);
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx2g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T CombineVariants -R $REF_SEQ -o $output/variants/unifiedgenotyper/$pre\_UnifiedGenotyper_vf.vcf --assumeIdenticalSamples --variant $output/progress/$pre\_UnifiedGenotyper_SNP_vf.vcf --variant $output/progress/$pre\_UnifiedGenotyper_INDEL_vf.vcf`;
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx2g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T CombineVariants -R $REF_SEQ -o $output/variants/unifiedgenotyper/$pre\_UnifiedGenotyper.vcf --assumeIdenticalSamples --variant $output/progress/$pre\_UnifiedGenotyper_SNP_vf.vcf --variant $output/progress/$pre\_UnifiedGenotyper_INDEL_vf.vcf`;
 	`/bin/touch $output/progress/$pre\_$uID\_CV_UG_SI.done`;
         $cvugsij = "$pre\_$uID\_CV_UG_SI";
 	$ran_cv_ug_si = 1;
     }
-
-    my $ran_snpeff_ug = 0;
-    my $seugj = '';
-    if(!-e "$output/progress/$pre\_$uID\_SNPEFF_UG.done" || $ran_cv_ug_si){
-	sleep(3);
-	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_SNPEFF_UG", job_hold => "$cvugsij", cpu => "1", mem => "8", cluster_out => "$output/progress/$pre\_$uID\_CV_UG_SI.log");
-	my $standardParams = Schedule::queuing(%stdParams);
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx2g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $SNPEFF/snpEff.jar eff -c $SNPEFF/snpEff.config -v -i vcf -o gatk -no-downstream -no-intergenic -no-intron -no-upstream -no-utr GRCm37.67 $output/progress/$pre\_UnifiedGenotyper_vf.vcf ">$output/progress/$pre\_UnifiedGenotyper_vf_snpEff_output.vcf"`;
-	`/bin/touch $output/progress/$pre\_$uID\_SNPEFF_UG.done`;
-	$seugj = "$pre\_$uID\_SNPEFF_UG";
-	$ran_snpeff_ug = 1;
-    }
-
-    my $ran_va_ug = 0;
-    my $vaugj = '';
-    if(!-e "$output/progress/$pre\_$uID\_VA_UG.done" || $ran_snpeff_ug){
-	sleep(3);
-	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_VA_UG", job_hold => "$cvugsij", cpu => "1", mem => "2", cluster_out => "$output/progress/$pre\_$uID\_CV_UG_SI.log");
-	my $standardParams = Schedule::queuing(%stdParams);
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx2g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T VariantAnnotator -R $REF_SEQ -A SnpEff --variant  $output/progress/$pre\_UnifiedGenotyper_vf.vcf--snpEffFile $output/progress/$pre\_UnifiedGenotyper_vf_snpEff_output.vcf -o $output/variants/unifiedgenotyper/$pre\_UnifiedGenotyper.vcf`;
-	`/bin/touch $output/progress/$pre\_$uID\_VA_UG.done`;
-	$vaugj = "$pre\_$uID\_VA_UG";
-	$ran_va_ug = 1;
-    }
         
-    if(!-e "$output/progress/$pre\_$uID\_MAF_UG.done" || $ran_va_ug){  
+    if(!-e "$output/progress/$pre\_$uID\_MAF_UG.done" || $ran_cv_ug_si){  
 	sleep(3);
-	&generateMaf("$pre\_UnifiedGenotyper.vcf", 'unifiedgenotyper', "$vaugj");
+	&generateMaf("$pre\_UnifiedGenotyper.vcf", 'unifiedgenotyper', "$cvugsij");
  	`/bin/touch $output/progress/$pre\_$uID\_MAF_UG.done`;
     }
 }

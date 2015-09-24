@@ -29,5 +29,8 @@ MM10_BWA_INDEX	/ifs/depot/assemblies/M.musculus/mm10/index/bwa/0.7.8/mm10.fasta
 MM10_FASTA	/ifs/depot/assemblies/M.musculus/mm10/mm10.fasta
 MM10_CUSTOM_BWA_INDEX
 MM10_CUSTOM_FASTA
+SPECIES_CUSTOM_BWA_INDEX
+SPECIES_CUSTOM_FASTA
+SPECIES_CUSTOM_DB_SNP
 DM3_BWA_INDEX
 DM3_FASTA

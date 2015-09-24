@@ -65,7 +65,7 @@ use Cluster;
 ### NOTE: DO NOT SUBMIT THIS WRAPPER SCRIPT TO THE CLUSTER BECAUSE ONCOTATOR STEP WILL FAIL
 ###       DUE TO NODES NOT HAVING NETWORK ACCESS
 
-my ($map, $group, $pair, $patient, $config, $help, $nosnps, $removedups, $species, $ug, $scheduler, $abra, $targets, $mdOnly, $noMD);
+my ($map, $group, $pair, $patient, $config, $help, $nosnps, $removedups, $species, $ug, $scheduler, $abra, $targets, $mdOnly, $noMD, $DB_SNP);
 
 my $pre = 'TEMP';
 my $output = "results";
@@ -94,6 +94,7 @@ GetOptions ('map=s' => \$map,
  	    'priority_group=s' => \$priority_group,
 	    'r1adaptor=s' => \$r1adaptor,
 	    'r2adaptor=s' => \$r2adaptor,
+ 	    'db_snp|dbsnp=s' => \$DB_SNP,
 	    'species=s' => \$species) or exit(1);
 
 if(!$map || !$species || !$config || !$scheduler || !$targets || $help){
@@ -102,7 +103,7 @@ if(!$map || !$species || !$config || !$scheduler || !$targets || $help){
     USAGE: variants_pipeline.pl -config CONFIG -species SPECIES -scheduler SCHEDULER -targets TARGETS
 	* MAP: file listing sample information for processing (REQUIRED)
 	* GROUP: file listing grouping of samples for realign/recal steps (REQUIRED, unless using -mdOnly flag)
-	* SPECIES: only hg19 (default: human), mm9, mm10 (default: mouse), hybrid (hg19+mm10), mm10_custom and dm3 currently supported (REQUIRED)
+	* SPECIES: only hg19 (default: human), mm9, mm10 (default: mouse), hybrid (hg19+mm10), mm10_custom, species_custom and dm3 currently supported (REQUIRED)
 	* TARGETS: name of targets assay; will search for targets/baits ilists and targets padded file in $Bin/targets/TARGETS unless given full path to targets directory (REQUIRED)
 	* CONFIG: file listing paths to programs needed for pipeline; full path to config file needed (REQUIRED)
 	* SCHEDULER: currently support for SGE and LSF (REQUIRED)
@@ -119,6 +120,7 @@ if(!$map || !$species || !$config || !$scheduler || !$targets || $help){
 	* -noMD: will not run MarkDups
 	* R1ADAPTOR to specify R1 adaptor sequence (default: AGATCGGAAGAGCACACGTCT)
 	* R2ADAPTOR to specify R1 adaptor sequence (default: AGATCGGAAGAGCGTCGTGTA)
+	* DB_SNP: VCF file containing known sites of genetic variation (REQUIRED for species_custom; either here or in config)
 	* haplotypecaller is default; -ug || -unifiedgenotyper to also make unifiedgenotyper variant calls	
 HELP
 exit;
@@ -127,13 +129,14 @@ exit;
 my $commandLine = reconstructCL();
 
 my $REF_SEQ = '';
-my $DB_SNP = '';
 
 my $HG19_FASTA = '';
 my $HG19_MM10_HYBRID_FASTA = '';
 my $MM9_FASTA = '';
 my $MM10_FASTA = '';
 my $MM10_CUSTOM_FASTA = '';
+my $SPECIES_CUSTOM_FASTA = '';
+my $SPECIES_CUSTOM_DB_SNP = '';
 my $DM3_FASTA = '';
 
 my $targets_ilist = "$Bin/targets/$targets/$targets\_targets.ilist";
@@ -306,6 +309,10 @@ sub reconstructCL {
 
     if($r2adaptor){
 	$rCL .= " -r2adaptor $r2adaptor";
+    }
+
+    if($DB_SNP){
+	$rCL .= " -db_snp $DB_SNP";
     }
 
     my $numArgs = $#ARGV + 1;
@@ -502,9 +509,34 @@ sub verifyConfig{
 	elsif($conf[0] =~ /mm10_custom_bwa_index/i){
 	    if(!-e "$conf[1]\.bwt" || !-e "$conf[1]\.pac" || !-e "$conf[1]\.ann" || !-e "$conf[1]\.amb" || !-e "$conf[1]\.sa"){
 		if($species =~ /mm10_custom/i){
-		    die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR MM10 WITH PREFIX $conf[1] $!";
+		    die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR MM10_CUSTOM WITH PREFIX $conf[1] $!";
 		}
 	    }
+	}
+	elsif($conf[0] =~ /species_custom_fasta/i){
+	    if(!-e "$conf[1]"){
+		if($species =~ /species_custom/i){
+		    die "CAN'T FIND $conf[1] $!";
+		}
+	    }
+	    $SPECIES_CUSTOM_FASTA = $conf[1];
+	}
+	elsif($conf[0] =~ /species_custom_bwa_index/i){
+	    if(!-e "$conf[1]\.bwt" || !-e "$conf[1]\.pac" || !-e "$conf[1]\.ann" || !-e "$conf[1]\.amb" || !-e "$conf[1]\.sa"){
+		if($species =~ /species_custom/i){
+		    die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR SPECIES_CUSTOM WITH PREFIX $conf[1] $!";
+		}
+	    }
+	}
+	elsif($conf[0] =~ /species_custom_db_snp/i){
+	    if(!-e "$conf[1]"){
+		die "CAN'T FIND $conf[1] $!";
+	    }
+	    
+	    if($DB_SNP && ($DB_SNP ne $conf[1])){
+		die "INPUT PARAM FOR DB_SNP $DB_SNP IS NOT THE SAME AS THAT IN THE CONFIG FILE $conf[1] $!";
+	    }
+	    $SPECIES_CUSTOM_DB_SNP = $conf[1];
 	}
 	elsif($conf[0] =~ /dm3_fasta/i){
 	    if(!-e "$conf[1]"){
@@ -530,8 +562,8 @@ sub processInputs {
 	$pre = "s_$pre";
     }
     
-    if($species !~ /human|hg19|mouse|mm9|mm10|mm10_custom|drosophila|dm3|hybrid/i){
-	die "Species must be human (hg19), mouse (mm9|mm10|mm10_custom) or drosophila (dm3) $!";
+    if($species !~ /human|hg19|mouse|mm9|mm10|mm10_custom|species_custom|drosophila|dm3|hybrid/i){
+	die "Species must be human (hg19), mouse (mm9|mm10|mm10_custom), species_custom or drosophila (dm3) $!";
     }
     
     if($scheduler =~ /lsf/i){
@@ -566,12 +598,26 @@ sub processInputs {
 	$REF_SEQ = "$HG19_MM10_HYBRID_FASTA";
 	$DB_SNP = "$Bin/data/dbsnp_135.hg19__ReTag.vcf";
     }
+    elsif($species =~ /species_custom/i){
+	$species = 'species_custom';
+	$REF_SEQ = "$SPECIES_CUSTOM_FASTA";
+	$DB_SNP = "$SPECIES_CUSTOM_DB_SNP";
+    }
     elsif($species =~ /drosophila|dm3/i){
 	$species = 'dm3';
 	$REF_SEQ = "$DM3_FASTA";
 	$DB_SNP = "";
     }
       
+    if(!-e "$DB_SNP"){
+	die "CAN'T FIND dbSNP file $DB_SNP $!";
+    }
+
+    if(!-e "$REF_SEQ"){
+	die "CAN'T FIND REF SEQ file $REF_SEQ $!";
+    }
+
+
     if($group){
 	open(GROUP, "$group") or die "Can't open grouping file $group $!";
 	while(<GROUP>){
@@ -1140,6 +1186,9 @@ sub callSNPS {
     }
     elsif($species =~ /mm9|^mm10$|mm10_custom/i){
 	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/process_alignments_mouse.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group -species $species $run_abra $run_step1`;
+    }
+    elsif($species =~ /species_custom/i){
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/process_alignments_species_custom.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra $run_step1`;
     }
     elsif($species =~ /dm3/i){
 	###`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/process_alignments_dm3.pl -pre $pre -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra $run_step1`;
