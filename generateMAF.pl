@@ -58,35 +58,39 @@ if($bam_dir){
     }
 }
 
-if($species !~ /hg19/i){
-    die "Only support for hg19";
+if($species !~ /hg19/){ ##    UNCOMMENT LATER   |mm10|mouse/i){
+    print "THIS WILL ONLY PRINT OUT A TCGA MAF, NO ANNOATION\n";
 }
 
 if($caller !~ /unifiedgenotyper|ug|haplotypecaller|hc|mutect|varscan|somaticsniper/i){
     die "Only support for unifiedgenotyper(ug), haplotypecaller(hc), mutect, varscan, and somaticsniper";
 }
 
+my $REF_FASTA = '';
 my $HG19_FASTA = '';
 my $ONCOTATOR = '';
 my $PYTHON = '';
 my $PERL = '';
 my $VEP = '';
+my $MM10_FASTA = '';
 open(CONFIG, "$config") or warn "CAN'T OPEN CONFIG FILE $config SO USING DEFAULT SETTINGS";
 while(<CONFIG>){
     chomp;
 
     my @conf = split(/\s+/, $_);
-    if($conf[0] =~ /oncotator/i){
-	if(!-e "$conf[1]/oncotateMaf.sh"){
-	    die "CAN'T FIND oncotateMaf.sh IN $conf[1] $!";
-	}
-	$ONCOTATOR = $conf[1];
-    }
-    elsif($conf[0] =~ /hg19_fasta/i){
+    if($conf[0] =~ /hg19_fasta/i){
         if(!-e "$conf[1]"){
           die "CAN'T FIND $conf[1] $!";
         }
         $HG19_FASTA = $conf[1];
+    }
+    elsif($conf[0] =~ /mm10_fasta/i){
+        if(!-e "$conf[1]"){
+            if($species =~ /^mm10$/i){
+                die "CAN'T FIND $conf[1] $!";
+            }
+        }
+        $MM10_FASTA = $conf[1];
     }
     elsif($conf[0] =~ /python/i){
 	if(!-e "$conf[1]/python"){
@@ -124,8 +128,22 @@ while(<CONFIG>){
 }
 close CONFIG;
 
+my $NCBI_BUILD = '';
+my $VEP_SPECIES = '';
+if($species =~ /hg19/i){
+    $species = 'hg19';
+    $REF_FASTA = "$HG19_FASTA";
+    $NCBI_BUILD = "GRCh37";
+    $VEP_SPECIES = "homo_sapiens";
+}
+elsif($species =~ /mouse|^mm10$/i){
+    $species = 'mm10';
+    $REF_FASTA = "$MM10_FASTA";
+    $NCBI_BUILD = "GRCm38";
+    $VEP_SPECIES = "mus_musculus";
+}
+
 ## RIGHT NOW ONLY HG19 IS BEING USED IN THIS SCRIPT
-my $REF_FASTA = $HG19_FASTA;
 
 print "converting to MAF and filtering snp calls for coverage/qual\n";
 if($caller =~ /unifiedgenotyper|ug|haplotypecaller|hc/i){
@@ -203,7 +221,10 @@ print "$PYTHON/python $Bin/maf/oldMAF2tcgaMAF.py $species \<$vcf\_$somatic\_maf0
 `$PYTHON/python $Bin/maf/oldMAF2tcgaMAF.py $species $vcf\_$somatic\_maf0.txt $vcf\_$somatic\_maf1.txt`;
 
 
-
+if($species !~ /hg19/i) { ###   |mm10|mouse/i) { uncomment later!
+    print "End of species ambiguous portion of the script.\n";
+    exit 0;
+}
 
 
 #print "adding oncotator annotations... \n";
@@ -237,10 +258,15 @@ symlink("$REF_FASTA.fai", "$output/ref$somatic/$ref_base.fai");
 
 
 ## vep-forks is at 4 because that is how many CPUs we ask for
-print "\n/opt/common/CentOS_6/bin/v1/perl /opt/common/CentOS_6/vcf2maf/v1.5.4/maf2maf.pl --tmp-dir $output/tmp_$somatic --ref-fasta $output/ref_$somatic/$ref_base --vep-forks 4 --vep-path $VEP --vep-data $VEP --retain-cols $VEP_COLUMN_NAMES --input-maf $vcf\_$somatic\_maf1.txt --output-maf $vcf\_$somatic\_maf2_VEP.txt\n\n";
+#print "\n/opt/common/CentOS_6/bin/v1/perl /opt/common/CentOS_6/vcf2maf/v1.6.1/maf2maf.pl --tmp-dir $output/tmp_$somatic --ref-fasta $output/ref_$somatic/$ref_base --vep-forks 4 --species $VEP_SPECIES --vep-path $VEP --vep-data $VEP --retain-cols $VEP_COLUMN_NAMES --input-maf $vcf\_$somatic\_maf1.txt --output-maf $vcf\_$somatic\_maf2_VEP.txt --ncbi-build $NCBI_BUILD \n\n";
 
-`/opt/common/CentOS_6/bin/v1/perl /opt/common/CentOS_6/vcf2maf/v1.5.4/maf2maf.pl --tmp-dir $output/tmp_$somatic --ref-fasta $output/ref_$somatic/$ref_base --vep-forks 4 --vep-path $VEP --vep-data $VEP --retain-cols $VEP_COLUMN_NAMES --input-maf $vcf\_$somatic\_maf1.txt --output-maf $vcf\_$somatic\_maf2_VEP.txt > $vcf\_$somatic\_maf2_VEP.log 2>&1`;
+#`/opt/common/CentOS_6/bin/v1/perl /opt/common/CentOS_6/vcf2maf/v1.6.1/maf2maf.pl --tmp-dir $output/tmp_$somatic --ref-fasta $output/ref_$somatic/$ref_base --vep-forks 4 --vep-path $VEP --species $VEP_SPECIES --vep-data $VEP --retain-cols $VEP_COLUMN_NAMES --input-maf $vcf\_$somatic\_maf1.txt --output-maf $vcf\_$somatic\_maf2_VEP.txt --ncbi-build $NCBI_BUILD > $vcf\_$somatic\_maf2_VEP.log 2>&1`;
+
+print "/opt/common/CentOS_6/bin/v1/perl /opt/common/CentOS_6/vcf2maf/v1.5.4/maf2maf.pl --tmp-dir $output/tmp_$somatic --ref-fasta $output/ref_$somatic/$ref_base --vep-forks 4 --vep-path $VEP --vep-data $VEP --retain-cols $VEP_COLUMN_NAMES --input-maf $vcf\_$somatic\_maf1.txt --output-maf $vcf\_$somatic\_maf2_VEP.txt > $vcf\_$somatic\_maf2_VEP.log 2>&1";
                  
+`/opt/common/CentOS_6/bin/v1/perl /opt/common/CentOS_6/vcf2maf/v1.5.4/maf2maf.pl --tmp-dir $output/tmp_$somatic --ref-fasta $output/ref_$somatic/$ref_base --vep-forks 4 --vep-path $VEP --vep-data $VEP --retain-cols $VEP_COLUMN_NAMES --input-maf $vcf\_$somatic\_maf1.txt --output-maf $vcf\_$somatic\_maf2_VEP.txt > $vcf\_$somatic\_maf2_VEP.log 2>&1`;
+
+
 
 # 
 # #
