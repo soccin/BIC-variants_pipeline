@@ -530,7 +530,9 @@ sub verifyConfig{
 	}
 	elsif($conf[0] =~ /species_custom_db_snp/i){
 	    if(!-e "$conf[1]"){
-		die "CAN'T FIND $conf[1] $!";
+		if($DB_SNP){
+		    die "CAN'T FIND $conf[1] $!";
+		}
 	    }
 	    
 	    if($DB_SNP && ($DB_SNP ne $conf[1])){
