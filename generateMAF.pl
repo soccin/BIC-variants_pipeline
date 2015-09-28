@@ -8,9 +8,6 @@ use File::Basename;
 ### INPUT: vcf file and list of normal/tumor sample pairing information
 ### OUTPUT: 2 maf files; 
 
-### NOTE: CAN'T RUN ON NODE BECAUSE NO NETWORK ACCESS FOR ONCOTATOR
-### NOTE2: DESIGNED TO WORK FOR ONCOTATOR ANNOTATED MAFS
-
 ## CONSTANT FOR VEP
 my $VEP_COLUMN_NAMES = "Center,Verification_Status,Validation_Status,Mutation_Status,Sequencing_Phase,Sequence_Source,Validation_Method,Score,BAM_file,Sequencer,Tumor_Sample_UUID,Match_Norm_Sample_UUID,Caller";
 
@@ -68,7 +65,6 @@ if($caller !~ /unifiedgenotyper|ug|haplotypecaller|hc|mutect|varscan|somaticsnip
 
 my $REF_FASTA = '';
 my $HG19_FASTA = '';
-my $ONCOTATOR = '';
 my $PYTHON = '';
 my $PERL = '';
 my $VEP = '';
@@ -226,16 +222,6 @@ if($species !~ /hg19/i) { ###   |mm10|mouse/i) { uncomment later!
     exit 0;
 }
 
-
-#print "adding oncotator annotations... \n";
-#print "$ONCOTATOR/oncotateMaf.sh $vcf\_$somatic\_maf1.txt $vcf\_$somatic\_maf2.txt\n\n";;
-### Annotate with Oncotator
-### expects db.properties to be in working directory
-### NOTE: ALWAYS DOUBLE CHECK TO MAKE SURE ONCOTATOR WENT THROUGH ENTIRE MAF1 FILE
-###       IT DOESN'T ALWAYS DO SO FOR SOME REASON
-#`/bin/ln -s $ONCOTATOR/db.properties .`;
-#`$ONCOTATOR/oncotateMaf.sh $vcf\_$somatic\_maf1.txt $vcf\_$somatic\_maf2.txt`;
-
 print "\n#######\n#######\nStarting VEP. \n";
 # these are names needed for the "retain-cols" option in VEP
 # my $VEP_COLUMN_NAMES = "Center,Verification_Status,Validation_Status,Mutation_Status,Sequencing_Phase,Sequence_Source,Validation_Method,Score,BAM_file,Sequencer,Tumor_Sample_UUID,Match_Norm_Sample_UUID,Caller";
@@ -265,19 +251,6 @@ symlink("$REF_FASTA.fai", "$output/ref$somatic/$ref_base.fai");
 print "/opt/common/CentOS_6/bin/v1/perl /opt/common/CentOS_6/vcf2maf/v1.5.4/maf2maf.pl --tmp-dir $output/tmp_$somatic --ref-fasta $output/ref_$somatic/$ref_base --vep-forks 4 --vep-path $VEP --vep-data $VEP --retain-cols $VEP_COLUMN_NAMES --input-maf $vcf\_$somatic\_maf1.txt --output-maf $vcf\_$somatic\_maf2_VEP.txt > $vcf\_$somatic\_maf2_VEP.log 2>&1";
                  
 `/opt/common/CentOS_6/bin/v1/perl /opt/common/CentOS_6/vcf2maf/v1.5.4/maf2maf.pl --tmp-dir $output/tmp_$somatic --ref-fasta $output/ref_$somatic/$ref_base --vep-forks 4 --vep-path $VEP --vep-data $VEP --retain-cols $VEP_COLUMN_NAMES --input-maf $vcf\_$somatic\_maf1.txt --output-maf $vcf\_$somatic\_maf2_VEP.txt > $vcf\_$somatic\_maf2_VEP.log 2>&1`;
-
-
-
-# 
-# #
-# # NOTE: This was to help  oncotator results be updated. Since we switched to VEP, this should not be necessary anymore. 
-# #
-#print "updating hugo symbol\n";
-#print "$PERL/perl $Bin/update_gene_names_and_ids.pl $vcf\_$somatic\_maf3.txt\n\n";
-### update hugo_symbol
-### deletes old copy and get fresh copy every time
-#`/bin/rm $Bin/lib/hugo_data.tsv`;
-#`$PERL/perl $Bin/update_gene_names_and_ids.pl $vcf\_$somatic\_maf3.txt > $vcf\_$somatic\_MAF3_HUGO.log 2>&1`;
 
 print "creating TCGA-formatted MAF file... \n";
 #This removes any records that don't have a gene name at the front

@@ -95,7 +95,6 @@ unless( -e $output or make_path($output , { verbose => 1, mode => 0775, } )) {
 }
 umask $orig_umask;
 
-my $ONCOTATOR = '';
 my $PYTHON = '';
 my $PERL = '';
 my $VEP = '';
@@ -106,13 +105,7 @@ while(<CONFIG>){
     chomp;
 
     my @conf = split(/\s+/, $_);
-    if($conf[0] =~ /oncotator/i){
-	if(!-e "$conf[1]/oncotateMaf.sh"){
-	    die "CAN'T FIND oncotateMaf.sh IN $conf[1] $!";
-	}
-	$ONCOTATOR = $conf[1];
-    }
-    elsif($conf[0] =~ /python/i){
+    if($conf[0] =~ /python/i){
 	if(!-e "$conf[1]/python"){
 	    die "CAN'T FIND python IN $conf[1] $!";
 	}
@@ -261,12 +254,6 @@ for my $vcf (@mutect_vcfs){
     `tail -n +2 $linked_vcf\_DMPFilter_TCGA_MAF.txt >> $output/$pre\_merge_maf0.txt`;
 }
 
-## link oncotator and oncotate!
-#symlink("$ONCOTATOR/db.properties", "./db.properties");
-#print "$ONCOTATOR/oncotateMaf.sh $output/$pre\_merge_maf0.txt $output/$pre\_merge_maf1.txt\n\n";
-#`$ONCOTATOR/oncotateMaf.sh $output/$pre\_merge_maf0.txt $output/$pre\_merge_maf1.txt`;
-
-
 print "\n#######\n#######\nStarting VEP. \n";
 # these are names needed for the "retain-cols" option in VEP
 my $VEP_COLUMN_NAMES = "Center,Verification_Status,Validation_Status,Mutation_Status,Sequencing_Phase,Sequence_Source,Validation_Method,Score,BAM_file,Sequencer,Tumor_Sample_UUID,Match_Norm_Sample_UUID,Caller";
@@ -292,18 +279,6 @@ symlink("$REF_FASTA.fai", "$output/ref/$ref_base.fai");
 print "\n/opt/common/CentOS_6/bin/v1/perl /opt/common/CentOS_6/vcf2maf/v1.5.4/maf2maf.pl --tmp-dir $output/tmp --ref-fasta $output/ref/$ref_base --vep-forks 4 --vep-path $VEP --vep-data $VEP --retain-cols $VEP_COLUMN_NAMES --input-maf $output/$pre\_merge_maf0.txt --output-maf $output/$pre\_merge_maf0.VEP\n\n";
 
 `/opt/common/CentOS_6/bin/v1/perl /opt/common/CentOS_6/vcf2maf/v1.5.4/maf2maf.pl --tmp-dir $output/tmp --ref-fasta $output/ref/$ref_base --vep-forks 4 --vep-path $VEP --vep-data $VEP --retain-cols $VEP_COLUMN_NAMES --input-maf $output/$pre\_merge_maf0.txt --output-maf $output/$pre\_merge_maf0.VEP > $output/$pre\_merge_maf0.log 2>&1`;
-
-
-
-##
-##
-## NOTE: This was to help oncotator results be updated. Since we switched to VEP, this should not be necessary anymore.
-##
-## Update hugo symbol
-#print "$PERL/perl $Bin/update_gene_names_and_ids.pl $output/$pre\_merge_maf0.VEP\n\n";
-#`/bin/rm $Bin/lib/hugo_data.tsv`;
-#`$PERL/perl $Bin/update_gene_names_and_ids.pl $output/$pre\_merge_maf0.VEP > $output/$pre\_merge_VEP_maf_hugo.log 2>&1`;
-
 
 #This removes any records that don't have a gene name at the front
 `grep -v ^Unknown $output/$pre\_merge_maf0.VEP > $output/$pre\_haplotect_VEP_MAF.txt`;

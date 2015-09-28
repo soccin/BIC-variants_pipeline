@@ -62,7 +62,6 @@ if($pre =~ /^\d+/){
     $pre = "s_$pre";
 }
 
-my $SNPEFF = '';
 my $ABRA = '';
 my $GATK = '';
 my $PICARD = '';
@@ -224,15 +223,11 @@ while(<CONFIG>){
 	}
 	$MM10_CUSTOM_BWA_INDEX = $conf[1];
     }
-    elsif($conf[0] =~ /snpeff/i){
-	$SNPEFF = $conf[1];
-    }
 }
 close CONFIG;
 
 my $REF_SEQ = "$MM10_FASTA";
 my $BWA_INDEX = "$MM10_BWA_INDEX";
-my $SNPEFF_DB = 'GRCm38.79';
 my $DB_SNP = "$Bin/data/mouse_MM10_dbSNP_NCBI_20150625.vcf";
 
 if($species =~ /mm10_custom/i){
@@ -242,8 +237,6 @@ if($species =~ /mm10_custom/i){
 elsif($species =~ /mm9/i){
     $REF_SEQ = "$MM9_FASTA";
     $BWA_INDEX = "$MM9_BWA_INDEX";
-    ### NO SNPEFF v4 mm9 support ###
-    $SNPEFF_DB = '';
     $DB_SNP = "$Bin/data/UCSC_dbSNP128_MM9.bed";
 }
 
@@ -558,39 +551,15 @@ if($ug){
 	my $vfugj = join(",", @vfug_jids);
 	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_CV_UG_SI", job_hold => "$vfugj", cpu => "1", mem => "2", cluster_out => "$output/progress/$pre\_$uID\_CV_UG_SI.log");
 	my $standardParams = Schedule::queuing(%stdParams);
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx2g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T CombineVariants -R $REF_SEQ -o $output/variants/unifiedgenotyper/$pre\_UnifiedGenotyper_vf.vcf --assumeIdenticalSamples --variant $output/progress/$pre\_UnifiedGenotyper_SNP_vf.vcf --variant $output/progress/$pre\_UnifiedGenotyper_INDEL_vf.vcf`;
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx2g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T CombineVariants -R $REF_SEQ -o $output/variants/unifiedgenotyper/$pre\_UnifiedGenotyper.vcf --assumeIdenticalSamples --variant $output/progress/$pre\_UnifiedGenotyper_SNP_vf.vcf --variant $output/progress/$pre\_UnifiedGenotyper_INDEL_vf.vcf`;
 	`/bin/touch $output/progress/$pre\_$uID\_CV_UG_SI.done`;
         $cvugsij = "$pre\_$uID\_CV_UG_SI";
 	$ran_cv_ug_si = 1;
     }
-
-    my $ran_snpeff_ug = 0;
-    my $seugj = '';
-    if(!-e "$output/progress/$pre\_$uID\_SNPEFF_UG.done" || $ran_cv_ug_si){
-	sleep(3);
-	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_SNPEFF_UG", job_hold => "$cvugsij", cpu => "1", mem => "8", cluster_out => "$output/progress/$pre\_$uID\_CV_UG_SI.log");
-	my $standardParams = Schedule::queuing(%stdParams);
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx2g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $SNPEFF/snpEff.jar eff -c $SNPEFF/snpEff.config -v -i vcf -o gatk -no-downstream -no-intergenic -no-intron -no-upstream -no-utr GRCm37.67 $output/progress/$pre\_UnifiedGenotyper_vf.vcf ">$output/progress/$pre\_UnifiedGenotyper_vf_snpEff_output.vcf"`;
-	`/bin/touch $output/progress/$pre\_$uID\_SNPEFF_UG.done`;
-	$seugj = "$pre\_$uID\_SNPEFF_UG";
-	$ran_snpeff_ug = 1;
-    }
-
-    my $ran_va_ug = 0;
-    my $vaugj = '';
-    if(!-e "$output/progress/$pre\_$uID\_VA_UG.done" || $ran_snpeff_ug){
-	sleep(3);
-	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_VA_UG", job_hold => "$cvugsij", cpu => "1", mem => "2", cluster_out => "$output/progress/$pre\_$uID\_CV_UG_SI.log");
-	my $standardParams = Schedule::queuing(%stdParams);
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx2g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T VariantAnnotator -R $REF_SEQ -A SnpEff --variant  $output/progress/$pre\_UnifiedGenotyper_vf.vcf--snpEffFile $output/progress/$pre\_UnifiedGenotyper_vf_snpEff_output.vcf -o $output/variants/unifiedgenotyper/$pre\_UnifiedGenotyper.vcf`;
-	`/bin/touch $output/progress/$pre\_$uID\_VA_UG.done`;
-	$vaugj = "$pre\_$uID\_VA_UG";
-	$ran_va_ug = 1;
-    }
         
-    if(!-e "$output/progress/$pre\_$uID\_MAF_UG.done" || $ran_va_ug){  
+    if(!-e "$output/progress/$pre\_$uID\_MAF_UG.done" || $ran_cv_ug_si){  
 	sleep(3);
-	&generateMaf("$pre\_UnifiedGenotyper.vcf", 'unifiedgenotyper', "$vaugj");
+	&generateMaf("$pre\_UnifiedGenotyper.vcf", 'unifiedgenotyper', "$cvugsij");
  	`/bin/touch $output/progress/$pre\_$uID\_MAF_UG.done`;
     }
 }
