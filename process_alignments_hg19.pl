@@ -459,9 +459,6 @@ if(!-e "$output/progress/$pre\_$uID\_MQ.done" || $ran_ssf){
         $samp =~ s/\.bam//g;
         $samp =~ s/$pre\_indelRealigned_recal_//g;
 
-
-	print "ref_seq_for_MQ: $REF_SEQ\n";
-
 	if(!-e "$output/progress/$pre\_$uID\_MQ_METRICS_$samp\.done" || $ran_ssf){
 	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_MQ_METRICS_$samp", job_hold => "$ssfj", cpu => "1", mem => "10", cluster_out => "$output/progress/$pre\_$uID\_MQ_METRICS_$samp\.log");
 	    my $standardParams = Schedule::queuing(%stdParams);
