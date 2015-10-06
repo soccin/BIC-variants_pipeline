@@ -124,6 +124,11 @@ while(<CONFIG>){
 }
 close CONFIG;
 
+if(!-e $VEP ){
+    die "VEP path from config file does not exist";
+}
+
+
 my $NCBI_BUILD = '';
 my $VEP_SPECIES = '';
 if($species =~ /hg19/i){

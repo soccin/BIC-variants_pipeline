@@ -9,13 +9,13 @@ PERL			/opt/common/CentOS_6/perl/perl-5.16.3/bin
 PICARD			/opt/common/CentOS_6/picard/picard-tools-1.124
 PYTHON			/opt/common/CentOS_6/python/python-2.7.8/bin
 R			/opt/common/CentOS_6/R/R-3.1.2/bin
-SAMTOOLS		/opt/common/CentOS_6/samtools/samtools-1.2
+SAMTOOLS                /opt/common/CentOS_6/samtools/samtools-1.2
 SCALPEL			/opt/common/CentOS_6/scalpel/scalpel-0.2.2
 SOMATICSNIPER		/opt/common/CentOS_6/somaticsniper/somatic-sniper-1.0.4
 STRELKA			/opt/common/CentOS_6/strelka/strelka_1.0.11
 TABIX			/opt/common/CentOS_6/samtools/samtools-1.2/htslib-1.2.1
 VARSCAN			/opt/common/CentOS_6/varscan/v2.3.7
-VEP			/opt/common/CentOS_6/vep/v79
+VEP                     /opt/common/CentOS_6/vep/v79
 VIRMID			/opt/common/CentOS_6/virmid/Virmid-1.1.1
 HG19_BWA_INDEX		/ifs/depot/assemblies/H.sapiens/hg19/index/bwa/0.7.4-r385/hg19.fasta
 HG19_FASTA		/ifs/depot/assemblies/H.sapiens/hg19/hg19.fasta
