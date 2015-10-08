@@ -820,7 +820,7 @@ sub alignReads {
 	    foreach my $file (@files){
 		if($file =~ /fastq\.gz$/ && $file =~ m/^(.*)(R\d+)(.*)$/){
 		    if($2 eq 'R1'){
-			my $file_R2 = $file;
+                        my $file_R2 = $file;
 			$file_R2 =~ s/^(.*)R1(.*)$/$1R2$2/;
 			
 			if($data[4] =~ /pe/i){
@@ -829,6 +829,9 @@ sub alignReads {
 			elsif($data[4] =~ /se/i){
 			    print OUT "$file\n";
 			}
+                        else{ 
+                            die "CAN'T DETERMINE WHETHER RUN IS PAIRED OR SINGLE ENDED for sample $data[1]\n"; 
+                        }
 		    }
 		}
 	    }
