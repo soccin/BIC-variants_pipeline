@@ -387,9 +387,9 @@ while(<IN>){
     my $irj = join(",", @ir_jids);
     if(!-e "$output/progress/$pre\_$uID\_$gpair[0]\_BR.done" || $ran_ir){
 	sleep(3);
-	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$gpair[0]\_BR", job_hold => "$irj", cpu => "6", mem => "30", cluster_out => "$output/progress/$pre\_$uID\_$gpair[0]\_BR.log");
+	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$gpair[0]\_BR", job_hold => "$irj", cpu => "12", mem => "40", cluster_out => "$output/progress/$pre\_$uID\_$gpair[0]\_BR.log");
 	my $standardParams = Schedule::queuing(%stdParams);
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx30g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T BaseRecalibrator -l INFO -R $REF_SEQ -S LENIENT --knownSites $DB_SNP --knownSites $Bin/data/Mills_and_1000G_gold_standard.indels.hg19.vcf --knownSites $Bin/data/hapmap_3.3.hg19.vcf --knownSites $Bin/data/1000G_omni2.5.hg19.vcf --knownSites $Bin/data/1000G_phase1.snps.high_confidence.hg19.vcf --covariate ContextCovariate --covariate CycleCovariate --covariate QualityScoreCovariate --covariate ReadGroupCovariate -rf BadCigar --num_cpu_threads_per_data_thread 6 --out $output/intFiles/$pre\_$gpair[0]\_recal_data.grp $irBams`;
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx30g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T BaseRecalibrator -l INFO -R $REF_SEQ -S LENIENT --knownSites $DB_SNP --knownSites $Bin/data/Mills_and_1000G_gold_standard.indels.hg19.vcf --knownSites $Bin/data/hapmap_3.3.hg19.vcf --knownSites $Bin/data/1000G_omni2.5.hg19.vcf --knownSites $Bin/data/1000G_phase1.snps.high_confidence.hg19.vcf --covariate ContextCovariate --covariate CycleCovariate --covariate QualityScoreCovariate --covariate ReadGroupCovariate -rf BadCigar --num_cpu_threads_per_data_thread 12 --out $output/intFiles/$pre\_$gpair[0]\_recal_data.grp $irBams`;
 	`/bin/touch $output/progress/$pre\_$uID\_$gpair[0]\_BR.done`;
 	$ran_br = 1;
     }
@@ -506,9 +506,9 @@ foreach my $c (1..22, 'X', 'Y', 'M'){
 
     if($ug){
 	if(!-e "$output/progress/$pre\_$uID\_CHR$c\_UG.done" || $ran_pr_glob{"chr$c"}){
-	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_CHR$c\_UG", job_hold => "$prgj", cpu => "8", mem => "24", cluster_out => "$output/progress/$pre\_$uID\_CHR$c\_UG.log");
+	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_CHR$c\_UG", job_hold => "$prgj", cpu => "12", mem => "24", cluster_out => "$output/progress/$pre\_$uID\_CHR$c\_UG.log");
 	    my $standardParams = Schedule::queuing(%stdParams);
-	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx24g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T UnifiedGenotyper -R $REF_SEQ --reference_sample_name hg19 -L chr$c $multipleTargets --dbsnp $DB_SNP --downsampling_type NONE --annotateNDA --annotation AlleleBalance --annotation AlleleBalanceBySample --annotation HardyWeinberg --genotype_likelihoods_model BOTH --read_filter BadCigar --num_cpu_threads_per_data_thread 8 --out $output/intFiles/$pre\_CHR$c\_UnifiedGenotyper.vcf $irBams2`;
+	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx24g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T UnifiedGenotyper -R $REF_SEQ --reference_sample_name hg19 -L chr$c $multipleTargets --dbsnp $DB_SNP --downsampling_type NONE --annotateNDA --annotation AlleleBalance --annotation AlleleBalanceBySample --annotation HardyWeinberg --genotype_likelihoods_model BOTH --read_filter BadCigar --num_cpu_threads_per_data_thread 12 --out $output/intFiles/$pre\_CHR$c\_UnifiedGenotyper.vcf $irBams2`;
 	    `/bin/touch $output/progress/$pre\_$uID\_CHR$c\_UG.done`;
 	    push @ug_jids, "$pre\_$uID\_CHR$c\_UG";
 	    $ran_ug = 1;
@@ -517,9 +517,9 @@ foreach my $c (1..22, 'X', 'Y', 'M'){
 
     ### NOTE: ANNOTATIONS THAT DON'T WORK:AlleleBalance, HardyWeinberg,IndelType
     if(!-e "$output/progress/$pre\_$uID\_CHR$c\_HC.done" || $ran_pr_glob{"chr$c"}){
-	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_CHR$c\_HC", job_hold => "$prgj", cpu => "12", mem => "90", cluster_out => "$output/progress/$pre\_$uID\_CHR$c\_HC.log");
+	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_CHR$c\_HC", job_hold => "$prgj", cpu => "24", mem => "90", cluster_out => "$output/progress/$pre\_$uID\_CHR$c\_HC.log");
 	my $standardParams = Schedule::queuing(%stdParams);
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx90g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T HaplotypeCaller -R $REF_SEQ -L chr$c $multipleTargets --dbsnp $DB_SNP --downsampling_type NONE --annotation AlleleBalanceBySample --annotation ClippingRankSumTest --read_filter BadCigar --num_cpu_threads_per_data_thread 12 --out $output/intFiles/$pre\_CHR$c\_HaplotypeCaller.vcf $irBams2`;
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx90g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T HaplotypeCaller -R $REF_SEQ -L chr$c $multipleTargets --dbsnp $DB_SNP --downsampling_type NONE --annotation AlleleBalanceBySample --annotation ClippingRankSumTest --read_filter BadCigar --num_cpu_threads_per_data_thread 24 --out $output/intFiles/$pre\_CHR$c\_HaplotypeCaller.vcf $irBams2`;
 	`/bin/touch $output/progress/$pre\_$uID\_CHR$c\_HC.done`;
 	push @hc_jids, "$pre\_$uID\_CHR$c\_HC";
 	$ran_hc = 1;
