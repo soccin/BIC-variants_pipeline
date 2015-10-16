@@ -110,7 +110,18 @@ get.md.metrics <- function(path,type){
 }
 
 get.fpc.sum <- function(path,type){
-    if(type == 'exome'){ return(NULL) }
+    if(type == 'exome'){
+        path=paste(path,"NEW_fingerprint",sep="/")
+        filename = dir(path)[grep("_DiscordantHomAlleleFractions.txt",dir(path))]
+        if(length(filename)==0) { return(NULL) }
+        file = paste(path,filename,sep="/")
+        if(!file.exists(file) || file.info(file)$size == 0){ return(NULL) }
+        
+        dat = read.delim(file)
+        rownames(dat) = dat[,1]
+        dat = data.matrix(dat[,-1])
+        return(dat)
+    }
     title = get.title(path,type)
     if(is.null(title)) { return(NULL) }
 
@@ -194,7 +205,16 @@ get.unexpected.mismatches <- function(path,type){
 }
 
 get.major.contamination <- function(path,type){
-    if(type == 'exome'){ return(NULL) }
+    if(type == 'exome'){
+        path = paste(path,"NEW_fingerprint",sep="/")  
+        filename = dir(path)[grep("_MajorContamination.txt",dir(path))]
+        if(length(filename)==0) { return(NULL) }
+        file = paste(path,filename,sep="/")
+        if(!file.exists(file) || file.info(file)$size == 0){ return(NULL) }
+
+        dat = read.delim(file)
+        return(dat)
+    }    
     title = get.title(path,type)
     if(is.null(title)) { return(NULL) }
     
@@ -221,7 +241,16 @@ get.major.contamination <- function(path,type){
 }
 
 get.minor.contamination <- function(path,type){
-    if(type == 'exome'){ return(NULL) }
+    if(type == 'exome'){ 
+        path = paste(path,"NEW_fingerprint",sep="/")
+        filename = dir(path)[grep("_MinorContamination.txt",dir(path))]
+        if(length(filename)==0) { return(NULL) }
+        file = paste(path,filename,sep="/")
+        if(!file.exists(file) || file.info(file)$size == 0){ return(NULL) }
+
+        dat = read.delim(file)
+        return(dat)
+    }
     title = get.title(path,type)
     if(is.null(title)) { return(NULL) }
     
@@ -310,7 +339,12 @@ load.metrics.db <- function(){
 }
 
 get.coverage <- function(path,type){
-    if(type == 'exome'){ return(NULL) }
+    hs <- get.hs.metrics(path,type)
+
+    if(type == 'exome'){ 
+        coverage <- data.frame(Samples=hs$SAMPLE,Cov=hs$MEAN_TARGET_COVERAGE)
+        return(coverage)
+    }
     if(type == 'targeted'){
         filename = dir(path)[grep("_ALL_Canonical_exoncoverage.txt",dir(path))]
     }
@@ -318,7 +352,6 @@ get.coverage <- function(path,type){
     file = paste(path,filename,sep="/")
     if(!file.exists(file) || file.info(file)$size == 0){ return(NULL) }
 
-    hs <- get.hs.metrics(path,type)
     title <- get.title(path,type)
     coverage <- read.delim(file)
     var <- colnames(coverage)[2:ncol(coverage)]

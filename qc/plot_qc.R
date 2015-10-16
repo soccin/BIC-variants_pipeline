@@ -49,12 +49,12 @@ plot.fpc.sum <- function(fpc.sum){
 plot.major.contamination <- function(dat,sort.by='badToGood'){
     if(is.null(dat)){ return(NULL) }
     if(sort.by == 'badToGood'){
-       dat$Sample <- factor(dat$Sample, levels=dat$Sample[order(dat$PerHetrozygosPos)])
+       dat$Sample <- factor(dat$Sample, levels=dat$Sample[order(dat$PerHeterozygousPos)])
     } else if(sort.by == 'name'){
        dat$Sample <- factor(dat$Sample, levels=dat$Sample[order(dat$Sample)])
     }
 
-    ggplot(dat, aes(x = Sample, y = PerHetrozygosPos)) +
+    ggplot(dat, aes(x = Sample, y = PerHeterozygousPos)) +
         geom_bar(stat="identity") +
         ylim(0, 1) +
         theme(legend.title=element_blank(),
@@ -109,9 +109,9 @@ plot.coverage <- function(dat,sort.by = 'badToGood'){
           legend.position="bottom",
           legend.title = element_blank()
         ) +
-       labs(title="Median Canonical Exon Coverage") +
+       labs(title="Mean Target Coverage") +
        xlab("") +
-       ylab("Median X Coverage") +
+       ylab("Mean Coverage") +
        geom_hline(aes(yintercept=200),color="yellow", size=0.75) +
        geom_hline(aes(yintercept=50), color="red", size=0.75) +
        coord_flip()
