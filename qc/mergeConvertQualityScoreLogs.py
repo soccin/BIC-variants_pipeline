@@ -58,27 +58,20 @@ def catLogs(args):
         sys.exit(1)
 
     filePattern = '*'+filePattern
-    ## find all files using pattern 
+    ## find all cutadapt stats files using pattern 
     files = findFiles(rootDir,filePattern)
 
-    header = "Sample" 
     allOut = []
 
     if files:
         print "\nCombining the following files:\n"
         for file in files:
             print file
-            samp = file[file.find('intFiles')+9:].split("/")[0]
             if not os.stat(file)[6]==0: ## file is empty
                 with open(file,'r') as fl:
-                    h = fl.readline().strip()
-                    if header == "Sample":
-                        header = header + "\t" + h
-                        allOut.append(header)
                     for line in fl:
-                        allOut.append(samp+"\t"+line.strip())
-            else:
-                print>>sys.stderr,"ERROR: file",file,"is empty!"
+                        allOut.append(line.strip())
+     
         printLog(allOut,outFile)            
 
     else:

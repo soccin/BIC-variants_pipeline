@@ -1027,15 +1027,17 @@ sub processBams {
 	push @cogm, "-metrics $output/intFiles/$pre\_CollectOxoGMetrics_$samp\.txt";
 
         ########## DEPTH OF COVERAGE FOR FINGERPRINTING
-        if(!-e "$output/progress/$pre\_$uID\_DOC_$samp\.done" || $ran_solexa{$samp} || $ran_samp_merge){
-            my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_DOC\_$samp", job_hold => "$rmj,$smsj,$lmsj", cpu => "1", mem => "4", cluster_out => "$output/progress/$pre\_$uID\_DOC_$samp\.log");
-            my $standardParams = Schedule::queuing(%stdParams);
-            `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T DepthOfCoverage -I $bamForStats -R $REF_SEQ -o $bamForStats\_FP_base_counts\.txt -L $Bin/data/Agilent51MBExome__hg19__FP_intervals.list -rf BadCigar -mmq 20 -mbq 0 -omitLocusTable -omitSampleSummary -baseCounts --includeRefNSites -omitIntervals`;
-            `/bin/touch $output/progress/$pre\_$uID\_DOC_$samp\.done`;
-            push @doc_jids, "$pre\_$uID\_DOC\_$samp";
-            $ran_doc = 1;
+        if($species =~ /hg19/){
+            if(!-e "$output/progress/$pre\_$uID\_DOC_$samp\.done" || $ran_solexa{$samp} || $ran_samp_merge){
+                my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_DOC\_$samp", job_hold => "$rmj,$smsj,$lmsj", cpu => "1", mem => "4", cluster_out => "$output/progress/$pre\_$uID\_DOC_$samp\.log");
+                my $standardParams = Schedule::queuing(%stdParams);
+                `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T DepthOfCoverage -I $bamForStats -R $REF_SEQ -o $bamForStats\_FP_base_counts\.txt -L $Bin/data/Agilent51MBExome__hg19__FP_intervals.list -rf BadCigar -mmq 20 -mbq 0 -omitLocusTable -omitSampleSummary -baseCounts --includeRefNSites -omitIntervals`;
+                `/bin/touch $output/progress/$pre\_$uID\_DOC_$samp\.done`;
+                push @doc_jids, "$pre\_$uID\_DOC\_$samp";
+                $ran_doc = 1;
+            }
+            push @docm, "$bamForStats\_FP_base_counts\.txt";
         }
-        push @docm, "$bamForStats\_FP_base_counts\.txt";
         ######### END FINGERPRINT
     }
 }
@@ -1113,15 +1115,17 @@ sub mergeStats {
 	$ran_merge = 1;
     }
 
-    my $docFiles = join(" ", @docm);
-    my $docj = join(",", @doc_jids);
-    if(!-e "$output/progress/$pre\_$uID\_FINGERPRINTING.done" || $ran_doc){
-        `mkdir -p $output/metrics/NEW_fingerprint`;
-        my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_FINGERPRINTING", job_hold => "$docj", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_FINGERPRINTING.log");
-        my $standardParams = Schedule::queuing(%stdParams);
-        `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PYTHON/python $Bin/qc/analyzeFingerprint.py -pattern '*_FP_base_counts.txt' -pre $pre -fp $Bin/data/Agilent51MBExome__hg19__FP_tiling_genotypes.txt -group $pair -groupType pairing -outdir $output/metrics/NEW_fingerprint -dir $output/intFiles`; 
-        `/bin/touch $output/progress/$pre\_$uID\_FINGERPRINTING.done`;
-        push @qcpdf_jids, "$pre\_$uID\_FINGERPRINTING";
+    if($species =~ /hg19/){
+        my $docFiles = join(" ", @docm);
+        my $docj = join(",", @doc_jids);
+        if(!-e "$output/progress/$pre\_$uID\_FINGERPRINTING.done" || $ran_doc){
+            `mkdir -p $output/metrics/NEW_fingerprint`;
+            my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_FINGERPRINTING", job_hold => "$docj", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_FINGERPRINTING.log");
+            my $standardParams = Schedule::queuing(%stdParams);
+            `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PYTHON/python $Bin/qc/analyzeFingerprint.py -pattern '*_FP_base_counts.txt' -pre $pre -fp $Bin/data/Agilent51MBExome__hg19__FP_tiling_genotypes.txt -group $pair -groupType pairing -outdir $output/metrics/NEW_fingerprint -dir $output/intFiles`; 
+            `/bin/touch $output/progress/$pre\_$uID\_FINGERPRINTING.done`;
+            push @qcpdf_jids, "$pre\_$uID\_FINGERPRINTING";
+        }
     }
 
     if(!-e "$output/progress/$pre\_$uID\_MERGE_CAS.done" || $ran_sol){
@@ -1135,6 +1139,28 @@ sub mergeStats {
 	`/bin/touch $output/progress/$pre\_$uID\_MERGE_CAS.done`;
 	push @qcpdf_jids, "$pre\_$uID\_MERGE_CAS";
     }
+
+    if(!-e "$output/progress/$pre\_$uID\_MERGE_CQS.done" || $ran_sol){
+       ### NOTE: all of the cqs jobs should be done because of the job sync on merge jobs
+       ###       so don't need this to hold on cutadapt
+       ###       this hold causes issues on lsf because of the *
+       my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_MERGE_CQS", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_MERGE_CQS.log");
+       my $standardParams = Schedule::queuing(%stdParams);
+       `$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PYTHON/python $Bin/qc/mergeConvertQualityScoreMetrics.py . _cqs_metrics $output/metrics/$pre\_ConvertQualityScoreMetrics.txt`;
+       `/bin/touch $output/progress/$pre\_$uID\_MERGE_CQS.done`;
+        #push @qcpdf_jids, "$pre\_$uID\_MERGE_CQS";
+    }
+
+    if(!-e "$output/progress/$pre\_$uID\_MERGE_CQS_LOGS.done" || $ran_sol){
+       ### NOTE: all of the cqs jobs should be done because of the job sync on merge jobs
+       ###       so don't need this to hold on cutadapt
+       ###       this hold causes issues on lsf because of the *
+        my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_MERGE_CQS_LOGS", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_MERGE_CQS_LOGS.log");
+        my $standardParams = Schedule::queuing(%stdParams);
+        `$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PYTHON/python $Bin/qc/mergeConvertQualityScoreLogs.py . _cqs_log $output/metrics/$pre\_ConvertQualityScoreLog.txt`;
+        `/bin/touch $output/progress/$pre\_$uID\_MERGE_CQS_LOGS.done`;
+     }
+
 
     my $qcpdfj = join(",", @qcpdf_jids);
    if(!-e "$output/progress/$pre\_$uID\_QCPDF.done" || $ran_merge){
