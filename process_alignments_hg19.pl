@@ -922,6 +922,7 @@ while(<GROUP>){
 close GROUP;
 close BLIST;
 
+my $ran_strvar = 0;
 if(!-e "$output/progress/$pre\_$uID\_STRVAR.done" || $ran_ssf){
     sleep(3);
     if(-d "$curDir/$output/strvar"){
@@ -932,7 +933,18 @@ if(!-e "$output/progress/$pre\_$uID\_STRVAR.done" || $ran_ssf){
     my $standardParams = Schedule::queuing(%stdParams);
     `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/RunStructuralVariantPipeline_Delly.pl -pre $pre -pair $pair -bam_list $curDir/$output/intFiles/$pre\_sv_bam_list.txt -out $curDir/$output/strvar -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group`;
     `/bin/touch $output/progress/$pre\_$uID\_STRVAR.done`;
+    $ran_strvar = 1;
 }
+
+if(!-e "$output/progress/$pre\_$uID\_CDNA_CONTAM.done" || $ran_strvar){
+    sleep(3);
+
+    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_CDNA_CONTAM", job_hold => "$pre\_$uID\_STRVAR", cpu => "1", mem => "4", cluster_out => "$output/progress/$pre\_$uID\_CDNA_CONTAM.log");
+    my $standardParams = Schedule::queuing(%stdParams);
+    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PYTHON/python $Bin/qc/check_cDNA_contamination.py -s $output/strvar/$pre\_AllAnnotatedSVs.txt -o $output/metrics/$pre\_cDNA_contamination.txt`;
+    `/bin/touch $output/progress/$pre\_$uID\_CDNA_CONTAM.done`;
+}
+
 
 sub generateMaf{
     my ($vcf, $type, $hold, $normal_sample, $tumor_sample) = @_;
