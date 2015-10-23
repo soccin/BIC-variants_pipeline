@@ -192,6 +192,10 @@ print LOG "$currentTime[2]:$currentTime[1]:$currentTime[0], $currentTime[3]\/$cu
 `/bin/mkdir -m 775 -p $output/alignments`;
 
 my $ran_sol = 0;
+### NOTE: if a sample consists of both paired and single end runs, it will take the last one
+###       this only affects InsertSizeMetrics
+###       InsertSizeMetrics doesn't output a file for single end runs; not even a zero-byte file
+my %seq_type = ();
 alignReads();
 
 my $rmdups = 'false';
@@ -811,56 +815,51 @@ sub alignReads {
 	`/bin/mkdir -m 775 -p $output/intFiles/$data[1]/$data[0]/$data[2]`;
 	$samp_libs_run{$data[1]}{$data[0]}{$data[2]} = 1;	
 	
-	if(!-e "$output/progress/reads_files_$data[1]\_$data[0]\_$data[2]\.done"){
-	    $ran_sol = 1;
-	    `ln -s $data[3]/* $output/intFiles/$data[1]/$data[0]/$data[2]/`;
-	    chdir "$output/intFiles/$data[1]/$data[0]/$data[2]";
-	    
-	    opendir(workDir, "./");
-	    my @unsorted = readdir workDir;
-	    closedir workDir;
-	    my @files = sort @unsorted;
-	    
-	    open(OUT, ">files_$data[1]\_$data[0]\_$data[2]");
-	    foreach my $file (@files){
-		if($file =~ /fastq\.gz$/ && $file =~ m/^(.*)(R\d+)(.*)$/){
-		    if($2 eq 'R1'){
-                        my $file_R2 = $file;
-			$file_R2 =~ s/^(.*)R1(.*)$/$1R2$2/;
+	`ln -s $data[3]/* $output/intFiles/$data[1]/$data[0]/$data[2]/`;
+	chdir "$output/intFiles/$data[1]/$data[0]/$data[2]";
+	
+	opendir(workDir, "./");
+	my @unsorted = readdir workDir;
+	closedir workDir;
+	my @files = sort @unsorted;
+	
+	open(OUT, ">files_$data[1]\_$data[0]\_$data[2]");
+	foreach my $file (@files){
+	    if($file =~ /fastq\.gz$/ && $file =~ m/^(.*)(R\d+)(.*)$/){
+		if($2 eq 'R1'){
+		    my $file_R2 = $file;
+		    $file_R2 =~ s/^(.*)R1(.*)$/$1R2$2/;
+		    
+		    if(-e "$file_R2"){
+			$seq_type{$data[1]} = "PE";
 			
-			if($data[4] =~ /pe/i){
-			    print OUT "$file\t$file_R2\n";
-			}
-			elsif($data[4] =~ /se/i){
-			    print OUT "$file\n";
-			}
-                        else{ 
-                            die "CAN'T DETERMINE WHETHER RUN IS PAIRED OR SINGLE ENDED for sample $data[1]\n"; 
-                        }
+			print OUT "$file\t$file_R2\n";
 		    }
+		    else{
+			$seq_type{$data[1]} = "SE";
+			print OUT "$file\n";
+		    }			
 		}
 	    }
-	    close OUT;
+	}
+	close OUT;
 	
-	    my @currentTime = &getTime();
-	    print LOG "$currentTime[2]:$currentTime[1]:$currentTime[0], $currentTime[3]\/$currentTime[4]\/$currentTime[5]\tSTARTING READS PROCESSING/ALIGNMENT FOR $data[1]\_$data[0]\_$data[2]\n";
+	my @currentTime = &getTime();
+	print LOG "$currentTime[2]:$currentTime[1]:$currentTime[0], $currentTime[3]\/$currentTime[4]\/$currentTime[5]\tSTARTING READS PROCESSING/ALIGNMENT FOR $data[1]\_$data[0]\_$data[2]\n";
+	
+	if(!-e "$curDir/$output/progress/reads_files_$data[1]\_$data[0]\_$data[2]\.done"){	    
+	    `$Bin/process_reads.pl -file files_$data[1]\_$data[0]\_$data[2] -pre $pre -run $data[1]\_$data[0]\_$data[2] -readgroup "\@RG\\tID:$data[1]\_$data[0]\_$data[2]\_$seq_type{$data[1]}\\tPL:Illumina\\tPU:$data[1]\_$data[0]\_$data[2]\\tLB:$data[1]\_$data[0]\\tSM:$data[1]" -species $species -config $config -scheduler $scheduler -r1adaptor $r1adaptor -r2adaptor $r2adaptor -priority_project $priority_project -priority_group $priority_group > files_$data[1]\_$data[0]\_$data[2]\_process_reads_$seq_type{$data[1]}\.log 2>&1`;
 	    
-	    if($data[4] =~ /pe/i){
-		`$Bin/process_reads_pe.pl -file files_$data[1]\_$data[0]\_$data[2] -pre $pre -run $data[1]\_$data[0]\_$data[2] -readgroup "\@RG\\tID:$data[1]\_$data[0]\_$data[2]\_PE\\tPL:Illumina\\tPU:$data[1]\_$data[0]\_$data[2]\\tLB:$data[1]\_$data[0]\\tSM:$data[1]" -species $species -config $config -scheduler $scheduler -r1adaptor $r1adaptor -r2adaptor $r2adaptor -priority_project $priority_project -priority_group $priority_group > files_$data[1]\_$data[0]\_$data[2]\_process_reads_pe.log 2>&1`;
-		
-		###`/common/sge/bin/lx24-amd64/qsub /home/mpirun/tools/qCMD $Bin/solexa_PE.pl -file files -pre $pre -run $data[1]\_$data[0]\_$data[2] -readgroup "\@RG\\\tID:$data[1]\_$data[0]\_$data[2]\_PE\\\tPL:Illumina\\\tPU:$data[1]\_$data[0]\_$data[2]\\\tLB:$data[1]\_$data[0]\\\tSM:$data[1]" -species $species -config $config $targeted -scheduler $scheduler`;
-	    }
-	    elsif($data[4] =~ /se/i){
-		`$Bin/process_reads_se.pl -file files_$data[1]\_$data[0]\_$data[2] -pre $pre -run $data[1]\_$data[0]\_$data[2] -readgroup "\@RG\\tID:$data[1]\_$data[0]\_$data[2]\_SE\\tPL:Illumina\\tPU:$data[1]\_$data[0]\_$data[2]\\tLB:$data[1]\_$data[0]\\tSM:$data[1]" -species $species -config $config -scheduler $scheduler -r1adaptor $r1adaptor -priority_project $priority_project -priority_group $priority_group > files_$data[1]\_$data[0]\_$data[2]\_process_reads.log 2>&1`;
-	    }
+	    ###`/common/sge/bin/lx24-amd64/qsub /home/mpirun/tools/qCMD $Bin/solexa_PE.pl -file files -pre $pre -run $data[1]\_$data[0]\_$data[2] -readgroup "\@RG\\\tID:$data[1]\_$data[0]\_$data[2]\_PE\\\tPL:Illumina\\\tPU:$data[1]\_$data[0]\_$data[2]\\\tLB:$data[1]\_$data[0]\\\tSM:$data[1]" -species $species -config $config $targeted -scheduler $scheduler`;
+	    $ran_sol = 1;
 	    $ran_solexa{$data[1]} = 1;
-	    chdir $curDir;
 	    push @run_merge_jids, "$pre\_$uID\_$data[1]\_$data[0]\_$data[2]\_MERGE";
-	    `/bin/touch $output/progress/reads_files_$data[1]\_$data[0]\_$data[2]\.done`;
+	    `/bin/touch $curDir/$output/progress/reads_files_$data[1]\_$data[0]\_$data[2]\.done`;
 	}
 	else{
 	    print LOG "$currentTime[2]:$currentTime[1]:$currentTime[0], $currentTime[3]\/$currentTime[4]\/$currentTime[5]\tSKIPPING READS PROCESSING/ALIGNMENT FOR $data[1]\_$data[0]\_$data[2]; PREVIOUSLY RAN TO COMPLETION\n";
 	}
+	chdir $curDir;
     }
     close IN;
 }
@@ -996,15 +995,18 @@ sub processBams {
 	}
 	push @hsm, "-metrics $output/intFiles/$pre\_HsMetrics_$samp\.txt";
 	
-	if(!-e "$output/progress/$pre\_$uID\_IS_$samp\.done" || $ran_solexa{$samp} || $ran_samp_merge){
-	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_IS_METRICS\_$samp", job_hold => "$rmj,$smsj,$lmsj", cpu => "1", mem => "10", cluster_out => "$output/progress/$pre\_$uID\_IS_$samp\.log");
-	    my $standardParams = Schedule::queuing(%stdParams);
-	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Djava.io.tmpdir=/scratch/$uID -jar $PICARD/picard.jar CollectInsertSizeMetrics INPUT=$bamForStats OUTPUT=$output/intFiles/$pre\_InsertSizeMetrics_$samp\.txt REFERENCE_SEQUENCE=$REF_SEQ METRIC_ACCUMULATION_LEVEL=null METRIC_ACCUMULATION_LEVEL=SAMPLE HISTOGRAM_FILE=$output/intFiles/$pre\_InsertSizeMetrics_Histogram_$samp\.txt VALIDATION_STRINGENCY=LENIENT`;
-	    `/bin/touch $output/progress/$pre\_$uID\_IS_$samp\.done`;
-	    push @is_jids, "$pre\_$uID\_IS_METRICS\_$samp";
-	    $ran_is = 1;
+	### NOTE: will only run if the sample is paired end
+	if($seq_type{$samp} eq "PE"){
+	    if(!-e "$output/progress/$pre\_$uID\_IS_$samp\.done" || $ran_solexa{$samp} || $ran_samp_merge){
+		my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_IS_METRICS\_$samp", job_hold => "$rmj,$smsj,$lmsj", cpu => "1", mem => "10", cluster_out => "$output/progress/$pre\_$uID\_IS_$samp\.log");
+		my $standardParams = Schedule::queuing(%stdParams);
+		`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Djava.io.tmpdir=/scratch/$uID -jar $PICARD/picard.jar CollectInsertSizeMetrics INPUT=$bamForStats OUTPUT=$output/intFiles/$pre\_InsertSizeMetrics_$samp\.txt REFERENCE_SEQUENCE=$REF_SEQ METRIC_ACCUMULATION_LEVEL=null METRIC_ACCUMULATION_LEVEL=SAMPLE HISTOGRAM_FILE=$output/intFiles/$pre\_InsertSizeMetrics_Histogram_$samp\.txt VALIDATION_STRINGENCY=LENIENT`;
+		`/bin/touch $output/progress/$pre\_$uID\_IS_$samp\.done`;
+		push @is_jids, "$pre\_$uID\_IS_METRICS\_$samp";
+		$ran_is = 1;
+	    }	
+	    push @ism, "-metrics $output/intFiles/$pre\_InsertSizeMetrics_$samp\.txt";
 	}
-	push @ism, "-metrics $output/intFiles/$pre\_InsertSizeMetrics_$samp\.txt";
 	
 	if(!-e "$output/progress/$pre\_$uID\_AS_$samp\.done" || $ran_solexa{$samp} || $ran_samp_merge){
 	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_AS_METRICS\_$samp", job_hold => "$rmj,$smsj,$lmsj", cpu => "1", mem => "10", cluster_out => "$output/progress/$pre\_$uID\_AS_$samp\.log");
@@ -1026,8 +1028,7 @@ sub processBams {
 	}
 	push @cogm, "-metrics $output/intFiles/$pre\_CollectOxoGMetrics_$samp\.txt";
 
-        ########## DEPTH OF COVERAGE FOR FINGERPRINTING
-        if($species =~ /hg19/){
+	if($species =~ /hg19/){
             if(!-e "$output/progress/$pre\_$uID\_DOC_$samp\.done" || $ran_solexa{$samp} || $ran_samp_merge){
                 my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_DOC\_$samp", job_hold => "$rmj,$smsj,$lmsj", cpu => "1", mem => "4", cluster_out => "$output/progress/$pre\_$uID\_DOC_$samp\.log");
                 my $standardParams = Schedule::queuing(%stdParams);
@@ -1038,7 +1039,6 @@ sub processBams {
             }
             push @docm, "$bamForStats\_FP_base_counts\.txt";
         }
-        ######### END FINGERPRINT
     }
 }
 
@@ -1160,7 +1160,6 @@ sub mergeStats {
         `$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PYTHON/python $Bin/qc/mergeConvertQualityScoreLogs.py . _cqs_log $output/metrics/$pre\_ConvertQualityScoreLog.txt`;
         `/bin/touch $output/progress/$pre\_$uID\_MERGE_CQS_LOGS.done`;
      }
-
 
     my $qcpdfj = join(",", @qcpdf_jids);
    if(!-e "$output/progress/$pre\_$uID\_QCPDF.done" || $ran_merge){
