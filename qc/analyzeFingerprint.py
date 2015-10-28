@@ -96,6 +96,8 @@ def makeGroups(file,type):
             grp = 1
             for line in f:
                 s1,s2 = line.strip().split("\t")
+                s1 = s1.strip()
+                s2 = s2.strip()
                 if not s1 in groups:
                     groups[s1] = []
                 if not s2 in groups:
@@ -106,12 +108,15 @@ def makeGroups(file,type):
         elif type == 'grouping':
             for line in f:
                 s,grp = line.strip().split("\t")
+                s = s.strip()
+                grp = grp.strip()
                 if not s in groups:
                     groups[s] = []
                 groups[s].append(grp)
         else:
             print("ERROR: '"+type+"' is not a valid type of grouping file. Must be 'grouping' or 'pairing'.",file=sys.stderr)
             exit(1)
+    print(groups)
     return groups
 
 
