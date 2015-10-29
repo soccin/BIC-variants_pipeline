@@ -185,10 +185,13 @@ def annotate():
                         ## run query & parse results if not already cached
                         query = ",".join([query_prefix,chr,rec.Start_Position,rec.Reference_Allele,alt]) + query_suffix
                         results = createMongoRecord(urllib2.urlopen(query, None, 60).read(),maVersion)
-                        if resultsComplete(results): ## check that query ran to completion before adding results to cache
+                        query_counter += 1
+                        if db and resultsComplete(results): ## check that query ran to completion before adding results to cache
                             annots.insert(results)
-                            query_counter += 1
 
+                    if not results:
+                        rec += tuple(['']*len(fields))
+                        continue
                     for field in fields:
                         rec += tuple([results[field]])
                     if not len(rec) == numCols:
