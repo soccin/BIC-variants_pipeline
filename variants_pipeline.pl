@@ -957,7 +957,7 @@ sub processBams {
 		my $mdj = join(",", @md_jids);
 		my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_SAMP_MD_MERGE_$samp", job_hold => "$mdj", cpu => "24", mem => "90", cluster_out => "$output/progress/$pre\_$uID\_SAMP_MD_MERGE_$samp\.log");
 		my $standardParams = Schedule::queuing(%stdParams);
-		`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Djava.io.tmpdir=/scratch/$uID -jar $PICARD/picard.jar MergeSamFiles $mdb O=$output/alignments/$samp\.bam SORT_ORDER=coordinate VALIDATION_STRINGENCY=LENIENT TMP_DIR=/scratch/$uID CREATE_INDEX=true USE_THREADING=false MAX_RECORDS_IN_RAM=5000000`;
+		`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Djava.io.tmpdir=/scratch/$uID -jar $PICARD/picard.jar MergeSamFiles $mdb O=$output/alignments/$pre\_$samp\.bam SORT_ORDER=coordinate VALIDATION_STRINGENCY=LENIENT TMP_DIR=/scratch/$uID CREATE_INDEX=true USE_THREADING=false MAX_RECORDS_IN_RAM=5000000`;
 		`/bin/touch $output/progress/$pre\_$uID\_SAMP_MD_MERGE_$samp\.done`;
 	    }
 	}
