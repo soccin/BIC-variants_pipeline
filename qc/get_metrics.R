@@ -111,7 +111,7 @@ get.md.metrics <- function(path,type){
 
 get.fpc.sum <- function(path,type){
     if(type == 'exome'){
-        path=paste(path,"NEW_fingerprint",sep="/")
+        path=paste(path,"fingerprint",sep="/")
         filename = dir(path)[grep("_DiscordantHomAlleleFractions.txt",dir(path))]
         if(length(filename)==0) { return(NULL) }
         file = paste(path,filename,sep="/")
@@ -206,7 +206,7 @@ get.unexpected.mismatches <- function(path,type){
 
 get.major.contamination <- function(path,type){
     if(type == 'exome'){
-        path = paste(path,"NEW_fingerprint",sep="/")  
+        path = paste(path,"fingerprint",sep="/")  
         filename = dir(path)[grep("_MajorContamination.txt",dir(path))]
         if(length(filename)==0) { return(NULL) }
         file = paste(path,filename,sep="/")
@@ -242,7 +242,7 @@ get.major.contamination <- function(path,type){
 
 get.minor.contamination <- function(path,type){
     if(type == 'exome'){ 
-        path = paste(path,"NEW_fingerprint",sep="/")
+        path = paste(path,"fingerprint",sep="/")
         filename = dir(path)[grep("_MinorContamination.txt",dir(path))]
         if(length(filename)==0) { return(NULL) }
         file = paste(path,filename,sep="/")
