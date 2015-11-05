@@ -524,17 +524,6 @@ if($ug){
 }
 
 if($pair){
-    if(!-e "$output/progress/$pre\_$uID\_FP_WRAP.done" || $ran_hc){
-	sleep(3);
-	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_FP_WRAP", job_hold => "$hcj", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_FP_WRAP.log");
-	my $standardParams = Schedule::queuing(%stdParams);
-	my $hj = '';
-	if($hcj){
-	    $hj = "-holdjid $hcj";
-	}
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/pairing_qc.pl -pair $pair -vcf $output/variants/haplotypecaller/$pre\_HaplotypeCaller.vcf -pre $pre -outdir $output/metrics/fingerprint -scheduler $scheduler -config $config -progress $output/progress $hj`;
-	`/bin/touch $output/progress/$pre\_$uID\_FP_WRAP.done`;
-    }
 
     `/bin/mkdir -m 775 -p $output/variants/mutect`;
     `/bin/mkdir -m 775 -p $output/variants/somaticsniper`;

@@ -1119,10 +1119,9 @@ sub mergeStats {
         my $docFiles = join(" ", @docm);
         my $docj = join(",", @doc_jids);
         if(!-e "$output/progress/$pre\_$uID\_FINGERPRINTING.done" || $ran_doc){
-            `mkdir -p $output/metrics/NEW_fingerprint`;
             my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_FINGERPRINTING", job_hold => "$docj", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_FINGERPRINTING.log");
             my $standardParams = Schedule::queuing(%stdParams);
-            `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PYTHON/python $Bin/qc/analyzeFingerprint.py -pattern '*_FP_base_counts.txt' -pre $pre -fp $Bin/data/Agilent51MBExome__hg19__FP_tiling_genotypes.txt -group $pair -groupType pairing -outdir $output/metrics/NEW_fingerprint -dir $output/intFiles`; 
+            `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PYTHON/python $Bin/qc/analyzeFingerprint.py -pattern '*_FP_base_counts.txt' -pre $pre -fp $Bin/data/Agilent51MBExome__hg19__FP_tiling_genotypes.txt -group $pair -groupType pairing -outdir $output/metrics/fingerprint -dir $output/intFiles`; 
             `/bin/touch $output/progress/$pre\_$uID\_FINGERPRINTING.done`;
             push @qcpdf_jids, "$pre\_$uID\_FINGERPRINTING";
         }
