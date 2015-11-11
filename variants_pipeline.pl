@@ -198,6 +198,14 @@ my $ran_sol = 0;
 my %seq_type = ();
 alignReads();
 
+
+### write sample list for qc db
+open(SLIST, ">$output/metrics/$pre\_sample_list.txt");
+foreach my $samp (keys %samp_libs_run){
+    print SLIST "$samp\n";
+}
+close SLIST;
+
 my $rmdups = 'false';
 if($removedups){
     $rmdups = 'true';
