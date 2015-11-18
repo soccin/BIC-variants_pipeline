@@ -30,7 +30,11 @@ fp = file.path(path,fileName)
 
 
 pdf(file=fp, width=16,height=10)
-if(!is.null(da)) plot.fpc.sum(da) else cat("ERROR: No fingerprint summary!\n")
+if(!is.null(da)){
+  tryCatch(plot.fpc.sum(da), error = function(e){cat("ERROR: could not make fingerprint heatmap\n")})
+} else {
+    cat("ERROR: No fingerprint summary!\n")
+}
 if(!is.null(cv)) plot.coverage(cv) else cat("ERROR: No coverage metrics!\n")
 if(!is.null(mjc)) plot.major.contamination(mjc) else cat("ERROR: No major contamination metrics!\n")
 if(!is.null(mnc)) plot.minor.contamination(mnc) else cat("ERROR: No minor contamination metrics!\n")
