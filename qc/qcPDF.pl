@@ -34,5 +34,7 @@ while(<CONFIG>){
 }
 close CONFIG;
 
-print "$R/R CMD BATCH \"--args path='$path' pre='$pre' bin='$Bin'\" $Bin/qcPDF.R";
-`$R/R CMD BATCH "--args path='$path' pre='$pre' bin='$Bin'" $Bin/qcPDF.R`;
+print "$R/R CMD BATCH \"--args path='$path' pre='$pre' bin='$Bin'\" $Bin/qcPDF.R\n";
+my $ec = system("$R/R CMD BATCH \"--args path='$path' pre='$pre' bin='$Bin'\" $Bin/qcPDF.R");
+print "$ec\n";
+if($ec != 0){ die; }
