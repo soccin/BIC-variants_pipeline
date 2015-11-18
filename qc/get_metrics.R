@@ -340,7 +340,7 @@ load.metrics.db <- function(){
 
 get.coverage <- function(path,type){
     hs <- get.hs.metrics(path,type)
-
+    if(is.null(hs)){ return(NULL) }
     if(type == 'exome'){ 
         coverage <- data.frame(Samples=hs$SAMPLE,Cov=hs$MEAN_TARGET_COVERAGE)
         return(coverage)

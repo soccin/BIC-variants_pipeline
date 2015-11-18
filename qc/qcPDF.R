@@ -30,22 +30,102 @@ fp = file.path(path,fileName)
 
 
 pdf(file=fp, width=16,height=10)
+## sample mixup heatmap
 if(!is.null(da)){
   tryCatch(plot.fpc.sum(da), error = function(e){cat("ERROR: could not make fingerprint heatmap\n")})
 } else {
-    cat("ERROR: No fingerprint summary!\n")
+  cat("ERROR: No fingerprint summary!\n")
+  quit(save="no",status=-1,runLast=FALSE)
 }
-if(!is.null(cv)) plot.coverage(cv) else cat("ERROR: No coverage metrics!\n")
-if(!is.null(mjc)) plot.major.contamination(mjc) else cat("ERROR: No major contamination metrics!\n")
-if(!is.null(mnc)) plot.minor.contamination(mnc) else cat("ERROR: No minor contamination metrics!\n")
-if(!is.null(dp)) plot.duplication(dp) else cat("ERROR: No duplication metrics!\n")
-if(!is.null(ls)) plot.library.size(ls) else cat("ERROR: No library size metrics!\n")
-if(!is.null(al)) plot.alignment(al) else cat("ERROR: No alignment metrics!\n")
-if(!is.null(al)) plot.alignment.percentage(al) else cat("ERROR: No alignment metrics!\n")
-if(!is.null(is)) plot.insert.size.distribution(is) else cat("ERROR: No insert size metrics!\n")
-if(!is.null(is)) plot.insert.peaks(is) else cat("ERROR: No insert size metrics!\n")
-if(!is.null(tr)) plot.trimmed.reads(tr) else cat("ERROR: No read trimming metrics!\n")
-if(!is.null(bq)) plot.base.qualities(bq) else cat("ERROR: No base quality metrics!\n")
-if(!is.null(cs)) plot.capture.specificity(cs) else cat("ERROR: No capture specificity metrics!\n")
-if(!is.null(cs)) plot.capture.specificity.percentage(cs) else cat("ERROR: No capture specifity metrics!\n")
+## coverage
+if(!is.null(cv)){
+  plot.coverage(cv)
+} else {
+  cat("ERROR: No coverage metrics!\n")
+  quit(save="no",status=-1,runLast=FALSE)
+}
+## major contamination
+if(!is.null(mjc)){
+  plot.major.contamination(mjc)
+} else {
+  cat("ERROR: No major contamination metrics!\n")
+  quit(save="no",status=-1,runLast=FALSE)
+}
+## minor contamination
+if(!is.null(mnc)){
+  plot.minor.contamination(mnc)
+} else {
+  cat("ERROR: No minor contamination metrics!\n")
+  quit(save="no",status=-1,runLast=FALSE)
+}
+## duplication
+if(!is.null(dp)){
+  plot.duplication(dp) 
+} else {
+  cat("ERROR: No duplication metrics!\n")
+  quit(save="no",status=-1,runLast=FALSE)
+}
+## library size
+if(!is.null(ls)){
+  plot.library.size(ls)
+} else {
+  cat("ERROR: No library size metrics!\n")
+  quit(save="no",status=-1,runLast=FALSE)
+}
+## alignment
+if(!is.null(al)){
+  plot.alignment(al)
+} else {
+  cat("ERROR: No alignment metrics!\n")
+  quit(save="no",status=-1,runLast=FALSE)
+}
+## alignment percentage
+if(!is.null(al)){
+  plot.alignment.percentage(al)
+} else {
+  cat("ERROR: No alignment metrics!\n")
+  quit(save="no",status=-1,runLast=FALSE)
+}
+## insert size distribution
+if(!is.null(is)){
+  plot.insert.size.distribution(is)
+} else {
+  cat("ERROR: No insert size metrics!\n")
+  quit(save="no",status=-1,runLast=FALSE)
+}
+## insert size peaks
+if(!is.null(is)){
+  plot.insert.peaks(is)
+} else {
+  cat("ERROR: No insert size metrics!\n")
+  quit(save="no",status=-1,runLast=FALSE)
+}
+## trimmed reads
+if(!is.null(tr)){
+  plot.trimmed.reads(tr)
+} else {
+  cat("ERROR: No read trimming metrics!\n")
+  quit(save="no",status=-1,runLast=FALSE)
+}
+## base qualitites
+if(!is.null(bq)){
+  plot.base.qualities(bq) 
+} else {
+  cat("ERROR: No base quality metrics!\n")
+  quit(save="no",status=-1,runLast=FALSE)
+}
+## capture specificity
+if(!is.null(cs)){
+  plot.capture.specificity(cs)
+} else {
+  cat("ERROR: No capture specificity metrics!\n")
+  quit(save="no",status=-1,runLast=FALSE)
+}
+## capture specificity percentage
+if(!is.null(cs)){
+  plot.capture.specificity.percentage(cs)
+} else {
+  cat("ERROR: No capture specifity metrics!\n")
+  quit(save="no",status=-1,runLast=FALSE)
+}
 dev.off()
