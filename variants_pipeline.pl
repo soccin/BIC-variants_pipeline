@@ -1172,7 +1172,7 @@ sub mergeStats {
    if(!-e "$output/progress/$pre\_$uID\_QCPDF.done" || $ran_merge){
 	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_QCPDF", job_hold => "$qcpdfj", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_QCPDF.log");
 	my $standardParams = Schedule::queuing(%stdParams);
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/qc/qcPDF.pl -path $output/metrics -pre $pre -config $config`;
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/qc/qcPDF.pl -path $output/metrics -pre $pre -config $config -log $output/progress/$pre\_$uID\_QCPDF_ERRORS.log`;
 	`/bin/touch $output/progress/$pre\_$uID\_QCPDF.done`;
     }
 }

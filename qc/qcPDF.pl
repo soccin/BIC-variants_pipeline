@@ -9,10 +9,11 @@ use FindBin qw($Bin);
 ### SO STICKING IT IN A WRAPPER FOR SIMPLICITY
 ###
 
-my ($pre, $path, $config);
+my ($pre, $path, $config, $log);
 GetOptions ('pre=s' => \$pre,
 	    'path=s' => \$path,
-	    'config=s' => \$config
+	    'config=s' => \$config,
+            'log=s' => \$log
 	   ) or exit(1);
 
 if(!$pre || !$path || !$config){
@@ -34,7 +35,8 @@ while(<CONFIG>){
 }
 close CONFIG;
 
-print "$R/R CMD BATCH \"--args path='$path' pre='$pre' bin='$Bin'\" $Bin/qcPDF.R\n";
-my $ec = system("$R/R CMD BATCH \"--args path='$path' pre='$pre' bin='$Bin'\" $Bin/qcPDF.R");
-print "$ec\n";
+print "$R/R CMD BATCH \"--args path='$path' pre='$pre' bin='$Bin'\ logfile='$log'\" $Bin/qcPDF.R\n";
+`$R/R CMD BATCH \"--args path='$path' pre='$pre' bin='$Bin' logfile='$log'\" $Bin/qcPDF.R`;
+
+my $ec = $? >> 8;
 if($ec != 0){ die; }
