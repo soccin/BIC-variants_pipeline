@@ -217,10 +217,10 @@ sub additionalLSF {
     }
 
     if($addLSF{'iounits'} =~ /^\d+$/){
-	$cluster->mem("-R \"rusage[iounits=$addLSF{'iounits'}]\"");
+	$aLSF .= " -R \"rusage[iounits=$addLSF{'iounits'}]\"";
     }
     else{
-	$cluster->mem("-R \"rusage[iounits=10]\"");
+	$aLSF .=" -R \"rusage[iounits=10]\"";
     }
 
     return $aLSF;
