@@ -56,9 +56,9 @@ if(-d "$working"){
 }
 
 
-###`$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx30g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $ABRA/abra.jar --in $inBams --out $outBams --ref $refSeq --bwa-ref $bwaRef --targets $targets --working $working --threads 24`;
+###`$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx60g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $ABRA/abra.jar --in $inBams --out $outBams --ref $refSeq --bwa-ref $bwaRef --targets $targets --working $working --threads 24`;
 
-`$JAVA/java -Xms256m -Xmx500g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $ABRA/abra.jar --in $inBams --out $outBams --ref $refSeq --bwa-ref $bwaRef --targets $targets --working $working --threads 12 > $log 2>&1`;
+`$JAVA/java -Xms256m -Xmx60g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $ABRA/abra.jar --in $inBams --out $outBams --ref $refSeq --bwa-ref $bwaRef --targets $targets --working $working --threads 12 > $log 2>&1`;
 
 my $eadj = $? >> 8;
 exit($eadj);

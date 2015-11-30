@@ -103,7 +103,7 @@ if(!$map || !$species || !$config || !$scheduler || !$targets || $help){
     USAGE: variants_pipeline.pl -config CONFIG -species SPECIES -scheduler SCHEDULER -targets TARGETS
 	* MAP: file listing sample information for processing (REQUIRED)
 	* GROUP: file listing grouping of samples for realign/recal steps (REQUIRED, unless using -mdOnly flag)
-	* SPECIES: only hg19 (default: human), mm9, mm10 (default: mouse), hybrid (hg19+mm10), mm10_custom, species_custom and dm3 currently supported (REQUIRED)
+	* SPECIES: b37 (default: human), hg19, mm9, mm10 (default: mouse), hybrid (hg19+mm10), mm10_custom, species_custom and dm3 currently supported (REQUIRED)
 	* TARGETS: name of targets assay; will search for targets/baits ilists and targets padded file in $Bin/targets/TARGETS unless given full path to targets directory (REQUIRED)
 	* CONFIG: file listing paths to programs needed for pipeline; full path to config file needed (REQUIRED)
 	* SCHEDULER: currently support for SGE and LSF (REQUIRED)
@@ -129,7 +129,11 @@ exit;
 my $commandLine = reconstructCL();
 
 my $REF_SEQ = '';
+my $FP_INT = '';
+my $FP_TG = '';
 
+my $B37_FASTA = '';
+my $B37_MM10_HYBRID_FASTA = '';
 my $HG19_FASTA = '';
 my $HG19_MM10_HYBRID_FASTA = '';
 my $MM9_FASTA = '';
@@ -248,14 +252,18 @@ foreach my $md_jid (@md_jids){
 }
 my $mdj = join(",", @md_jids);
 
-mergeStats();
-
 if($mdOnly){
+    mergeStats();
     exit(0);
 }
 
 generateGroupFile();
 callSNPS();
+
+my @qcpdf_jids = ();
+push @qcpdf_jids, "$pre\_$uID\_MERGE_MQ";
+mergeStats();
+
 
 close LOG;
 
@@ -455,6 +463,36 @@ sub verifyConfig{
 	    my $path_tmp = $ENV{'PATH'};
 	    $ENV{'PATH'} = "$conf[1]:$path_tmp";
 	}
+	elsif($conf[0] =~ /b37_fasta/i){
+	    if(!-e "$conf[1]"){
+		if($species =~ /human|^b37$/i){
+		    die "CAN'T FIND $conf[1] $!";
+		}
+	    }
+	    $B37_FASTA = $conf[1];
+	}
+	elsif($conf[0] =~ /b37_bwa_index/i){
+	    if(!-e "$conf[1]\.bwt" || !-e "$conf[1]\.pac" || !-e "$conf[1]\.ann" || !-e "$conf[1]\.amb" || !-e "$conf[1]\.sa"){
+		if($species =~ /^b37$|human/i){
+		    die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR B37 WITH PREFIX $conf[1] $!";
+		}
+	    }
+	}
+	elsif($conf[0] =~ /b37_mm10_hybrid_fasta/i){
+	    if(!-e "$conf[1]"){
+		if($species =~ /hybrid|b37_mm10/i){
+		    die "CAN'T FIND $conf[1] $!";
+		}
+	    }
+	    $B37_MM10_HYBRID_FASTA = $conf[1];
+	}
+	elsif($conf[0] =~ /b37_mm10_hybrid_bwa_index/i){
+	    if(!-e "$conf[1]\.bwt" || !-e "$conf[1]\.pac" || !-e "$conf[1]\.ann" || !-e "$conf[1]\.amb" || !-e "$conf[1]\.sa"){
+		if($species =~ /hybrid|b37_mm10/i){
+		    die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR b37-MM10 HYBRID WITH PREFIX $conf[1] $!";
+		}
+	    }
+	}
 	elsif($conf[0] =~ /hg19_fasta/i){
 	    if(!-e "$conf[1]"){
 		if($species =~ /hg19/i){
@@ -581,8 +619,8 @@ sub processInputs {
 	$pre = "s_$pre";
     }
     
-    if($species !~ /human|hg19|mouse|mm9|mm10|mm10_custom|species_custom|drosophila|dm3|hybrid/i){
-	die "Species must be human (hg19), mouse (mm9|mm10|mm10_custom), species_custom or drosophila (dm3) $!";
+    if($species !~ /human|b37|hg19|mouse|mm9|mm10|mm10_custom|species_custom|drosophila|dm3|hybrid/i){
+	die "Species must be human (b37|hg19), mouse (mm9|mm10|mm10_custom), species_custom or drosophila (dm3) $!";
     }
     
     if($scheduler =~ /lsf/i){
@@ -592,10 +630,19 @@ sub processInputs {
 	$scheduler = 'sge';
     }
     
-    if($species =~ /human|hg19/i){
+    if($species =~ /human|^b37$/i){
+	$species = 'b37';
+	$REF_SEQ = "$B37_FASTA";
+	$DB_SNP = "$Bin/data/b37/dbsnp_138.b37.vcf";
+	$FP_INT = "$Bin/data/b37/Agilent51MBExome__b37__FP_intervals.list";
+	$FP_TG = "$Bin/data/b37/Agilent51MBExome__b37__FP_tiling_genotypes.txt";
+    }
+    elsif($species =~ /hg19/i){
 	$species = 'hg19';
 	$REF_SEQ = "$HG19_FASTA";
-	$DB_SNP = "$Bin/data/dbsnp_135.hg19__ReTag.vcf";
+	$DB_SNP = "$Bin/data/hg19/dbsnp_138.hg19.vcf";
+	$FP_INT = "$Bin/data/hg19/Agilent51MBExome__hg19__FP_intervals.list";
+	$FP_TG = "$Bin/data/hg19/Agilent51MBExome__hg19__FP_tiling_genotypes.txt";
     }
     elsif($species =~ /mm9/i){
 	$species = 'mm9';
@@ -605,17 +652,19 @@ sub processInputs {
     elsif($species =~ /mouse|^mm10$/i){
 	$species = 'mm10';
 	$REF_SEQ = "$MM10_FASTA";
-	$DB_SNP = "$Bin/data/mouse_MM10_dbSNP_NCBI_20150625.vcf";
+	$DB_SNP = "$Bin/data/mm10/mouse_MM10_dbSNP_NCBI_20150625.vcf";
     }
     elsif($species =~ /mm10_custom/i){
 	$species = 'mm10_custom';
 	$REF_SEQ = "$MM10_CUSTOM_FASTA";
-	$DB_SNP = "$Bin/data/mouse_MM10_dbSNP_NCBI_20150625.vcf";
+	$DB_SNP = "$Bin/data/mm10/mouse_MM10_dbSNP_NCBI_20150625.vcf";
     }
     elsif($species =~ /hybrid/i){
 	$species = 'hybrid';
-	$REF_SEQ = "$HG19_MM10_HYBRID_FASTA";
-	$DB_SNP = "$Bin/data/dbsnp_135.hg19__ReTag.vcf";
+	$REF_SEQ = "$B37_MM10_HYBRID_FASTA";
+	$DB_SNP = "$Bin/data/b37/dbsnp_138.b37.vcf";
+	$FP_INT = "$Bin/data/b37/Agilent51MBExome__b37__FP_intervals.list";
+	$FP_TG = "$Bin/data/hg19/Agilent51MBExome__b37__FP_tiling_genotypes.txt";
     }
     elsif($species =~ /species_custom/i){
 	$species = 'species_custom';
@@ -929,7 +978,7 @@ sub processBams {
 		    $ran_lb_merge = 1;
 		    push @lib_merge_samp_jids, "$pre\_$uID\_LIB_MERGE_$samp\_$lib";
 		    push @md_jids, "$pre\_$uID\_LIB_MERGE_$samp\_$lib";		    
-		    sleep(3);
+		    sleep(2);
 		}
 		
 		if($noMD){
@@ -993,11 +1042,12 @@ sub processBams {
 	}
 	
 	my $smsj = join(",", @samp_merge_samp_jids);
-	if(!-e "$output/progress/$pre\_$uID\_HS_$samp\.done" || $ran_solexa{$samp} || $ran_samp_merge){
-	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_HS_METRICS\_$samp", job_hold => "$rmj,$smsj,$lmsj", cpu => "1", mem => "10", cluster_out => "$output/progress/$pre\_$uID\_HS_$samp\.log");
+	### HS will fail if seq dict of ref seq and bait/target intervals don't match
+	if(!-e "$output/progress/$pre\_$uID\_HS_METRICS_$samp\.done" || $ran_solexa{$samp} || $ran_samp_merge){
+	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_HS_METRICS\_$samp", job_hold => "$rmj,$smsj,$lmsj", cpu => "1", mem => "10", cluster_out => "$output/progress/$pre\_$uID\_HS_METRICS_$samp\.log");
 	    my $standardParams = Schedule::queuing(%stdParams);
 	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Djava.io.tmpdir=/scratch/$uID -jar $PICARD/picard.jar CalculateHsMetrics INPUT=$bamForStats OUTPUT=$output/intFiles/$pre\_HsMetrics_$samp\.txt REFERENCE_SEQUENCE=$REF_SEQ METRIC_ACCUMULATION_LEVEL=null METRIC_ACCUMULATION_LEVEL=SAMPLE BAIT_INTERVALS=$baits_ilist BAIT_SET_NAME=$assay TARGET_INTERVALS=$targets_ilist VALIDATION_STRINGENCY=LENIENT`;
-	    `/bin/touch $output/progress/$pre\_$uID\_HS_$samp\.done`;
+	    `/bin/touch $output/progress/$pre\_$uID\_HS_METRICS_$samp\.done`;
 	    push @hs_jids, "$pre\_$uID\_HS_METRICS\_$samp";
 	    $ran_hs = 1;
 	}
@@ -1005,42 +1055,42 @@ sub processBams {
 	
 	### NOTE: will only run if the sample is paired end
 	if($seq_type{$samp} eq "PE"){
-	    if(!-e "$output/progress/$pre\_$uID\_IS_$samp\.done" || $ran_solexa{$samp} || $ran_samp_merge){
-		my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_IS_METRICS\_$samp", job_hold => "$rmj,$smsj,$lmsj", cpu => "1", mem => "10", cluster_out => "$output/progress/$pre\_$uID\_IS_$samp\.log");
+	    if(!-e "$output/progress/$pre\_$uID\_IS_METRICS_$samp\.done" || $ran_solexa{$samp} || $ran_samp_merge){
+		my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_IS_METRICS\_$samp", job_hold => "$rmj,$smsj,$lmsj", cpu => "1", mem => "10", cluster_out => "$output/progress/$pre\_$uID\_IS_METRICS_$samp\.log");
 		my $standardParams = Schedule::queuing(%stdParams);
 		`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Djava.io.tmpdir=/scratch/$uID -jar $PICARD/picard.jar CollectInsertSizeMetrics INPUT=$bamForStats OUTPUT=$output/intFiles/$pre\_InsertSizeMetrics_$samp\.txt REFERENCE_SEQUENCE=$REF_SEQ METRIC_ACCUMULATION_LEVEL=null METRIC_ACCUMULATION_LEVEL=SAMPLE HISTOGRAM_FILE=$output/intFiles/$pre\_InsertSizeMetrics_Histogram_$samp\.txt VALIDATION_STRINGENCY=LENIENT`;
-		`/bin/touch $output/progress/$pre\_$uID\_IS_$samp\.done`;
+		`/bin/touch $output/progress/$pre\_$uID\_IS_METRICS_$samp\.done`;
 		push @is_jids, "$pre\_$uID\_IS_METRICS\_$samp";
 		$ran_is = 1;
 	    }	
 	    push @ism, "-metrics $output/intFiles/$pre\_InsertSizeMetrics_$samp\.txt";
 	}
 	
-	if(!-e "$output/progress/$pre\_$uID\_AS_$samp\.done" || $ran_solexa{$samp} || $ran_samp_merge){
-	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_AS_METRICS\_$samp", job_hold => "$rmj,$smsj,$lmsj", cpu => "1", mem => "10", cluster_out => "$output/progress/$pre\_$uID\_AS_$samp\.log");
+	if(!-e "$output/progress/$pre\_$uID\_AS_METRICS_$samp\.done" || $ran_solexa{$samp} || $ran_samp_merge){
+	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_AS_METRICS\_$samp", job_hold => "$rmj,$smsj,$lmsj", cpu => "1", mem => "10", cluster_out => "$output/progress/$pre\_$uID\_AS_METRICS_$samp\.log");
 	    my $standardParams = Schedule::queuing(%stdParams);
 	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Djava.io.tmpdir=/scratch/$uID -jar $PICARD/picard.jar CollectAlignmentSummaryMetrics INPUT=$bamForStats OUTPUT=$output/intFiles/$pre\_AlignmentSummaryMetrics_$samp\.txt REFERENCE_SEQUENCE=$REF_SEQ METRIC_ACCUMULATION_LEVEL=null METRIC_ACCUMULATION_LEVEL=SAMPLE VALIDATION_STRINGENCY=LENIENT`;
-	    `/bin/touch $output/progress/$pre\_$uID\_AS_$samp\.done`;
+	    `/bin/touch $output/progress/$pre\_$uID\_AS_METRICS_$samp\.done`;
 	    push @as_jids, "$pre\_$uID\_AS_METRICS\_$samp";
 	    $ran_as = 1;
 	}
 	push @asm, "-metrics $output/intFiles/$pre\_AlignmentSummaryMetrics_$samp\.txt";
 
-	if(!-e "$output/progress/$pre\_$uID\_COG_$samp\.done" || $ran_solexa{$samp} || $ran_samp_merge){
-	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_COG_METRICS\_$samp", job_hold => "$rmj,$smsj,$lmsj", cpu => "1", mem => "10", cluster_out => "$output/progress/$pre\_$uID\_COG_$samp\.log");
+	if(!-e "$output/progress/$pre\_$uID\_COG_METRICS_$samp\.done" || $ran_solexa{$samp} || $ran_samp_merge){
+	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_COG_METRICS\_$samp", job_hold => "$rmj,$smsj,$lmsj", cpu => "1", mem => "10", cluster_out => "$output/progress/$pre\_$uID\_COG_METRICS_$samp\.log");
 	    my $standardParams = Schedule::queuing(%stdParams);
 	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Djava.io.tmpdir=/scratch/$uID -jar $PICARD/picard.jar CollectOxoGMetrics INPUT=$bamForStats OUTPUT=$output/intFiles/$pre\_CollectOxoGMetrics_$samp\.txt REFERENCE_SEQUENCE=$REF_SEQ DB_SNP=$DB_SNP VALIDATION_STRINGENCY=LENIENT`;
-	    `/bin/touch $output/progress/$pre\_$uID\_COG_$samp\.done`;
+	    `/bin/touch $output/progress/$pre\_$uID\_COG_METRICS_$samp\.done`;
 	    push @cog_jids, "$pre\_$uID\_COG_METRICS\_$samp";
 	    $ran_cog = 1;
 	}
 	push @cogm, "-metrics $output/intFiles/$pre\_CollectOxoGMetrics_$samp\.txt";
 
-	if($species =~ /hg19/){
+	if($species =~ /b37|hg19/){
             if(!-e "$output/progress/$pre\_$uID\_DOC_$samp\.done" || $ran_solexa{$samp} || $ran_samp_merge){
                 my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_DOC\_$samp", job_hold => "$rmj,$smsj,$lmsj", cpu => "1", mem => "4", cluster_out => "$output/progress/$pre\_$uID\_DOC_$samp\.log");
                 my $standardParams = Schedule::queuing(%stdParams);
-                `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T DepthOfCoverage -I $bamForStats -R $REF_SEQ -o $bamForStats\_FP_base_counts\.txt -L $Bin/data/Agilent51MBExome__hg19__FP_intervals.list -rf BadCigar -mmq 20 -mbq 0 -omitLocusTable -omitSampleSummary -baseCounts --includeRefNSites -omitIntervals`;
+                `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T DepthOfCoverage -I $bamForStats -R $REF_SEQ -o $bamForStats\_FP_base_counts\.txt -L $FP_INT -rf BadCigar -mmq 20 -mbq 0 -omitLocusTable -omitSampleSummary -baseCounts --includeRefNSites -omitIntervals`;
                 `/bin/touch $output/progress/$pre\_$uID\_DOC_$samp\.done`;
                 push @doc_jids, "$pre\_$uID\_DOC\_$samp";
                 $ran_doc = 1;
@@ -1051,7 +1101,6 @@ sub processBams {
 }
 
 sub mergeStats {
-    my @qcpdf_jids = ();
     my $ran_merge = 0;
     my $ran_merge_ism = 0;
     my %addParams = (scheduler => "$scheduler", runtime => "50", priority_project=> "$priority_project", priority_group=> "$priority_group", rerun => "1", iounits => "1");
@@ -1123,13 +1172,13 @@ sub mergeStats {
 	$ran_merge = 1;
     }
 
-    if($species =~ /hg19/){
+    if($species =~ /b37|hg19/){
         my $docFiles = join(" ", @docm);
         my $docj = join(",", @doc_jids);
         if(!-e "$output/progress/$pre\_$uID\_FINGERPRINTING.done" || $ran_doc){
             my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_FINGERPRINTING", job_hold => "$docj", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_FINGERPRINTING.log");
             my $standardParams = Schedule::queuing(%stdParams);
-            `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PYTHON/python $Bin/qc/analyzeFingerprint.py -pattern '*_FP_base_counts.txt' -pre $pre -fp $Bin/data/Agilent51MBExome__hg19__FP_tiling_genotypes.txt -group $pair -groupType pairing -outdir $output/metrics/fingerprint -dir $output/intFiles`; 
+            `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PYTHON/python $Bin/qc/analyzeFingerprint.py -pattern '*_FP_base_counts.txt' -pre $pre -fp $FP_TG -group $pair -groupType pairing -outdir $output/metrics/fingerprint -dir $output/intFiles`; 
             `/bin/touch $output/progress/$pre\_$uID\_FINGERPRINTING.done`;
             push @qcpdf_jids, "$pre\_$uID\_FINGERPRINTING";
         }
@@ -1241,19 +1290,22 @@ sub callSNPS {
 
     my @currentTime = &getTime();
     print LOG "$currentTime[2]:$currentTime[1]:$currentTime[0], $currentTime[3]\/$currentTime[4]\/$currentTime[5]\tSNP CALLING RUNNING\n";
-    my %addParams = (scheduler => "$scheduler", runtime => "50", priority_project=> "$priority_project", priority_group=> "$priority_group", rerun => "1", iounits => "1");
-    my $additionalParams = Schedule::additionalParams(%addParams);
-    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_SNP_PIPE", job_hold => "$mdj", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_SNP_PIPE.log");
-    my $standardParams = Schedule::queuing(%stdParams);
+    ###my %addParams = (scheduler => "$scheduler", runtime => "50", priority_project=> "$priority_project", priority_group=> "$priority_group", rerun => "1", iounits => "1");
+    ###my $additionalParams = Schedule::additionalParams(%addParams);
+    ###my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_SNP_PIPE", job_hold => "$mdj", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_SNP_PIPE.log");
+    ###my $standardParams = Schedule::queuing(%stdParams);
     
-    if($species =~ /hg19|hybrid/i){
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/process_alignments_hg19.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra $run_step1 $patientFile -species $species`;
+    if($species =~ /b37|hg19|hybrid/i){
+	###`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/process_alignments_human.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra $run_step1 $patientFile -species $species`;
+	`$Bin/process_alignments_human.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra $run_step1 $patientFile -species $species`;
     }
     elsif($species =~ /mm9|^mm10$|mm10_custom/i){
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/process_alignments_mouse.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group -species $species $run_abra $run_step1`;
+	###`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/process_alignments_mouse.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group -species $species $run_abra $run_step1`;
+	`$Bin/process_alignments_mouse.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group -species $species $run_abra $run_step1`;
     }
     elsif($species =~ /species_custom/i){
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/process_alignments_species_custom.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra $run_step1`;
+	###`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/process_alignments_species_custom.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra $run_step1`;
+	`$Bin/process_alignments_species_custom.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra $run_step1`;
     }
     elsif($species =~ /dm3/i){
 	###`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/process_alignments_dm3.pl -pre $pre -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra $run_step1`;

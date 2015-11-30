@@ -46,7 +46,7 @@ if(!$file || !$config || !$species || !$scheduler || $help){
     USAGE: process_reads_pe.pl -file FILE -pre PRE -species SPECIES -config CONFIG -run RUN -readgroup READGROUP -scheduler SCHEDULER
 	* FILE: file listing read pairs to process (REQUIRED)
 	* PRE: output prefix (default: TEMP)
-	* SPECIES: only hg19, mm9, mm10, hybrid (hg19+mm10), mm10_custom, species_custom, and dm3 currently supported (REQUIRED)
+	* SPECIES: b37, hg19, mm9, mm10, hybrid (hg19+mm10), mm10_custom, species_custom, and dm3 currently supported (REQUIRED)
 	* CONFIG: file listing paths to programs needed for pipeline; full path to config file needed (REQUIRED)
 	* SCHEDULER: currently support for SGE and LSF (REQUIRED)
 	* RUN: RUN IDENTIFIER (default: TEMP_RUN)
@@ -67,8 +67,7 @@ my $uID = `/usr/bin/id -u -n`;
 chomp $uID;
 
 my $bwaDB = '';
-my $knownSites = '';
-my $refSeq = '';
+my $B37_BWA_INDEX = '';
 my $HG19_BWA_INDEX = '';
 my $HG19_MM10_HYBRID_BWA_INDEX = '';
 my $MM9_BWA_INDEX = '';
@@ -116,9 +115,17 @@ while(<CONFIG>){
 	}
 	$PYTHON = $conf[1];
     }
+    elsif($conf[0] =~ /b37_bwa_index/i){
+	if(!-e "$conf[1]\.bwt" || !-e "$conf[1]\.pac" || !-e "$conf[1]\.ann" || !-e "$conf[1]\.amb" || !-e "$conf[1]\.sa"){
+	    if($species =~ /^b37$/i){
+		die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR B37 WITH PREFIX $conf[1] $!";
+	    }
+	}
+	$B37_BWA_INDEX = $conf[1];
+    }
     elsif($conf[0] =~ /hg19_bwa_index/i){
 	if(!-e "$conf[1]\.bwt" || !-e "$conf[1]\.pac" || !-e "$conf[1]\.ann" || !-e "$conf[1]\.amb" || !-e "$conf[1]\.sa"){
-	    if($species =~ /hg19/i){
+	    if($species =~ /^hg19$/i){
 		die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR HG19 WITH PREFIX $conf[1] $!";
 	    }
 	}
@@ -175,7 +182,10 @@ while(<CONFIG>){
 }
 close CONFIG;
 
-if($species =~/hg19|human/i){
+if($species =~/^b37$|human/i){
+    $bwaDB = "$B37_BWA_INDEX";
+}
+elsif($species =~/^hg19$/i){
     $bwaDB = "$HG19_BWA_INDEX";
 }
 elsif($species =~ /^mm10$|mouse/i){
@@ -197,7 +207,7 @@ elsif($species =~ /dm3/i){
     $bwaDB = "$DM3_BWA_INDEX";
 }
 else{
-    die "SPECIES $species ISN'T CURRENTLY SUPPORTED; ONLY SUPPORT FOR hg19, mm9|mm10|mm10_custom, and species_custom\n";
+    die "SPECIES $species ISN'T CURRENTLY SUPPORTED; ONLY SUPPORT FOR b37|hg19, mm9|mm10|mm10_custom, and species_custom\n";
 }
 
 `/bin/mkdir -m 775 -p progress`;
@@ -264,7 +274,7 @@ while (<IN>){
     my $ran_cqs1 = 0;
     my $cqs1_jid = '';
     if(!-e "progress/$pre\_$uID\_CQS_$nameR1[0]\.done" || $ran_zcatR1){
-	sleep(3);
+	sleep(2);
 	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_CQS_$nameR1[0]", job_hold => "$zcatR1_jid", cpu => "1", mem => "1", cluster_out => "progress/$pre\_$uID\_CQS_$nameR1[0]\.log");
 	my $standardParams = Schedule::queuing(%stdParams);
 	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/ConvertQualityScore --input $count/$nameR1[0] --output $count/$nameR1[0]\_CQS`;
@@ -277,7 +287,7 @@ while (<IN>){
     my $cqs2_jid = '';
     if($pe){
 	if(!-e "progress/$pre\_$uID\_CQS_$nameR2[0]\.done" || $ran_zcatR2){
-	    sleep(3);
+	    sleep(2);
 	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_CQS_$nameR2[0]", job_hold => "$zcatR2_jid", cpu => "1", mem => "1", cluster_out => "progress/$pre\_$uID\_CQS_$nameR2[0]\.log");
 	    my $standardParams = Schedule::queuing(%stdParams);
 	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/ConvertQualityScore --input $count/$nameR2[0] --output $count/$nameR2[0]\_CQS`;
@@ -290,7 +300,7 @@ while (<IN>){
     my $ran_rsplit1 = 0;
     my @rsplit_jids = ();
     if(!-e "progress/$pre\_$uID\_RSPLIT_$nameR1[0]\.done" || $ran_cqs1){
-	sleep(3);
+	sleep(2);
 	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_RSPLIT_$nameR1[0]", job_hold => "$cqs1_jid", cpu => "1", mem => "1", cluster_out => "progress/$pre\_$uID\_RSPLIT_$nameR1[0]\.log");
 	my $standardParams = Schedule::queuing(%stdParams);
 	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams /usr/bin/split -a 3 -l 16000000 -d $count/$nameR1[0]\_CQS $count/$nameR1[0]\_CQS__`;
@@ -302,7 +312,7 @@ while (<IN>){
     my $ran_rsplit2 = 0;
     if($pe){
 	if(!-e "progress/$pre\_$uID\_RSPLIT_$nameR2[0]\.done" || $ran_cqs2){
-	    sleep(3);
+	    sleep(2);
 	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_RSPLIT_$nameR2[0]", job_hold => "$cqs2_jid", cpu => "1", mem => "1", cluster_out => "progress/$pre\_$uID\_RSPLIT_$nameR2[0]\.log");
 	    my $standardParams = Schedule::queuing(%stdParams);
 	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams /usr/bin/split -a 3 -l 16000000 -d $count/$nameR2[0]\_CQS $count/$nameR2[0]\_CQS__`;    
@@ -361,7 +371,7 @@ while (<IN>){
 		    my $standardParams = Schedule::queuing(%stdParams);
 		    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams "$PYTHON/python $CUTADAPT/cutadapt -f fastq -a $r1adaptor -O 10 -m $minReadLength -q 3 --paired-output $count/$rcount/$r2file\_TEMP.fastq -o $count/$rcount/$rfile\_TEMP.fastq $count/$rfile $count/$r2file >$count/$rcount/$rfile\_CUTADAPT\_STATS.txt"`;
 		    
-		    sleep(3);
+		    sleep(2);
 		    
 		    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_CUTADAPT_$r2file", job_hold => "$pre\_$uID\_CUTADAPT_$rfile", cpu => "1", mem => "1", cluster_out => "progress/$pre\_$uID\_CUTADAPT_$r2file\.log");
 		    my $standardParams = Schedule::queuing(%stdParams);
@@ -372,7 +382,7 @@ while (<IN>){
 		}
 		
 		if(!-e "progress/$pre\_$uID\_BWA_$rfile\_$r2file\.done" || $ran_cutadapt){
-		    sleep(3);
+		    sleep(2);
 		    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_BWA_$rfile\_$r2file", job_hold => "$ca_jid", cpu => "12", mem => "12", cluster_out => "progress/$pre\_$uID\_BWA_$rfile\_$r2file\.log");
 		    my $standardParams = Schedule::queuing(%stdParams);
 		    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams "$BWA/bwa mem -PM -R \'$readgroup\' -t 12 $bwaDB $count/$rcount/$rfile\_CT_PE.fastq $count/$rcount/$r2file\_CT_PE.fastq >$count/$rcount/$rfile\_$r2file\_CT_PE.fastq_$species\.bwa.sam"`;
@@ -386,7 +396,7 @@ while (<IN>){
 		my $ran_cutadapt = 0;
 		my $ca_jid = '';
 		if(!-e "progress/$pre\_$uID\_CUTADAPT_$rfile\.done" || $ran_rsplit1){
-		    sleep(3);
+		    sleep(2);
 		    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_CUTADAPT_$rfile", job_hold => "$rsj", cpu => "1", mem => "1", cluster_out => "progress/$pre\_$uID\_CUTADAPT_$rfile\.log");
 		    my $standardParams = Schedule::queuing(%stdParams);
 		    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams "$PYTHON/python $CUTADAPT/cutadapt -f fastq -a $r1adaptor -O 10 -m $minReadLength -q 3 -o $count/$rcount/$rfile\_CT_SE.fastq $count/$rfile >$count/$rcount/$rfile\_CUTADAPT\_STATS.txt"`;
@@ -396,7 +406,7 @@ while (<IN>){
 		}
 
 		if(!-e "progress/$pre\_$uID\_BWA_$rfile\.done" || $ran_cutadapt){
-		    sleep(3);
+		    sleep(2);
 		    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_BWA_$rfile", job_hold => "$ca_jid", cpu => "12", mem => "12", cluster_out => "progress/$pre\_$uID\_BWA_$rfile\.log");
 		    my $standardParams = Schedule::queuing(%stdParams);
 		    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams "$BWA/bwa mem -PM -R \'$readgroup\' -t 12 $bwaDB $count/$rcount/$rfile\_CT_SE.fastq >$count/$rcount/$rfile\_CT_SE.fastq_$species\.bwa.sam"`;
@@ -422,7 +432,7 @@ my %addParams = (scheduler => "$scheduler", runtime => "300", priority_project=>
 my $additionalParams = Schedule::additionalParams(%addParams);
 my $bwa_holds = join(",", @bwa_jids);
 if(!-e "progress/$pre\_$uID\_$run\_MERGE.done" || $ran_bwa){
-    sleep(3);
+    sleep(2);
     my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$run\_MERGE", job_hold => "$bwa_holds", cpu => "8", mem => "30", cluster_out => "progress/$pre\_$uID\_$run\_MERGE.log");
     my $standardParams = Schedule::queuing(%stdParams);
     `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx30g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $PICARD/picard.jar MergeSamFiles $inputRaw O=$run\.bam SORT_ORDER=coordinate VALIDATION_STRINGENCY=LENIENT TMP_DIR=/scratch/$uID CREATE_INDEX=true USE_THREADING=false MAX_RECORDS_IN_RAM=5000000`;
