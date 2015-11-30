@@ -1,0 +1,10 @@
+
+--This line, and those below, will be ignored--
+
+A    IMPACT410_hg19
+A    IMPACT410_hg19/IMPACT410_hg19_baits.ilist
+A    IMPACT410_hg19/IMPACT410_hg19_targets_plus5bp.ilist
+A    IMPACT410_hg19/IMPACT410_hg19_baits.bed
+A    IMPACT410_hg19/IMPACT410_hg19_targets_plus5bp.bed
+A    IMPACT410_hg19/IMPACT410_hg19_targets.ilist
+A    IMPACT410_hg19/IMPACT410_hg19_targets.bed

@@ -1,0 +1,21 @@
+#!/bin/bash
+
+GENOMEDICT=/ifs/depot/assemblies/H.sapiens/b37/b37.dict
+cat  $GENOMEDICT \
+	| egrep -v "(SN:(GL|NC|hs37)|@HD)" \
+	| cut -f2,3 | sed 's/..://g' >b37.genome
+
+(cat $GENOMEDICT; \
+	cat b37.genome \
+		| awk '{print $1,"1",$2,"+",$1}' \
+		| tr ' ' '\t') \
+	>wgs_b37_baits.ilist
+
+cp wgs_b37_baits.ilist wgs_b37_targets.ilist
+cp wgs_b37_baits.ilist wgs_b37_targets_plus5bp.ilist
+
+cat b37.genome | awk '{print $1,"0",$2}' | tr ' ' '\t'  \
+	>wgs_b37_baits.bed
+
+cp wgs_b37_baits.bed wgs_b37_targets.bed
+cp wgs_b37_baits.bed wgs_b37_targets_plus5bp.bed
