@@ -1,4 +1,4 @@
-command: ./exome_pipeline/exome_pipeline.pl -map MAP -group GROUP -pair PAIR -pre PRE -config CONFIG -species SPECIES
+command: .variants_pipeline.pl -map MAP -group GROUP -pair PAIR -pre PRE -config CONFIG -species SPECIES
 
 NOTES: 1. if you are not apart of the sge project named ngs, then you will need to remove "-P ngs" from all qsub commands
        2. you need to have /scratch/YOUR_USER_ID on all of the sge cluster nodes e.g. /scratch/mpirun

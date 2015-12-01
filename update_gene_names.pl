@@ -1,4 +1,4 @@
-#!/opt/bin/perl
+#!/usr/bin/perl
 
 # Author: Cyriac Kandoth
 # Date: 02/07/2011
