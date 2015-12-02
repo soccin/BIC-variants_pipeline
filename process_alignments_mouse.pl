@@ -228,7 +228,7 @@ close CONFIG;
 
 my $REF_SEQ = "$MM10_FASTA";
 my $BWA_INDEX = "$MM10_BWA_INDEX";
-my $DB_SNP = "$Bin/data/mouse_MM10_dbSNP_NCBI_20150625.vcf";
+my $DB_SNP = "$Bin/data/mm10/mm10_snp142.vcf";
 
 if($species =~ /mm10_custom/i){
     $REF_SEQ = "$MM10_CUSTOM_FASTA";
@@ -237,7 +237,7 @@ if($species =~ /mm10_custom/i){
 elsif($species =~ /mm9/i){
     $REF_SEQ = "$MM9_FASTA";
     $BWA_INDEX = "$MM9_BWA_INDEX";
-    $DB_SNP = "$Bin/data/UCSC_dbSNP128_MM9.bed";
+    $DB_SNP = "";
 }
 
 ### make sure all markdup bam files are there before proceeding
