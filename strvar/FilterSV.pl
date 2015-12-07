@@ -616,12 +616,18 @@ sub FilterVcf {
 			if ( !$svChr2 ) { $svChr2 = $svChr }
 			my $convertedSVchr;
 			$convertedSVchr = $svChr;
-			$convertedSVchr = substr($convertedSVchr, 3);	
+			if($convertedSVchr =~ m/^chr/ )
+			{
+				$convertedSVchr = substr($convertedSVchr, 3);	
+			}
 			$convertedSVchr = "23" if ( $svChr =~ /X/ );
 			$convertedSVchr = "24" if ( $svChr =~ /Y/ );
 			my $convertedSVchr2;
 			$convertedSVchr2 = $svChr2;
-			$convertedSVchr2 = substr($convertedSVchr2, 3);
+			if($convertedSVchr2 =~ m/^chr/)
+			{
+				$convertedSVchr2 = substr($convertedSVchr2, 3);
+			}
 			$convertedSVchr2 = "23" if ( $svChr2 =~ /X/ );
 			$convertedSVchr2 = "24" if ( $svChr2 =~ /Y/ );
 
