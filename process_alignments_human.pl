@@ -1006,7 +1006,7 @@ if(!-e "$output/progress/$pre\_$uID\_STRVAR.done" || $ran_ssf){
 
     my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_STRVAR", job_hold => "$ssfj", cpu => "1", mem => "10", cluster_out => "$output/progress/$pre\_$uID\_STRVAR.log");
     my $standardParams = Schedule::queuing(%stdParams);
-    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/RunStructuralVariantPipeline_Delly.pl -pre $pre -pair $pair -bam_list $curDir/$output/intFiles/$pre\_sv_bam_list.txt -out $curDir/$output/strvar -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group`;
+    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/RunStructuralVariantPipeline_Delly.pl -pre $pre -out $curDir/$output/strvar -pair $pair -bam_list $curDir/$output/intFiles/$pre\_sv_bam_list.txt -genome $species -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group`;
     `/bin/touch $output/progress/$pre\_$uID\_STRVAR.done`;
     $ran_strvar = 1;
 }
