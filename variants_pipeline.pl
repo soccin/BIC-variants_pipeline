@@ -238,10 +238,12 @@ my $ran_as = 0;
 my $ran_md_glob = 0;
 my $ran_cog = 0;
 my $ran_doc = 0;
+my $ran_gcm = 0;
 my @md_jids = ();
 my @hs_jids = ();
 my @is_jids = ();
 my @as_jids = ();
+my @gc_jids = ();
 my @cog_jids = ();
 my @doc_jids = ();
 my %bamsggf = ();
@@ -1097,6 +1099,16 @@ sub processBams {
             }
             push @docm, "$bamForStats\_FP_base_counts\.txt";
         }
+
+        if(!-e "$output/progress/$pre\_$uID\_GC_METRICS_$samp\.done" || $ran_solexa{$samp} || $ran_samp_merge){
+            my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_GC_METRICS\_$samp", job_hold => "$rmj,$smsj,$lmsj", cpu => "1", mem => "10", cluster_out => "$output/progress/$pre\_$uID\_GC_METRICS_$samp\.log");
+            my $standardParams = Schedule::queuing(%stdParams);
+            `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Djava.io.tmpdir=/scratch/$uID -jar $PICARD/picard.jar CollectGcBiasMetrics INPUT=$bamForStats OUTPUT=$output/intFiles/$pre\_GcBiasMetrics_$samp\.txt REFERENCE_SEQUENCE=$REF_SEQ SUMMARY_OUTPUT=$output/intFiles/$pre\_gcbias_$samp\_summary_tmp.txt CHART_OUTPUT=$output/intFiles/$pre\_gcbias_$samp\_tmp.pdf`;
+            `/bin/touch $output/progress/$pre\_$uID\_GC_METRICS_$samp\.done`;
+            push @gc_jids, "$pre\_$uID\_GC_METRICS\_$samp";
+            $ran_gcm = 1;
+        }
+
     }
 }
 
@@ -1170,6 +1182,19 @@ sub mergeStats {
 	`/bin/touch $output/progress/$pre\_$uID\_MERGE_COGM.done`;
 	push @qcpdf_jids, "$pre\_$uID\_MERGE_COGM";
 	$ran_merge = 1;
+    }
+
+    my $gcj = join(",", @gc_jids);
+    if(!-e "$output/progress/$pre\_$uID\_MERGE_GCM.done" || $ran_gcm){
+       ### NOTE: all of the gcbiasmetrics jobs should be done because of the job sync on merge jobs
+       ###       so don't need this to hold on gcbiasmetrics
+       ###       this hold causes issues on lsf because of the *
+       my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_MERGE_GCM", job_hold => "$gcj", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_MERGE_GCM.log");
+       my $standardParams = Schedule::queuing(%stdParams);
+       `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PYTHON/python $Bin/qc/mergeGcBiasMetrics.py . GcBiasMetrics* $output/metrics/$pre\_GcBiasMetrics.txt`;
+       `/bin/touch $output/progress/$pre\_$uID\_MERGE_GCM.done`;
+       push @qcpdf_jids, "$pre\_$uID\_MERGE_GCM";
+       $ran_merge = 1;
     }
 
     if($species =~ /b37|hg19/){

@@ -26,6 +26,7 @@ cv = get.coverage(path,type)
 da = get.fpc.sum(path,type)
 mjc = get.major.contamination(path,type)
 mnc = get.minor.contamination(path,type)
+gc = get.gc.bias(path,type)
 
 fileName = paste(pre,"_QC.pdf",sep="")
 fp = file.path(path,fileName)
@@ -199,6 +200,18 @@ if(!is.null(cs)){
  )
 } else {
   cat("ERROR: No capture specifity metrics!\n",file=logfile, append=TRUE)
+  no.fails = FALSE
+}
+## gc bias
+if(!is.null(gc)){
+ tryCatch(plot.gc.bias(gc),
+   error = function(e){
+    cat("ERROR: could not make GC BIAS plot\n",file=logfile, append=TRUE)
+    no.fails = FALSE
+   }
+ )
+} else {
+  cat("ERROR: No gc bias metrics!\n",file=logfile, append=TRUE)
   no.fails = FALSE
 }
 dev.off()
