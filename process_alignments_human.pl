@@ -447,24 +447,23 @@ while(<IN>){
 	foreach my $c (1..22, 'X', 'Y', "$CHR_M"){
 	    my $ran_rtc = 0;
 	    my $rtc_jid = '';
-	    if(!-e "$output/progress/$pre\_$uID\_$gpair[0]\_chr$c\_RTC.done" || $step1){
-		### mad.q,nce.q have timeout issues with this step
-		my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$gpair[0]\_chr$c\_RTC", cpu => "10", mem => "5", cluster_out => "$output/progress/$pre\_$uID\_$gpair[0]\_chr$c\_RTC.log");
+	    if(!-e "$output/progress/$pre\_$uID\_$gpair[0]\_CHR$c\_RTC.done" || $step1){
+		my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$gpair[0]\_CHR$c\_RTC", cpu => "10", mem => "5", cluster_out => "$output/progress/$pre\_$uID\_$gpair[0]\_CHR$c\_RTC.log");
 		my $standardParams = Schedule::queuing(%stdParams);
 		`$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx5g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T RealignerTargetCreator -R $REF_SEQ -L $CHR_PRE$c $multipleTargets --known $MILLS_1000G --known $DB_SNP -S LENIENT -nt 10 -rf BadCigar --downsampling_type NONE --out $output/intFiles/$pre\_$gpair[0]\_chr$c\_indelRealigner.intervals $bgroup`;
-		`/bin/touch $output/progress/$pre\_$uID\_$gpair[0]\_chr$c\_RTC.done`;
-		$rtc_jid = "$pre\_$uID\_$gpair[0]\_chr$c\_RTC";
+		`/bin/touch $output/progress/$pre\_$uID\_$gpair[0]\_CHR$c\_RTC.done`;
+		$rtc_jid = "$pre\_$uID\_$gpair[0]\_CHR$c\_RTC";
 		$ran_rtc = 1;
 	    }
 	    
 	    ### seems to randomly have issues with file locking timeout on the m nodes so not submitting to it anymore
-	    if(!-e "$output/progress/$pre\_$uID\_$gpair[0]\_chr$c\_IR.done" || $ran_rtc){
+	    if(!-e "$output/progress/$pre\_$uID\_$gpair[0]\_CHR$c\_IR.done" || $ran_rtc){
 		sleep(2);
-		my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$gpair[0]\_chr$c\_IR", job_hold => "$rtc_jid", cpu => "1", mem => "15", cluster_out => "$output/progress/$pre\_$uID\_$gpair[0]\_chr$c\_IR.log");
+		my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$gpair[0]\_CHR$c\_IR", job_hold => "$rtc_jid", cpu => "1", mem => "15", cluster_out => "$output/progress/$pre\_$uID\_$gpair[0]\_CHR$c\_IR.log");
 		my $standardParams = Schedule::queuing(%stdParams);
 		`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx15g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T IndelRealigner -R $REF_SEQ -L $CHR_PRE$c $multipleTargets --knownAlleles $MILLS_1000G --knownAlleles $DB_SNP -S LENIENT --targetIntervals $output/intFiles/$pre\_$gpair[0]\_chr$c\_indelRealigner.intervals --maxReadsForRealignment 500000 --maxReadsInMemory 3000000 --maxReadsForConsensuses 500000 -rf BadCigar --out $output/intFiles/$pre\_$gpair[0]\_chr$c\_indelRealigned.bam $bgroup`;
-		`/bin/touch $output/progress/$pre\_$uID\_$gpair[0]\_chr$c\_IR.done`;
-		push @ir_jids, "$pre\_$uID\_$gpair[0]\_chr$c\_IR";
+		`/bin/touch $output/progress/$pre\_$uID\_$gpair[0]\_CHR$c\_IR.done`;
+		push @ir_jids, "$pre\_$uID\_$gpair[0]\_CHR$c\_IR";
 		$ran_ir = 1;
 	    }
 
@@ -488,9 +487,9 @@ while(<IN>){
     my $ran_pr = 0;
     my @pr_jids = ();
     foreach my $c (1..22, 'X', 'Y', "$CHR_M"){
-	if(!-e "$output/progress/$pre\_$uID\_$gpair[0]\_chr$c\_PR.done" || $ran_br){
+	if(!-e "$output/progress/$pre\_$uID\_$gpair[0]\_CHR$c\_PR.done" || $ran_br){
 	    sleep(2);
-	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$gpair[0]\_chr$c\_PR", job_hold => "$pre\_$uID\_$gpair[0]\_BR", cpu => "6", mem => "30", cluster_out => "$output/progress/$pre\_$uID\_$gpair[0]\_chr$c\_PR.log");
+	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$gpair[0]\_CHR$c\_PR", job_hold => "$pre\_$uID\_$gpair[0]\_BR", cpu => "6", mem => "30", cluster_out => "$output/progress/$pre\_$uID\_$gpair[0]\_CHR$c\_PR.log");
 	    my $standardParams = Schedule::queuing(%stdParams);
 
 	    my $inIRb = "-I $output/intFiles/$pre\_$gpair[0]\_chr$c\_indelRealigned.bam";
@@ -499,9 +498,9 @@ while(<IN>){
 	    }
 
 	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx30g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T PrintReads -R $REF_SEQ -L $CHR_PRE$c $multipleTargets --emit_original_quals -BQSR $output/intFiles/$pre\_$gpair[0]\_recal_data.grp --num_cpu_threads_per_data_thread 6 -rf BadCigar --downsampling_type NONE --out $output/intFiles/$pre\_$gpair[0]\_chr$c\_indelRealigned_recal.bam $inIRb`;
-	    `/bin/touch $output/progress/$pre\_$uID\_$gpair[0]\_chr$c\_PR.done`;
-	    push @pr_jids, "$pre\_$uID\_$gpair[0]\_chr$c\_PR";
-	    push @prg_jids, "$pre\_$uID\_$gpair[0]\_chr$c\_PR";
+	    `/bin/touch $output/progress/$pre\_$uID\_$gpair[0]\_CHR$c\_PR.done`;
+	    push @pr_jids, "$pre\_$uID\_$gpair[0]\_CHR$c\_PR";
+	    push @prg_jids, "$pre\_$uID\_$gpair[0]\_CHR$c\_PR";
 	    $ran_pr = 1;
 	    $ran_pr_glob{"chr$c"} = 1;
 	}
@@ -590,23 +589,23 @@ foreach my $c (1..22, 'X', 'Y', "$CHR_M"){
     my $irBams2 = join(" ", @{$processedBams{"chr$c"}});
 
     if($ug){
-	if(!-e "$output/progress/$pre\_$uID\_chr$c\_UG.done" || $ran_pr_glob{"chr$c"}){
-	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_chr$c\_UG", job_hold => "$prgj", cpu => "12", mem => "24", cluster_out => "$output/progress/$pre\_$uID\_chr$c\_UG.log");
+	if(!-e "$output/progress/$pre\_$uID\_CHR$c\_UG.done" || $ran_pr_glob{"chr$c"}){
+	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_CHR$c\_UG", job_hold => "$prgj", cpu => "12", mem => "24", cluster_out => "$output/progress/$pre\_$uID\_CHR$c\_UG.log");
 	    my $standardParams = Schedule::queuing(%stdParams);
 	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx24g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T UnifiedGenotyper -R $REF_SEQ --reference_sample_name $species -L $CHR_PRE$c $multipleTargets --dbsnp $DB_SNP --downsampling_type NONE --annotateNDA --annotation AlleleBalance --annotation AlleleBalanceBySample --annotation HardyWeinberg --genotype_likelihoods_model BOTH --read_filter BadCigar --num_cpu_threads_per_data_thread 12 --out $output/intFiles/$pre\_chr$c\_UnifiedGenotyper.vcf $irBams2`;
-	    `/bin/touch $output/progress/$pre\_$uID\_chr$c\_UG.done`;
-	    push @ug_jids, "$pre\_$uID\_chr$c\_UG";
+	    `/bin/touch $output/progress/$pre\_$uID\_CHR$c\_UG.done`;
+	    push @ug_jids, "$pre\_$uID\_CHR$c\_UG";
 	    $ran_ug = 1;
 	}
     }
 
     ### NOTE: ANNOTATIONS THAT DON'T WORK:AlleleBalance, HardyWeinberg,IndelType
-    if(!-e "$output/progress/$pre\_$uID\_chr$c\_HC.done" || $ran_pr_glob{"chr$c"}){
-	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_chr$c\_HC", job_hold => "$prgj", cpu => "24", mem => "90", cluster_out => "$output/progress/$pre\_$uID\_chr$c\_HC.log");
+    if(!-e "$output/progress/$pre\_$uID\_CHR$c\_HC.done" || $ran_pr_glob{"chr$c"}){
+	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_CHR$c\_HC", job_hold => "$prgj", cpu => "24", mem => "90", cluster_out => "$output/progress/$pre\_$uID\_CHR$c\_HC.log");
 	my $standardParams = Schedule::queuing(%stdParams);
 	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx90g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T HaplotypeCaller -R $REF_SEQ -L $CHR_PRE$c $multipleTargets --dbsnp $DB_SNP --downsampling_type NONE --annotation AlleleBalanceBySample --annotation ClippingRankSumTest --read_filter BadCigar --num_cpu_threads_per_data_thread 24 --out $output/intFiles/$pre\_chr$c\_HaplotypeCaller.vcf $irBams2`;
-	`/bin/touch $output/progress/$pre\_$uID\_chr$c\_HC.done`;
-	push @hc_jids, "$pre\_$uID\_chr$c\_HC";
+	`/bin/touch $output/progress/$pre\_$uID\_CHR$c\_HC.done`;
+	push @hc_jids, "$pre\_$uID\_CHR$c\_HC";
 	$ran_hc = 1;
     }
     
