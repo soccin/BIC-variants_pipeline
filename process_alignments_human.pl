@@ -983,42 +983,41 @@ if($pair){
 	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $standardParams->{internet} $additionalParams_I $PERL/perl $Bin/haploTect_merge.pl -pair $pair -hc_vcf $output/variants/haplotypecaller/$pre\_HaplotypeCaller.vcf -pre $pre -output $output/variants/haplotect -mutect_dir $output/variants/mutect -config $config $patientFile -align_dir $output/alignments/ -delete_temp`;
 	`/bin/touch $output/progress/$pre\_HAPLOTECT.done`;
     }
-}
 
-open(GROUP, "$group") || die "CAN'T OPEN SAMPLE GROUPING FILE $group $!";
-open(BLIST, ">$output/intFiles/$pre\_sv_bam_list.txt") || die "CAN'T WRITE TO SAMPLE BAM LIST FILE $output/intFiles/$pre\_sv_bam_list.txt $!";
-while(<GROUP>){
-    chomp;
-
-    my @data = split(/\s+/, $_);
-    print BLIST "$data[0]\t$curDir/$output/alignments/$pre\_indelRealigned_recal\_$data[0]\.bam\n";
-}
-close GROUP;
-close BLIST;
-
-my $ran_strvar = 0;
-if(!-e "$output/progress/$pre\_$uID\_STRVAR.done" || $ran_ssf){
-    sleep(2);
-    if(-d "$curDir/$output/strvar"){
-	`/bin/rm -rf $curDir/$output/strvar`;
+    open(GROUP, "$group") || die "CAN'T OPEN SAMPLE GROUPING FILE $group $!";
+    open(BLIST, ">$output/intFiles/$pre\_sv_bam_list.txt") || die "CAN'T WRITE TO SAMPLE BAM LIST FILE $output/intFiles/$pre\_sv_bam_list.txt $!";
+    while(<GROUP>){
+	chomp;
+	
+	my @data = split(/\s+/, $_);
+	print BLIST "$data[0]\t$curDir/$output/alignments/$pre\_indelRealigned_recal\_$data[0]\.bam\n";
     }
-
-    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_STRVAR", job_hold => "$ssfj", cpu => "1", mem => "10", cluster_out => "$output/progress/$pre\_$uID\_STRVAR.log");
-    my $standardParams = Schedule::queuing(%stdParams);
-    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/RunStructuralVariantPipeline_Delly.pl -pre $pre -out $curDir/$output/strvar -pair $pair -bam_list $curDir/$output/intFiles/$pre\_sv_bam_list.txt -genome $species -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group`;
-    `/bin/touch $output/progress/$pre\_$uID\_STRVAR.done`;
-    $ran_strvar = 1;
+    close GROUP;
+    close BLIST;
+    
+    my $ran_strvar = 0;
+    if(!-e "$output/progress/$pre\_$uID\_STRVAR.done" || $ran_ssf){
+	sleep(2);
+	if(-d "$curDir/$output/strvar"){
+	    `/bin/rm -rf $curDir/$output/strvar`;
+	}
+	
+	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_STRVAR", job_hold => "$ssfj", cpu => "1", mem => "10", cluster_out => "$output/progress/$pre\_$uID\_STRVAR.log");
+	my $standardParams = Schedule::queuing(%stdParams);
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/RunStructuralVariantPipeline_Delly.pl -pre $pre -out $curDir/$output/strvar -pair $pair -bam_list $curDir/$output/intFiles/$pre\_sv_bam_list.txt -genome $species -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group`;
+	`/bin/touch $output/progress/$pre\_$uID\_STRVAR.done`;
+	$ran_strvar = 1;
+    }
+    
+    if(!-e "$output/progress/$pre\_$uID\_CDNA_CONTAM.done" || $ran_strvar){
+	sleep(2);
+	
+	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_CDNA_CONTAM", job_hold => "$pre\_$uID\_STRVAR", cpu => "1", mem => "4", cluster_out => "$output/progress/$pre\_$uID\_CDNA_CONTAM.log");
+	my $standardParams = Schedule::queuing(%stdParams);
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PYTHON/python $Bin/qc/check_cDNA_contamination.py -s $output/strvar/$pre\_AllAnnotatedSVs.txt -o $output/metrics/$pre\_cDNA_contamination.txt`;
+	`/bin/touch $output/progress/$pre\_$uID\_CDNA_CONTAM.done`;
+    }
 }
-
-if(!-e "$output/progress/$pre\_$uID\_CDNA_CONTAM.done" || $ran_strvar){
-    sleep(2);
-
-    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_CDNA_CONTAM", job_hold => "$pre\_$uID\_STRVAR", cpu => "1", mem => "4", cluster_out => "$output/progress/$pre\_$uID\_CDNA_CONTAM.log");
-    my $standardParams = Schedule::queuing(%stdParams);
-    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PYTHON/python $Bin/qc/check_cDNA_contamination.py -s $output/strvar/$pre\_AllAnnotatedSVs.txt -o $output/metrics/$pre\_cDNA_contamination.txt`;
-    `/bin/touch $output/progress/$pre\_$uID\_CDNA_CONTAM.done`;
-}
-
 
 sub generateMaf{
     my ($vcf, $type, $hold, $normal_sample, $tumor_sample) = @_;
