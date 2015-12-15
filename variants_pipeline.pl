@@ -126,6 +126,16 @@ HELP
 exit;
 }
 
+my $curDir = `pwd`;
+chomp $curDir;
+my $cd = $curDir;
+$cd =~ s/\//_/g;
+
+if($output !~ /^\//){
+    $output = "$curDir/$output";
+
+}
+
 my $commandLine = reconstructCL();
 
 my $REF_SEQ = '';
@@ -167,11 +177,6 @@ my $GATK = '';
 
 &verifyConfig($config);
 processInputs();
-
-my $curDir = `pwd`;
-chomp $curDir;
-my $cd = $curDir;
-$cd =~ s/\//_/g;
 
 my $uID = `/usr/bin/id -u -n`;
 chomp $uID;
@@ -906,14 +911,14 @@ sub alignReads {
 	my @currentTime = &getTime();
 	print LOG "$currentTime[2]:$currentTime[1]:$currentTime[0], $currentTime[3]\/$currentTime[4]\/$currentTime[5]\tSTARTING READS PROCESSING/ALIGNMENT FOR $data[1]\_$data[0]\_$data[2]\n";
 	
-	if(!-e "$curDir/$output/progress/reads_files_$data[1]\_$data[0]\_$data[2]\.done"){	    
+	if(!-e "$output/progress/reads_files_$data[1]\_$data[0]\_$data[2]\.done"){	    
 	    `$Bin/process_reads.pl -file files_$data[1]\_$data[0]\_$data[2] -pre $pre -run $data[1]\_$data[0]\_$data[2] -readgroup "\@RG\\tID:$data[1]\_$data[0]\_$data[2]\_$seq_type{$data[1]}\\tPL:Illumina\\tPU:$data[1]\_$data[0]\_$data[2]\\tLB:$data[1]\_$data[0]\\tSM:$data[1]" -species $species -config $config -scheduler $scheduler -r1adaptor $r1adaptor -r2adaptor $r2adaptor -priority_project $priority_project -priority_group $priority_group > files_$data[1]\_$data[0]\_$data[2]\_process_reads_$seq_type{$data[1]}\.log 2>&1`;
 	    
 	    ###`/common/sge/bin/lx24-amd64/qsub /home/mpirun/tools/qCMD $Bin/solexa_PE.pl -file files -pre $pre -run $data[1]\_$data[0]\_$data[2] -readgroup "\@RG\\\tID:$data[1]\_$data[0]\_$data[2]\_PE\\\tPL:Illumina\\\tPU:$data[1]\_$data[0]\_$data[2]\\\tLB:$data[1]\_$data[0]\\\tSM:$data[1]" -species $species -config $config $targeted -scheduler $scheduler`;
 	    $ran_sol = 1;
 	    $ran_solexa{$data[1]} = 1;
 	    push @run_merge_jids, "$pre\_$uID\_$data[1]\_$data[0]\_$data[2]\_MERGE";
-	    `/bin/touch $curDir/$output/progress/reads_files_$data[1]\_$data[0]\_$data[2]\.done`;
+	    `/bin/touch $output/progress/reads_files_$data[1]\_$data[0]\_$data[2]\.done`;
 	}
 	else{
 	    print LOG "$currentTime[2]:$currentTime[1]:$currentTime[0], $currentTime[3]\/$currentTime[4]\/$currentTime[5]\tSKIPPING READS PROCESSING/ALIGNMENT FOR $data[1]\_$data[0]\_$data[2]; PREVIOUSLY RAN TO COMPLETION\n";

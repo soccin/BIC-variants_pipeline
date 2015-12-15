@@ -83,8 +83,6 @@ my $MM10_CUSTOM_FASTA = '';
 my $MM10_CUSTOM_BWA_INDEX = '';
 my $REF_SEQ = '';
 
-my $curDir = `pwd`;
-chomp $curDir;
 open(CONFIG, "$config") or die "CAN'T OPEN CONFIG FILE $config";
 while(<CONFIG>){
     chomp;

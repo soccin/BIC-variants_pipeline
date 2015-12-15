@@ -79,8 +79,6 @@ my $PERL = '';
 my $REF_SEQ = "";
 my $BWA_INDEX = "";
 
-my $curDir = `pwd`;
-chomp $curDir;
 open(CONFIG, "$config") or die "CAN'T OPEN CONFIG FILE $config";
 while(<CONFIG>){
     chomp;

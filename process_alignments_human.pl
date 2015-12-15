@@ -55,6 +55,13 @@ HELP
 exit;
 }
 
+my $curDir = `pwd`;
+chomp $curDir;
+if($output !~ /^\//){
+    $output = "$curDir/$output";
+
+}
+
 my $uID = `/usr/bin/id -u -n`;
 chomp $uID;
 
@@ -84,8 +91,6 @@ my $HG19_MM10_HYBRID_FASTA = '';
 my $HG19_BWA_INDEX = '';
 my $HG19_MM10_HYBRID_BWA_INDEX = '';
 
-my $curDir = `pwd`;
-chomp $curDir;
 open(CONFIG, "$config") or die "CAN'T OPEN CONFIG FILE $config $!";
 while(<CONFIG>){
     chomp;
@@ -990,7 +995,7 @@ if($pair){
 	chomp;
 	
 	my @data = split(/\s+/, $_);
-	print BLIST "$data[0]\t$curDir/$output/alignments/$pre\_indelRealigned_recal\_$data[0]\.bam\n";
+	print BLIST "$data[0]\t$output/alignments/$pre\_indelRealigned_recal\_$data[0]\.bam\n";
     }
     close GROUP;
     close BLIST;
@@ -998,13 +1003,13 @@ if($pair){
     my $ran_strvar = 0;
     if(!-e "$output/progress/$pre\_$uID\_STRVAR.done" || $ran_ssf){
 	sleep(2);
-	if(-d "$curDir/$output/strvar"){
-	    `/bin/rm -rf $curDir/$output/strvar`;
+	if(-d "$output/strvar"){
+	    `/bin/rm -rf $output/strvar`;
 	}
 	
 	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_STRVAR", job_hold => "$ssfj", cpu => "1", mem => "10", cluster_out => "$output/progress/$pre\_$uID\_STRVAR.log");
 	my $standardParams = Schedule::queuing(%stdParams);
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/RunStructuralVariantPipeline_Delly.pl -pre $pre -out $curDir/$output/strvar -pair $pair -bam_list $curDir/$output/intFiles/$pre\_sv_bam_list.txt -genome $species -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group`;
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/RunStructuralVariantPipeline_Delly.pl -pre $pre -out $output/strvar -pair $pair -bam_list $output/intFiles/$pre\_sv_bam_list.txt -genome $species -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group`;
 	`/bin/touch $output/progress/$pre\_$uID\_STRVAR.done`;
 	$ran_strvar = 1;
     }
