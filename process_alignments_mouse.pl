@@ -306,7 +306,7 @@ while(<IN>){
 	push @pins, "-I $pai";
 	$inputFiles{$pai} = 1;
         
-        my $samp = $sn[2];
+        my $samp = $sn[-3];
         push @finalBams, "$output/alignments/$pre\_indelRealigned_recal_$samp.bam";
     }
 

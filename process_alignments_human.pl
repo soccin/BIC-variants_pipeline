@@ -391,7 +391,7 @@ while(<IN>){
 	$inputFiles{$pai} = 1;
 
         ## store final bams for post-recalibration stats
-        my $samp = $sn[2];
+        my $samp = $sn[-3];
         push @finalBams, "$output/alignments/$pre\_indelRealigned_recal_$samp.bam"; 
     }
 
