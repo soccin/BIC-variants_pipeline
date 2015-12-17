@@ -272,10 +272,10 @@ print "$PYTHON/python $Bin/maf/pA_reSortCols.py -i $vcf\_$somatic\_VEP_MAF.txt -
 `$PYTHON/python $Bin/maf/pA_reSortCols.py -i $vcf\_$somatic\_VEP_MAF.txt -f $Bin/maf/finalCols.txt -o $vcf\_$somatic\_MAF4.txt`;
 
 print "annotating with cosmic\n";
-print "$PYTHON/python $Bin/maf/maf_annotations/addCosmicAnnotation.py -i $vcf\_$somatic\_VEP_MAF.txt -o $vcf\_$somatic\_VEP_COSMIC_MAF_STANDARD.txt -f $Bin/data/CosmicMutantExport_v67_241013.tsv\n\n";
-print "$PYTHON/python $Bin/maf/maf_annotations/addCosmicAnnotation.py -i $vcf\_$somatic\_VEP_MAF.txt -o $vcf\_$somatic\_VEP_COSMIC_MAF_DETAILED.txt -f $Bin/data/CosmicMutantExport_v67_241013.tsv -d\n\n";
-`$PYTHON/python $Bin/maf/maf_annotations/addCosmicAnnotation.py -i $vcf\_$somatic\_VEP_MAF.txt -o $vcf\_$somatic\_VEP_COSMIC_MAF_STANDARD.txt -f $Bin/data/CosmicMutantExport_v67_241013.tsv`;
-`$PYTHON/python $Bin/maf/maf_annotations/addCosmicAnnotation.py -i $vcf\_$somatic\_VEP_MAF.txt -o $vcf\_$somatic\_VEP_COSMIC_MAF_DETAILED.txt -f $Bin/data/CosmicMutantExport_v67_241013.tsv -d`;
+print "$PYTHON/python $Bin/maf/maf_annotations/addCosmicAnnotation.py -i $vcf\_$somatic\_VEP_MAF.txt -o $vcf\_$somatic\_VEP_COSMIC_MAF_STANDARD.txt -f $Bin/data/b37/CosmicMutantExport_v67_241013.tsv\n\n";
+print "$PYTHON/python $Bin/maf/maf_annotations/addCosmicAnnotation.py -i $vcf\_$somatic\_VEP_MAF.txt -o $vcf\_$somatic\_VEP_COSMIC_MAF_DETAILED.txt -f $Bin/data/b37/CosmicMutantExport_v67_241013.tsv -d\n\n";
+`$PYTHON/python $Bin/maf/maf_annotations/addCosmicAnnotation.py -i $vcf\_$somatic\_VEP_MAF.txt -o $vcf\_$somatic\_VEP_COSMIC_MAF_STANDARD.txt -f $Bin/data/b37/CosmicMutantExport_v67_241013.tsv`;
+`$PYTHON/python $Bin/maf/maf_annotations/addCosmicAnnotation.py -i $vcf\_$somatic\_VEP_MAF.txt -o $vcf\_$somatic\_VEP_COSMIC_MAF_DETAILED.txt -f $Bin/data/b37/CosmicMutantExport_v67_241013.tsv -d`;
 
 print "annotating with mutation assessor\n";
 print "$PYTHON/python $Bin/maf/maf_annotations/addMAannotation.py -i $vcf\_$somatic\_VEP_COSMIC_MAF_STANDARD.txt -o $vcf\_$somatic\_VEP_COSMIC_MA_MAF_STANDARD.txt\n";
