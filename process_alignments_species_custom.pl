@@ -658,7 +658,9 @@ if($pair){
 	
 	if($ran_scalpel){
 	    sleep(2);
-	    `/common/sge/bin/lx24-amd64/qsub -N $pre\_$uID\_$data[0]\_$data[1]\_SCALPEL_CLEANUP -hold_jid $pre\_$uID\_$data[0]\_$data[1]\_SCALPEL -pe alloc 1 -l virtual_free=1G -q lau.q,lcg.q,nce.q,mad.q $Bin/qCMD /bin/rm -rf $output/variants/scalpel/$data[0]\_$data[1]\_scalpel/main/ $output/variants/scalpel/$data[0]\_$data[1]\_scalpel/validation/`;
+	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$data[0]\_$data[1]\_SCALPEL_CLEANUP", job_hold => "$pre\_$uID\_$data[0]\_$data[1]\_SCALPEL", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_SCALPEL_CLEANUP.log");
+	    my $standardParams = Schedule::queuing(%stdParams);
+	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams /bin/rm -rf $output/variants/scalpel/$data[0]\_$data[1]\_scalpel/main/ $output/variants/scalpel/$data[0]\_$data[1]\_scalpel/validation/`;
 	}
 
 	if($ran_strelka_run){
