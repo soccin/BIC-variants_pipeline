@@ -981,7 +981,7 @@ if($pair){
             $patientFile = "-patient $patient";
         }
 	my $muj = join(",", @mu_jids);
-	my %addParams_I = (scheduler => "$scheduler", runtime => "500", priority_project=> "$priority_project", priority_group=> "$priority_group", queues => "ito.q");
+	my %addParams_I = (scheduler => "$scheduler", runtime => "500", priority_project=> "$priority_project", priority_group=> "$priority_group", queues => "ito.q", iounits => "1");
 	my $additionalParams_I = Schedule::additionalParams(%addParams_I);
 	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_HAPLOTECT", job_hold => "$arihcj,$muj", cpu => "4", mem => "8", internet => "1", cluster_out => "$output/progress/$pre\_HAPLOTECT.log");
 	my $standardParams = Schedule::queuing(%stdParams);
