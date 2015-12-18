@@ -1196,7 +1196,7 @@ sub mergeStats {
        ###       this hold causes issues on lsf because of the *
        my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_MERGE_GCM", job_hold => "$gcj", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_MERGE_GCM.log");
        my $standardParams = Schedule::queuing(%stdParams);
-       `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PYTHON/python $Bin/qc/mergeGcBiasMetrics.py . GcBiasMetrics* $output/metrics/$pre\_GcBiasMetrics.txt`;
+       `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PYTHON/python $Bin/qc/mergeGcBiasMetrics.py $output GcBiasMetrics* $output/metrics/$pre\_GcBiasMetrics.txt`;
        `/bin/touch $output/progress/$pre\_$uID\_MERGE_GCM.done`;
        push @qcpdf_jids, "$pre\_$uID\_MERGE_GCM";
        $ran_merge = 1;
@@ -1221,7 +1221,7 @@ sub mergeStats {
 	###       this hold causes issues on lsf because of the *
 	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_MERGE_CAS", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_MERGE_CAS.log");
 	my $standardParams = Schedule::queuing(%stdParams);
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PYTHON/python $Bin/qc/mergeCutAdaptStats.py . CUTADAPT_STATS.txt $output/metrics/$pre\_CutAdaptStats.txt`;
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PYTHON/python $Bin/qc/mergeCutAdaptStats.py $output CUTADAPT_STATS.txt $output/metrics/$pre\_CutAdaptStats.txt`;
 	`/bin/touch $output/progress/$pre\_$uID\_MERGE_CAS.done`;
 	push @qcpdf_jids, "$pre\_$uID\_MERGE_CAS";
     }
@@ -1232,7 +1232,7 @@ sub mergeStats {
        ###       this hold causes issues on lsf because of the *
        my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_MERGE_CQS", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_MERGE_CQS.log");
        my $standardParams = Schedule::queuing(%stdParams);
-       `$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PYTHON/python $Bin/qc/mergeConvertQualityScoreMetrics.py . _cqs_metrics $output/metrics/$pre\_ConvertQualityScoreMetrics.txt`;
+       `$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PYTHON/python $Bin/qc/mergeConvertQualityScoreMetrics.py $output _cqs_metrics $output/metrics/$pre\_ConvertQualityScoreMetrics.txt`;
        `/bin/touch $output/progress/$pre\_$uID\_MERGE_CQS.done`;
         #push @qcpdf_jids, "$pre\_$uID\_MERGE_CQS";
     }
@@ -1243,7 +1243,7 @@ sub mergeStats {
        ###       this hold causes issues on lsf because of the *
         my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_MERGE_CQS_LOGS", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_MERGE_CQS_LOGS.log");
         my $standardParams = Schedule::queuing(%stdParams);
-        `$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PYTHON/python $Bin/qc/mergeConvertQualityScoreLogs.py . _cqs_log $output/metrics/$pre\_ConvertQualityScoreLog.txt`;
+        `$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PYTHON/python $Bin/qc/mergeConvertQualityScoreLogs.py $output _cqs_log $output/metrics/$pre\_ConvertQualityScoreLog.txt`;
         `/bin/touch $output/progress/$pre\_$uID\_MERGE_CQS_LOGS.done`;
      }
 
