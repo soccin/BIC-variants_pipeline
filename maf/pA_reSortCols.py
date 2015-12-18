@@ -37,7 +37,7 @@ with open(args.inputFile, 'r') as f:
     outf.write("\t".join(flds) + "\n")
 
     for rec in cin:
-        out=[rec[x] for x in flds]
+        out=[str(rec[x]) for x in flds]
         outf.write("\t".join(out) + "\n")
 
     outf.close()
