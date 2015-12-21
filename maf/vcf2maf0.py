@@ -22,7 +22,7 @@ parser.add_argument('-aF', '--additionalFile',action='store',help='If using mute
 parser.add_argument('-n','--normal',action='store',help='If a somatic caller produces VCFs with the column name NORMAL, renames it in the MAF with this argument')
 parser.add_argument('-t','--tumor',action='store',help='If a somater callers produces VCFs with the column name TUMOR, renames it in the MAF with this argument')
 parser.add_argument('-v','--verbose',action='store_true',help='If specified, create a verbose maf that includes vcf entries with no reads')
-
+parser.add_argument('-T', '--tsvMode', action='store',help="If specified, make traditional maf0 files where indels are with vcf indexing and multiple alt alleles are returned")
 
 callers = {"varscan": "VAR", "Varscan":"VAR", "var":"VAR", "UnifiedGenotyper":"UG", "unifiedgenotyper":"UG", "ug":"UG", "HaplotypeCaller":"HC", "haplotypecaller":"HC", "hap":"HC", "haplo":"HC", "Mutect":"MUT", "mutect":"MUT", "mut":"MUT", "SomaticSniper":"SS", "somaticsniper":"SS", "snip":"SS", "Strelka":"STR", "strelka":"STR", "str":"STR"}
 somaticCallers = ["MUT",  "SS", "STR"] ##important for dealing with vcfs that just encode "NORMAL" and "TUMOR" instead of sample name
@@ -36,8 +36,9 @@ if len(sys.argv) <= 1:
 -p, --pairing: a tumor/normal pairing file.
 -aF, --additionalFile: specify the mutect .txt file if the not default.
 -n, --normal: the sample name of the NORMAL. Required for somatic callers. Only useful for certain somatic callers.
--t, --tumor: the sample name of the TUMOR. Required for somatic callers. Only useful for certain somatic callers.i
--v, --verbose: If specified, create a verbose maf that includes vcf entries with no reads""", file=sys.stderr)
+-t, --tumor: the sample name of the TUMOR. Required for somatic callers. Only useful for certain somatic callers.
+-v, --verbose: If specified, create a verbose maf that includes vcf entries with no reads.
+-T, --tsvMode: If specified, make traditional maf0 files where indels are with vcf indexing and multiple alt alleles are returned""", file=sys.stderr)
     sys.exit(64)
 if callers.has_key(args.caller):
     1 
@@ -72,7 +73,12 @@ if args.pairing:
     if not pairMap:
       print("ERROR: Pairing file creates a null mapping")
       sys.exit(78)
+tsvMode = False
+if args.tsvMode:
+    tsvMode = True
+
 fo = sys.stdout
+
 if output != "stdout":
     fo = open(output, 'w')
 fi = open(input, 'r')
@@ -86,7 +92,7 @@ parser = None
 
 
 if callers[args.caller] == "MUT":
-  parser = VcfParser.MutectParser(fi, pairMap, args.tumor, args.normal )
+  parser = VcfParser.MutectParser(fi, pairMap, args.tumor, args.normal, tsvMode)
   mutectText = args.additionalFile
   if not mutectText:
     arInput = input.split(".")
@@ -96,11 +102,11 @@ if callers[args.caller] == "MUT":
   parser.trimPairmap()
 elif (callers[args.caller] == "VAR" and args.normal) or callers[args.caller] ==  "SS" or callers[args.caller] == "STR":
   pairMap = {"TUMOR": ["NORMAL"]}
-  parser = VcfParser.SomaticParser(fi, pairMap, args.tumor, args.normal, args.verbose)
+  parser = VcfParser.SomaticParser(fi, pairMap, args.tumor, args.normal, args.verbose, tsvMode)
 elif callers[args.caller] == "HC":
-  parser =VcfParser.HapParser(fi, pairMap, args.tumor, args.normal, args.verbose)
+  parser =VcfParser.HapParser(fi, pairMap, args.tumor, args.normal, args.verbose, tsvMode)
 else:
-  parser = VcfParser.VcfParser(fi, pairMap, args.tumor, args.normal, args.verbose)
+  parser = VcfParser.VcfParser(fi, pairMap, args.tumor, args.normal, args.verbose, tsvMode)
 
 uniq_formats=parser.calculateCallerSpecificFormat(callers[args.caller])
 uniq_infos=parser.calculateCallerSpecificInfos(callers[args.caller])
