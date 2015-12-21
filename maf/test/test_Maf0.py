@@ -1,4 +1,4 @@
-#!/opt/bin/python
+#!/opt/common/CentOS_6/python/python-2.7.7/bin/python
 """ Test the VCF to maf0 converter by whole file comparisons and by unit tests
 """
 
@@ -17,7 +17,7 @@ class TestMaf(unittest.TestCase):
   def comparePairToMutectVcf(self, tumorNormal):
     mRead = tumorNormal.tumor
     nRead = tumorNormal.normal
-    p = subprocess.Popen(['grep', '29419659', '/ifs/data/gabow/testing/maf/test_mutect1.vcf'], stdout=subprocess.PIPE)
+    p = subprocess.Popen(['grep', '29419659', '/ifs/work/gabow/testing/maf/test_mutect1.vcf'], stdout=subprocess.PIPE)
     o, e = p.communicate()
     lineArray = o.strip().split("\t")
     gti = 0
@@ -40,19 +40,19 @@ class TestMaf(unittest.TestCase):
     self.assertEqual(mRead.filter, lineArray[6])
 
   def checkMutectText(self, mRead):
-    p = subprocess.Popen(['grep', '29448410', '/ifs/data/gabow/testing/maf/test_mutect1.txt'],stdout=subprocess.PIPE)
+    p = subprocess.Popen(['grep', '29448410', '/ifs/work/gabow/testing/maf/test_mutect1.txt'],stdout=subprocess.PIPE)
     o, e = p.communicate()
     lineArray = o.strip().split("\t")
     reason = lineArray[-2]
     self.assertEqual(mRead.filter, 'fstar_tumor_lod,possible_contamination')
-    p = subprocess.Popen(['grep', '29121285', '/ifs/data/gabow/testing/maf/test_mutect1.txt'], stdout=subprocess.PIPE)
+    p = subprocess.Popen(['grep', '29121285', '/ifs/work/gabow/testing/maf/test_mutect1.txt'], stdout=subprocess.PIPE)
     o, e = p.communicate()
     lineArray = o.strip().split("\t")
     mapQ0Reads = lineArray[17]
     #self.assertEqual(mRead.uniq[map_q0_reads], mapQ0Reads)
 
   def test_pairFileParse(self):
-    pairMap = VcfParser.VcfParser.parsePairFile("/ifs/data/gabow/testing/maf/test_mutect1_sample_pairing.txt")
+    pairMap = VcfParser.VcfParser.parsePairFile("/ifs/work/gabow/testing/maf/test_mutect1_sample_pairing.txt")
     self.assertEqual(pairMap["s_DS_blarad_001_P"],  ["s_DS_blarad_001_N3"])
     self.assertEqual(pairMap["s_DS_blarad_002_P"],  ["s_DS_blarad_002_N"])
     self.assertEqual(pairMap["s_DS_blarad_003_P2"],  ["s_DS_blarad_003_N"])
@@ -64,10 +64,10 @@ class TestMaf(unittest.TestCase):
     self.assertEqual(pairMap["s_DS_blarad_007_P2"],  ["s_FFPE_pool_Normal"])
 
   def test_parseMutectPairedRead(self):
-    fo = open("/ifs/data/gabow/testing/maf/test_mutect1.vcf", 'r')
+    fo = open("/ifs/work/gabow/testing/maf/test_mutect1.vcf", 'r')
     junk = open('junk.txt', 'w')
     mp = VcfParser.MutectParser(fo,  {"s_DS_blarad_005_M":["s_DS_blarad_005_N"]}) 
-    mp.parseAdditionalFile("/ifs/data/gabow/testing/maf/test_mutect1.txt")
+    mp.parseAdditionalFile("/ifs/work/gabow/testing/maf/test_mutect1.txt")
     reads = mp.testParserHarness(GeneralizedRead, junk)
     fo.close()
     junk.close()
@@ -79,9 +79,9 @@ class TestMaf(unittest.TestCase):
     self.comparePairToMutectVcf(r)
 
   def test_additionalInfo(self):
-    fo = open("/ifs/data/gabow/testing/maf/test_mutect1.vcf", 'r')
-    mp = VcfParser.MutectParser(fo,  {"s_DS_blarad_005_M":["s_DS_blarad_005_N"]}, "s_DS_blarad_005_M", "s_DS_blarad_005_N")
-    mp.parseAdditionalFile("/ifs/data/gabow/testing/maf/test_mutect1.txt")
+    fo = open("/ifs/work/gabow/testing/maf/test_mutect1.vcf", 'r')
+    mp = VcfParser.MutectParser(fo,  {"s_DS_blarad_005_M":["s_DS_blarad_005_N"]}, "s_DS_blarad_005_M", "s_DS_blarad_005_N", False)
+    mp.parseAdditionalFile("/ifs/work/gabow/testing/maf/test_mutect1.txt")
     uniq_formats=mp.calculateCallerSpecificFormat("MUT")
     uniq_infos=mp.calculateCallerSpecificInfos("MUT")
     reads = []
@@ -101,10 +101,10 @@ class TestMaf(unittest.TestCase):
       uniqFormat = mp.populateUniqFormats(sample)
 
     fo.close()
-    fo = open("/ifs/data/gabow/testing/maf/test_mutect1.vcf", 'r')
+    fo = open("/ifs/work/gabow/testing/maf/test_mutect1.vcf", 'r')
     junk = open('junk.txt', 'w')
     mp = VcfParser.MutectParser(fo,  {"s_DS_blarad_005_M":["s_DS_blarad_005_N"]}, "s_DS_blarad_005_M", "s_DS_blarad_005_N")
-    mp.parseAdditionalFile("/ifs/data/gabow/testing/maf/test_mutect1.txt")
+    mp.parseAdditionalFile("/ifs/work/gabow/testing/maf/test_mutect1.txt")
     uniq_formats=mp.calculateCallerSpecificFormat("MUT")
     uniq_infos=mp.calculateCallerSpecificInfos("MUT")
     reads = mp.testParserHarness(GeneralizedRead, junk)
@@ -119,17 +119,17 @@ class TestMaf(unittest.TestCase):
 
 #  @unittest.skip("for now")
   def test_system_mutect(self):
-    cmd = "/opt/bin/python vcf2maf0.py -c mutect -i /ifs/data/gabow/testing/maf/test_mutect1.vcf -o test_diff.maf0 -p /ifs/data/gabow/testing/maf/test_mutect1_sample_pairing.txt -t s_DS_blarad_005_M -n s_DS_blarad_005_N"
+    cmd = "/opt/common/CentOS_6/python/python-2.7.7/bin/python vcf2maf0.py -c mutect -i /ifs/work/gabow/testing/maf/test_mutect1.vcf -o test_diff.maf0 -p /ifs/work/gabow/testing/maf/test_mutect1_sample_pairing.txt -t s_DS_blarad_005_M -n s_DS_blarad_005_N"
     p = subprocess.Popen(shlex.split(cmd), stdout=subprocess.PIPE)
     o, e = p.communicate()
-    cmd = "diff test_diff.maf0 /ifs/data/gabow/testing/maf/test_maf0_snpeff_removed_caller_added_portal.txt"
+    cmd = "diff test_diff.maf0 /ifs/work/gabow/testing/maf/test_maf0_snpeff_removed_caller_added_c.txt"
     p = subprocess.Popen(shlex.split(cmd), stdout=subprocess.PIPE)
     o, e = p.communicate()
     self.assertEqual(o, "")
 
   def test_parseStrelkaPairedRead(self):
-    fo =open("/ifs/data/gabow/testing/maf/test_stelka.indels.vcf", 'r')
-    sp = VcfParser.SomaticParser(fo,  {"TUMOR":["NORMAL"]}, "s_DS_blarad_005_M", "s_DS_blarad_005_N")
+    fo =open("/ifs/work/gabow/testing/maf/test_stelka.indels.vcf", 'r')
+    sp = VcfParser.SomaticParser(fo,  {"TUMOR":["NORMAL"]}, "s_DS_blarad_005_M", "s_DS_blarad_005_N", False, True)
     uniq_formats=sp.calculateCallerSpecificFormat("STR")
     uniq_infos=sp.calculateCallerSpecificInfos("STR")
     junk = open('junk.txt', 'w')
@@ -144,8 +144,10 @@ class TestMaf(unittest.TestCase):
       r = reads[i]
     nRead = r.normal
     mRead = r.tumor
-    self.assertEqual(nRead.sample,"s_DS_blarad_005_N")
-    self.assertEqual(mRead.sample,"s_DS_blarad_005_M")
+    #self.assertEqual(nRead.sample,"s_DS_blarad_005_N")
+    #self.assertEqual(mRead.sample,"s_DS_blarad_005_M")
+    self.assertEqual(nRead.sample,"NORMAL")
+    self.assertEqual(mRead.sample,"TUMOR")
     self.assertEqual(mRead.chrom, "chr6")
     self.assertEqual(mRead.pos, "32007827")
     self.assertEqual(mRead.ref, "CT")
@@ -153,8 +155,8 @@ class TestMaf(unittest.TestCase):
     self.assertEqual(mRead.filter, "PASS")
 
   def test_parseVarscanPairedRead(self):
-    fo  = open("/ifs/data/gabow/testing/maf/test_varscan.snp.vcf", 'r')
-    sp = VcfParser.SomaticParser(fo,  {"TUMOR":["NORMAL"]}, "s_DS_blarad_005_M", "s_DS_blarad_005_N")
+    fo  = open("/ifs/work/gabow/testing/maf/test_varscan.snp.vcf", 'r')
+    sp = VcfParser.SomaticParser(fo,  {"TUMOR":["NORMAL"]}, "s_DS_blarad_005_M", "s_DS_blarad_005_N", False, True)
     uniq_formats=sp.calculateCallerSpecificFormat("VAR")
     uniq_infos=sp.calculateCallerSpecificInfos("VAR")
     junk = open('junk.txt', 'w')
@@ -190,8 +192,8 @@ class TestMaf(unittest.TestCase):
 
 
   def test_parseSniperPairedRead(self):
-    fo  = open("/ifs/data/gabow/testing/maf/test_sniper.vcf", 'r')
-    sp = VcfParser.SomaticParser(fo,  {"TUMOR":["NORMAL"]}, "s_DS_blarad_005_M", "s_DS_blarad_005_N")
+    fo  = open("/ifs/work/gabow/testing/maf/test_sniper.vcf", 'r')
+    sp = VcfParser.SomaticParser(fo,  {"TUMOR":["NORMAL"]}, "s_DS_blarad_005_M", "s_DS_blarad_005_N", False, True)
     uniq_formats=sp.calculateCallerSpecificFormat("SS")
     uniq_infos=sp.calculateCallerSpecificInfos("SS")
     junk = open('junk.txt', 'w')
@@ -221,7 +223,7 @@ class TestMaf(unittest.TestCase):
 
 
   def test_parseHaploUnpairedRead(self):
-    fo  = open("/ifs/data/gabow/testing/maf/test_germline_haplotype.vcf", 'r')
+    fo  = open("/ifs/work/gabow/testing/maf/test_haplotype.vcf", 'r')
     hp = VcfParser.HapParser(fo, verbose=True)
     uniq_formats=hp.calculateCallerSpecificFormat("HAP")
     uniq_infos=hp.calculateCallerSpecificInfos("HAP")
@@ -231,15 +233,15 @@ class TestMaf(unittest.TestCase):
     fo.close()
     i = 0
     r = reads[i]
-    cp = '9776098'
+    cp = '20170150'
     while(r.pos != cp):
       i += 1
       r = reads[i]
     read = r
 
   def test_parseHaploPairedRead(self):
-    pairMap = VcfParser.VcfParser.parsePairFile("/ifs/data/gabow/testing/maf/test_mutect1_sample_pairing.txt")
-    fo  = open("/ifs/data/gabow/testing/maf/test_haplotype.vcf", 'r')
+    pairMap = VcfParser.VcfParser.parsePairFile("/ifs/work/gabow/testing/maf/test_mutect1_sample_pairing.txt")
+    fo  = open("/ifs/work/gabow/testing/maf/test_haplotype.vcf", 'r')
     hp = VcfParser.VcfParser(fo, pairMap)
     uniq_formats=hp.calculateCallerSpecificFormat("HAP")
     uniq_infos=hp.calculateCallerSpecificInfos("HAP")
@@ -285,7 +287,7 @@ class TestMaf(unittest.TestCase):
     self.assertEqual(mRead.uniqF[-1], "37;3;0")
     
   def test_VarscanUnpaired(self):
-    fo  = open("/ifs/data/gabow/testing/maf/test_germline_varscan.vcf", 'r')
+    fo  = open("/ifs/work/gabow/testing/maf/test_varscan.snp.vcf", 'r')
     sp = VcfParser.VcfParser(fo)
     uniq_formats=sp.calculateCallerSpecificFormat("VAR")
     uniq_infos=sp.calculateCallerSpecificInfos("VAR")
@@ -295,15 +297,16 @@ class TestMaf(unittest.TestCase):
     fo.close()
     i = 0
     r = reads[i]
-    cp = '60795860'
+    cp = '7023565'
     while(r.pos != cp):
       i += 1
       r = reads[i]
     read = r
-#chr18   60795860    .   A   G   .   PASS    ADP=94144;WT=0;HET=1;HOM=0;NC=0 GT:GQ:SDP:DP:RD:AD:FREQ:PVAL:RBQ:ABQ:RDF:RDR:ADF:ADR    0/1:141:94144:94144:94117:16:0.02%:6.3462E-15:27:15:41930:52187:8:8
+#OLD chr18   60795860    .   A   G   .   PASS    ADP=94144;WT=0;HET=1;HOM=0;NC=0 GT:GQ:SDP:DP:RD:AD:FREQ:PVAL:RBQ:ABQ:RDF:RDR:ADF:ADR    0/1:141:94144:94144:94117:16:0.02%:6.3462E-15:27:15:41930:52187:8:8
+#chr18   7023565 .   A   G   .   PASS    DP=106;SS=1;SSC=2;GPV=3.5492E-11;SPV=5.7955E-1  GT:GQ:DP:RD:AD:FREQ:DP4 0/1:.:48:34:14:29.17%:22,12,8,6 0/1:.:58:41:17:29.31%:23,18,14,3
 
     self.assertEqual(read.gt, "0/1")
-    self.assertEqual(read.gq, "141")
+    self.assertEqual(read.gq, ".")
     self.assertEqual(read.uniqF[2], "0.02%")
     self.assertEqual(read.uniqI[0], "94144")
     self.assertEqual(read.uniqI[1], "0")
@@ -313,10 +316,40 @@ class TestMaf(unittest.TestCase):
 
  
   def test_SomaticArguments(self):
-    cmd = "/opt/bin/python vcf2maf0.py -c mutect -i /ifs/data/gabow/testing/maf/test_varscan.vcf -o test_fail.maf0 -p /ifs/data/gabow/testing/maf/test_mutect1_sample_pairing.txt -t foo"
+    cmd = "/opt/common/CentOS_6/python/python-2.7.7/bin/python vcf2maf0.py -c mutect -i /ifs/work/gabow/testing/maf/test_varscan.snp.vcf -o test_fail.maf0 -p /ifs/work/gabow/testing/maf/test_mutect1_sample_pairing.txt -t foo -T"
     p = subprocess.Popen(shlex.split(cmd), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     o, e = p.communicate()
     self.assertEqual(e, "For a somatic caller, you must give the tumor and normal with the -t and -n arguments\n")
+
+
+  def test_VcfStyleIndel(self):
+    pairMap = VcfParser.VcfParser.parsePairFile("/ifs/work/gabow/testing/maf/test_haplo_multi_sample_pairing.txt")
+    fo  = open( '/ifs/work/gabow/testing/maf/test_haplo_multi.vcf', 'r')
+    sp = VcfParser.VcfParser(fo, pairMap, "DS_bla_188_N", "DS_bla_188_T1")
+    uniq_formats=sp.calculateCallerSpecificFormat("VAR")
+    uniq_infos=sp.calculateCallerSpecificInfos("VAR")
+    junk = open('junk.txt', 'w')
+    reads = sp.testParserHarness(GeneralizedRead, junk)
+    junk.close()
+    fo.close()
+    i = 0
+    r = reads[i]
+    cp = '12252337'
+    while(r.tumor.pos != cp):
+      i += 1
+      r = reads[i]
+    #CHROM  POS ID  REF ALT QUAL  FILTER  INFO  FORMAT DS_bla_188_N  DS_bla_188_T1
+    #chr1 12252333  . CTGTG C,CTG,CTGTGTG 3583.85 VQSRTrancheINDEL99.00to99.90  AC=12,7,17;AF=0.176,0.103,0.250;AN=68;BaseQRankSum=1.980;ClippingRankSum=0.032;DP=494;FS=14.240;MLEAC=12,6,17;MLEAF=0.176,0.088,0.250;MQ=59.90;MQRankSum=-0.218;NEGATIVE_TRAIN_SITE;QD=7.77;ReadPosRankSum=-0.576;SOR=1.632;VQSLOD=-1.612e+00;culprit=FS  GT:AD:GQ:PL 0/3:2,0,0,1:16:16,40,304,40,249,238,0,126,123,111 0/3:8,0,1,8:99:202,254,738,221,604,576,0,247,192,203
+    nRead = r.normal
+    tRead = r.tumor
+    self.assertEqual(tRead.chrom, "chr1")
+    self.assertEqual(tRead.pos, cp)
+    self.assertEqual(tRead.ref, "-")
+    self.assertEqual(tRead.alt, "TG")
+    self.assertEqual(nRead.gt, "0/1")
+    self.assertEqual(tRead.gt, "0/1")
+    #self.assertEqual(nRead.uniqF[-1], "85;9;0")
+    #self.assertEqual(tRead.uniqF[-1], "36;3;0")
 
 if __name__ ==  '__main__':
     unittest.main()
