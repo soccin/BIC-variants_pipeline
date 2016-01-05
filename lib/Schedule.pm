@@ -186,6 +186,10 @@ sub lsf {
     if($lsfParams{'cluster_out'}){
 	$cluster ->cluster_out("-o $lsfParams{'cluster_out'}");
     }
+
+    if($lsfParams{'cluster_error'}){
+	$cluster ->cluster_out("-o $lsfParams{'cluster_error'}");
+    }
 }
 
 sub additionalLSF {
