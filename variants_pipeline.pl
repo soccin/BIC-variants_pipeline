@@ -659,12 +659,12 @@ sub processInputs {
     elsif($species =~ /mouse|^mm10$/i){
 	$species = 'mm10';
 	$REF_SEQ = "$MM10_FASTA";
-	$DB_SNP = "$Bin/data/mm10/mouse_MM10_dbSNP_NCBI_20150625.vcf";
+	$DB_SNP = "$Bin/data/mm10/mm10_snp142.vcf";
     }
     elsif($species =~ /mm10_custom/i){
 	$species = 'mm10_custom';
 	$REF_SEQ = "$MM10_CUSTOM_FASTA";
-	$DB_SNP = "$Bin/data/mm10/mouse_MM10_dbSNP_NCBI_20150625.vcf";
+	$DB_SNP = "$Bin/data/mm10/mm10_snp142.vcf";
     }
     elsif($species =~ /hybrid/i){
 	$species = 'hybrid';
