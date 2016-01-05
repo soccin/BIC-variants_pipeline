@@ -188,7 +188,7 @@ sub lsf {
     }
 
     if($lsfParams{'cluster_error'}){
-	$cluster ->cluster_out("-e $lsfParams{'cluster_error'}");
+	$cluster ->cluster_error("-e $lsfParams{'cluster_error'}");
     }
 }
 
