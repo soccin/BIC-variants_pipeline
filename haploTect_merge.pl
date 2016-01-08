@@ -158,12 +158,12 @@ my $base_hc = basename($hc_vcf);
 if ( -l "$output/$base_hc" ) {
     unlink "$output/$base_hc";
 }
-symlink("$curDir/$hc_vcf", "$output/$base_hc");
+symlink("$hc_vcf", "$output/$base_hc");
 
 $hc_vcf = "$output/$base_hc";
 
 for my $vcf (@mutect_vcfs){
-    my $mutect_vcf = "$curDir/$mutect_dir/$vcf";
+    my $mutect_vcf = "$mutect_dir/$vcf";
     if ( -l "$output/" . basename($mutect_vcf) ) {
         unlink "$output/" . basename($mutect_vcf);
     }
@@ -296,10 +296,10 @@ print "$PYTHON/python $Bin/maf/pA_reSortCols.py -i $output/$pre\_haplotect_VEP_M
 `$PYTHON/python $Bin/maf/pA_reSortCols.py -i $output/$pre\_haplotect_VEP_MAF.txt -f $Bin/maf/haplotect_abbrev_cols.txt -o $output/$pre\_haplotect_merged_MAF.txt`;
 
 print "annotating with cosmic\n";
-print "$PYTHON/python $Bin/maf/maf_annotations/addCosmicAnnotation.py -i $output/$pre\_haplotect_VEP_MAF.txt -o $output/$pre\_haplotect_VEP_COSMIC_MAF_STANDARD.txt -f $Bin/data/CosmicMutantExport_v67_241013.tsv\n\n";
-print "$PYTHON/python $Bin/maf/maf_annotations/addCosmicAnnotation.py -i $output/$pre\_haplotect_VEP_MAF.txt -o $output/$pre\_haplotect_VEP_COSMIC_MAF_DETAILED.txt -f $Bin/data/CosmicMutantExport_v67_241013.tsv -d\n\n";
-`$PYTHON/python $Bin/maf/maf_annotations/addCosmicAnnotation.py -i $output/$pre\_haplotect_VEP_MAF.txt -o $output/$pre\_haplotect_VEP_COSMIC_MAF_STANDARD.txt -f $Bin/data/CosmicMutantExport_v67_241013.tsv`;
-`$PYTHON/python $Bin/maf/maf_annotations/addCosmicAnnotation.py -i $output/$pre\_haplotect_VEP_MAF.txt -o $output/$pre\_haplotect_VEP_COSMIC_MAF_DETAILED.txt -f $Bin/data/CosmicMutantExport_v67_241013.tsv -d`;
+print "$PYTHON/python $Bin/maf/maf_annotations/addCosmicAnnotation.py -i $output/$pre\_haplotect_VEP_MAF.txt -o $output/$pre\_haplotect_VEP_COSMIC_MAF_STANDARD.txt -f $Bin/data/hg19/CosmicMutantExport_v67_241013.tsv\n\n";
+print "$PYTHON/python $Bin/maf/maf_annotations/addCosmicAnnotation.py -i $output/$pre\_haplotect_VEP_MAF.txt -o $output/$pre\_haplotect_VEP_COSMIC_MAF_DETAILED.txt -f $Bin/data/hg19/CosmicMutantExport_v67_241013.tsv -d\n\n";
+`$PYTHON/python $Bin/maf/maf_annotations/addCosmicAnnotation.py -i $output/$pre\_haplotect_VEP_MAF.txt -o $output/$pre\_haplotect_VEP_COSMIC_MAF_STANDARD.txt -f $Bin/data/hg19/CosmicMutantExport_v67_241013.tsv`;
+`$PYTHON/python $Bin/maf/maf_annotations/addCosmicAnnotation.py -i $output/$pre\_haplotect_VEP_MAF.txt -o $output/$pre\_haplotect_VEP_COSMIC_MAF_DETAILED.txt -f $Bin/data/hg19/CosmicMutantExport_v67_241013.tsv -d`;
 
 print "annotating with mutation assessor\n";
 print "$PYTHON/python $Bin/maf/maf_annotations/addMAannotation.py -i $output/$pre\_haplotect_VEP_COSMIC_MAF_STANDARD.txt -o $output/$pre\_haplotect_VEP_COSMIC_MA_MAF_STANDARD.txt\n";
