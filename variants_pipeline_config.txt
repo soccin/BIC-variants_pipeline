@@ -1,14 +1,16 @@
 ABRA			/opt/common/CentOS_6/abra/abra-0.91
+BCFTOOLS		/opt/common/CentOS_6/bcftools/bcftools-1.2/bin
 BEDTOOLS		/opt/common/CentOS_6/bedtools/bedtools-2.22.0/bin
 BWA			/opt/common/CentOS_6/bwa/bwa-0.7.12
 CUTADAPT		/opt/common/CentOS_6/cutadapt/cutadapt-1.6/bin
 DELLY			/opt/common/CentOS_6/delly/delly_v0.6.1
 dRANGER			/opt/common/CentOS_6/dranger/dRanger_annotate_v2.0
+FACETS			/opt/common/CentOS_6/facets/facets-suite-0.9.7
 GATK			/opt/common/CentOS_6/gatk/GenomeAnalysisTK-3.4-0-g7e26428
 JAVA			/opt/common/CentOS_6/java/jdk1.7.0_75/bin
 MCR			/opt/common/CentOS_6/matlab/v81
 MUTECT			/opt/common/CentOS_6/muTect/muTect-1.1.7
-PERL			/opt/common/CentOS_6/perl/perl-5.16.3/bin
+PERL			/opt/common/CentOS_6/perl/perl-5.22.0/bin
 PICARD			/opt/common/CentOS_6/picard/picard-tools-1.124
 PYTHON			/opt/common/CentOS_6/python/python-2.7.8/bin
 R			/opt/common/CentOS_6/R/R-3.1.2/bin
@@ -18,7 +20,8 @@ SOMATICSNIPER		/opt/common/CentOS_6/somaticsniper/somatic-sniper-1.0.4
 STRELKA			/opt/common/CentOS_6/strelka/strelka_1.0.11
 TABIX			/opt/common/CentOS_6/samtools/samtools-1.2/htslib-1.2.1
 VARSCAN			/opt/common/CentOS_6/varscan/v2.3.7
-VEP                     /opt/common/CentOS_6/vep/v79
+VCF2MAF			/opt/common/CentOS_6/vcf2maf/v1.6.3
+VEP                     /opt/common/CentOS_6/vep/v82
 VIRMID			/opt/common/CentOS_6/virmid/Virmid-1.1.1
 B37_BWA_INDEX		/ifs/depot/assemblies/H.sapiens/b37/index/bwa/0.7.12/b37.fasta
 B37_FASTA		/ifs/depot/assemblies/H.sapiens/b37/b37.fasta		
