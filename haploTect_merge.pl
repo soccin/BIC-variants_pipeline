@@ -6,7 +6,7 @@ use FindBin qw($Bin);
 use File::Path qw(make_path);
 use File::Basename;
 
-my ($pairing, $hc_vcf, $help, $mutect_dir, $bam_dir, $patient, $pre, $output, $delete_temp, $config);
+my ($pairing, $hc_vcf, $help, $mutect_dir, $species, $bam_dir, $patient, $pre, $output, $delete_temp, $config);
 
 # Default output = results/variants/FinalReport
 # get current directory
@@ -27,10 +27,11 @@ GetOptions ('pair=s' => \$pairing,
             'output=s' => \$output,
             'delete_temp' => \$delete_temp,
 	    'config=s' => \$config,
+            'species=s' => \$species,
             'help|h' => \$help ) or exit(1);
 
 # if the basic necessities are missing, exit
-if(!$hc_vcf || !$mutect_dir || !$pre || !$config || $help){
+if(!$hc_vcf || !$species || !$mutect_dir || !$pre || !$config || $help){
     print <<HELP;
     
     USAGE: HaploTect_merge.pl -pair Proj_XXXX_sample_pairing.txt -hc_vcf Proj_XXXX_HaplotypeCaller.vcf -mutect_dir /ifs/work/mutect_results -pre Proj_XXXX -output /ifs/work/output 
@@ -39,6 +40,7 @@ if(!$hc_vcf || !$mutect_dir || !$pre || !$config || $help){
     -hc_vcf\tHaplotype caller's vcf output file
     -mutect_dir\tDirectory were MuTect output is found
     -config\tConfiguration file
+    -species\tSpecies
     -pre\tProject ID Ex: Proj_4500
     -patient\tPatient file (for optional fillout)
     -align_dir\tDirectory where the aligned bams are found (for optional fillout)
@@ -49,13 +51,36 @@ HELP
     exit;
 }
 
+## Check species
+if($species !~ /hg19/i){
+    print "Haplotect only works 100% with hg19 for right now, otherwise we will print out the MAF before annotation and exit";
+}
+
 ## Checking HC VCF
 if( ! -e $hc_vcf || -z $hc_vcf){
     die "The haplotype vcf file either does not exist or is empty. ($hc_vcf)\n";
 }
+
+if($hc_vcf !~ /^\//){
+    $hc_vcf = "$curDir/$hc_vcf";
+}
+
 ## Checking Mutect Directory
 if( ! -d $mutect_dir ){
     die "The mutect directory either does not exist or is not a directory. ($mutect_dir)\n";
+}
+
+if($mutect_dir !~ /^\//){
+    $mutect_dir = "$curDir/$mutect_dir";
+}
+
+if (! -d $output ){
+    ###die "The output directory either does not exist or is not a directory. ($output)\n";
+    `/bin/mkdir -m 775 -p $output`;
+}
+
+if($output !~ /^\//){
+    $output = "$curDir/$output";
 }
 
 if($patient) {
@@ -95,10 +120,14 @@ unless( -e $output or make_path($output , { verbose => 1, mode => 0775, } )) {
 }
 umask $orig_umask;
 
+my $FACETS = '';
 my $PYTHON = '';
 my $PERL = '';
 my $VEP = '';
 my $HG19_FASTA = '';
+my $VCF2MAF = '';
+my $B37_FASTA = '';
+my $B37_MM10_HYBRID_FASTA = '';
 
 open(CONFIG, "$config") or warn "CAN'T OPEN CONFIG FILE $config SO USING DEFAULT SETTINGS";
 while(<CONFIG>){
@@ -111,17 +140,52 @@ while(<CONFIG>){
 	}
 	$PYTHON = $conf[1];
     }
-    elsif($conf[0] =~ /perl/i){
+    elsif($conf[0] =~ /facets/i){
+        if(!-e "$conf[1]/facets"){
+            die "CAN'T FIND facets IN $conf[1] $!";
+        }
+        $FACETS = $conf[1];
+    }
+    elsif($conf[0] =~ /^perl/i){
 	if(!-e "$conf[1]/perl"){
 	    die "CAN'T FIND perl IN $conf[1] $!";
 	}
 	$PERL = $conf[1];
     }
-    elsif($conf[0] =~ /vep/i){
+    elsif($conf[0] =~ /^r$/i){
+        if(!-e "$conf[1]/R"){
+            die "CAN'T FIND R IN $conf[1] $!";
+        }
+        my $path_tmp = $ENV{'PATH'};
+        $ENV{'PATH'} = "$conf[1]:$path_tmp";
+    }
+    elsif($conf[0] =~ /b37_fasta/i){
+        if(!-e "$conf[1]"){
+            if($species =~ /human|^b37$/i){
+                die "CAN'T FIND $conf[1] $!";
+            }
+        }
+        $B37_FASTA = $conf[1];
+    }
+    elsif($conf[0] =~ /b37_mm10_hybrid_fasta/i){
+        if(!-e "$conf[1]"){
+            if($species =~ /hybrid|b37_mm10/i){
+                die "CAN'T FIND $conf[1] $!";
+            }
+        }
+        $B37_MM10_HYBRID_FASTA = $conf[1];
+    }
+    elsif($conf[0] =~ /^vep/i){
         if(!-e "$conf[1]/variant_effect_predictor.pl"){
             die "CAN'T FIND VEP IN $conf[1] $!";
         }
         $VEP = $conf[1];
+    }
+    elsif($conf[0] =~/vcf2maf/i){
+        if(!-e "$conf[1]/maf2maf.pl"){
+            die "CAN'T FIND maf2maf.pl in $conf[1] $!";
+        }
+        $VCF2MAF = $conf[1];
     }
     elsif($conf[0] =~ /samtools/i){
         if(!-e "$conf[1]/samtools"){
@@ -129,27 +193,40 @@ while(<CONFIG>){
         }
         my $path_tmp = $ENV{'PATH'};
         $ENV{'PATH'} = "$conf[1]:$path_tmp";
-    }
-    elsif($conf[0] =~ /tabix/i){
+     }
+     elsif($conf[0] =~ /tabix/i){
         if(!-e "$conf[1]/tabix"){
             die "CAN'T FIND tabix IN $conf[1] $!";
         }
         my $path_tmp = $ENV{'PATH'};
         $ENV{'PATH'} = "$conf[1]:$path_tmp";
-    }
-    elsif($conf[0] =~ /hg19_fasta/i){
+     } 
+     elsif($conf[0] =~ /hg19_fasta/i){
         if(!-e "$conf[1]"){
             die "CAN'T FIND $conf[1] $!";
         }
         $HG19_FASTA = $conf[1];
-    }
+     }
 }
 close CONFIG;
+
+# die if vcf2maf is empty, VEP, etc.
+if(!-e $VCF2MAF ) {
+    die "Cannot find vcf2maf. Either add or correct config file. $!";
+}
+if(!-e $VEP) {
+    die "Cannot find vep. Either add or correct config file. $!";
+} 
 
 ## FOR RIGHT NOW, ONLY HG19 IS BEING USED
 
 my $REF_FASTA = $HG19_FASTA;
-
+if($species =~ /b37/i){
+    $REF_FASTA = $B37_FASTA;
+}
+my $REF_DICT= $REF_FASTA;
+$REF_DICT =~ s/\.[^.]+$//;
+$REF_DICT = "$REF_DICT.dict";
 
 ##
 ## Softlink necessary files to output dir. Change the variables to the softlinked area.
@@ -198,8 +275,8 @@ print "$PYTHON/python $Bin/maf/pA_qSomHC.py < $hc_vcf\_HC.maf0 > $hc_vcf\_HC.maf
 `$PYTHON/python $Bin/maf/pA_qSomHC.py < $hc_vcf\_HC.maf0 > $hc_vcf\_HC.maf1`;
 
 ## Convert to TCGA MAF format
-print "$PYTHON/python $Bin/maf/oldMAF2tcgaMAF.py hg19 $hc_vcf\_HC.maf1 $hc_vcf\_HC.maf2\n\n";
-`$PYTHON/python $Bin/maf/oldMAF2tcgaMAF.py hg19 $hc_vcf\_HC.maf1 $hc_vcf\_HC.maf2`;
+print "$PYTHON/python $Bin/maf/oldMAF2tcgaMAF.py $species $hc_vcf\_HC.maf1 $hc_vcf\_HC.maf2\n\n";
+`$PYTHON/python $Bin/maf/oldMAF2tcgaMAF.py $species $hc_vcf\_HC.maf1 $hc_vcf\_HC.maf2`;
 
 ## Select for Indels Only
 print "$PYTHON/python $Bin/maf/indelOnly.py < $hc_vcf\_HC.maf2 > $hc_vcf\_qSomHC_InDels_TCGA_MAF.txt\n\n";
@@ -211,15 +288,33 @@ print "$PYTHON/python $Bin/maf/indelOnly.py < $hc_vcf\_HC.maf2 > $hc_vcf\_qSomHC
 ##
 ## Get DMP re-filtered MAF from MuTect
 ##
-for my $vcf (@mutect_vcfs){
+
+# To make it easier, I will iterate through the pairing file, and connect tumor and normal using the sample names.
+open(my $pair, "<", $pairing);
+chomp(my @pair_lines = <$pair>);
+close $pair;
+
+## To make sure there are the same number of mutect files as there are pairs
+my $pairedCount = 0;
+
+foreach my $line (@pair_lines) {
+
+    my($normal,$tumor) = split("\t", $line);
+    next if ($tumor eq 'na' || $normal eq 'na');
+    $pairedCount ++;
+    my @vcfIndex = indices("$normal\_$tumor\_mutect", @mutect_vcfs);
+    if(scalar @vcfIndex != 1){
+        if(scalar @vcfIndex  < 1){
+            die "No vcf file matches with these tumor/normal pair: $tumor $normal\n";
+        }
+        else {
+            die "More than one vcf file matches with these tumor/normal pair: $tumor $normal?\n";
+        }
+    }
+    my $vcf = $mutect_vcfs[$vcfIndex[0]];
     my $linked_vcf = "$output/$vcf";
     my $linked_txt = $linked_vcf;
     $linked_txt =~ s/vcf$/txt/g;
-
-    $_=$vcf;
-    /_(s_.*?)_(s_.*?)_mutect/;
-    my $normal="$1";
-    my $tumor="$2";
 
     ## Change vcf to maf, using the extra .txt file
     print "$PYTHON/python $Bin/maf/vcf2maf0.py -i $linked_vcf -aF $linked_txt -c mutect -o $linked_vcf\_maf0.txt -p $pairing -n $normal -t $tumor\n\n";
@@ -230,13 +325,18 @@ for my $vcf (@mutect_vcfs){
     `$PYTHON/python $Bin/rescue/DMP_rescue.py  < $linked_vcf\_maf0.txt > $linked_vcf\_maf1.txt 2> $linked_vcf\_maf_rescue.log `;
     
     ## Change to tcga maf
-    print "$PYTHON/python $Bin/maf/oldMAF2tcgaMAF.py hg19 $linked_vcf\_maf1.txt $linked_vcf\_maf2.txt\n\n";
-    `$PYTHON/python $Bin/maf/oldMAF2tcgaMAF.py hg19 $linked_vcf\_maf1.txt $linked_vcf\_maf2.txt`;
+    print "$PYTHON/python $Bin/maf/oldMAF2tcgaMAF.py $species $linked_vcf\_maf1.txt $linked_vcf\_maf2.txt\n\n";
+    `$PYTHON/python $Bin/maf/oldMAF2tcgaMAF.py $species $linked_vcf\_maf1.txt $linked_vcf\_maf2.txt`;
     
     ## Select for passing variants
     print "awk -F\"\\t\" '\$40==\"FILTER\"||\$40==\"PASS\"{print \$0}' $linked_vcf\_maf2.txt > $linked_vcf\_DMPFilter_TCGA_MAF.txt\n\n";
     `awk -F"\t" '\$40=="FILTER"||\$40=="PASS"{print \$0}' $linked_vcf\_maf2.txt > $linked_vcf\_DMPFilter_TCGA_MAF.txt`;
     
+}
+
+my $l = scalar @mutect_vcfs;
+if($pairedCount != $l) {
+    die "The number of pairs ($pairedCount) is not equal to the number of vcf files ($l)\n";
 }
 
 ##
@@ -254,9 +354,14 @@ for my $vcf (@mutect_vcfs){
     `tail -n +2 $linked_vcf\_DMPFilter_TCGA_MAF.txt >> $output/$pre\_merge_maf0.txt`;
 }
 
+if($species !~ /hg19|b37/i) { ###   |mm10|mouse/i) { uncomment later!
+    print "End of species ambiguous portion of the script.\n";
+    exit 0;
+}
+
 print "\n#######\n#######\nStarting VEP. \n";
 # these are names needed for the "retain-cols" option in VEP
-my $VEP_COLUMN_NAMES = "Center,Verification_Status,Validation_Status,Mutation_Status,Sequencing_Phase,Sequence_Source,Validation_Method,Score,BAM_file,Sequencer,Tumor_Sample_UUID,Match_Norm_Sample_UUID,Caller";
+my $VEP_COLUMN_NAMES = "Center,Verification_Status,Validation_Status,Mutation_Status,Sequencing_Phase,Sequence_Source,Validation_Method,Score,BAM_file,Sequencer,Tumor_Sample_UUID,Matched_Norm_Sample_UUID,Caller";
 
 ## Create tmp and ref directory. Delete these later*
 if( ! -d "$output/tmp/" ){
@@ -276,36 +381,36 @@ symlink("$REF_FASTA.fai", "$output/ref/$ref_base.fai");
 
 
 ## vep-forks is at 4 because that is how many CPUs we ask for
-print "\n/opt/common/CentOS_6/bin/v1/perl /opt/common/CentOS_6/vcf2maf/v1.5.4/maf2maf.pl --tmp-dir $output/tmp --ref-fasta $output/ref/$ref_base --vep-forks 4 --vep-path $VEP --vep-data $VEP --retain-cols $VEP_COLUMN_NAMES --input-maf $output/$pre\_merge_maf0.txt --output-maf $output/$pre\_merge_maf0.VEP\n\n";
+print "\n$PERL/perl $VCF2MAF/maf2maf.pl --tmp-dir $output/tmp --ref-fasta $output/ref/$ref_base --vep-forks 4 --vep-path $VEP --vep-data $VEP --retain-cols $VEP_COLUMN_NAMES --input-maf $output/$pre\_merge_maf0.txt --output-maf $output/$pre\_merge_maf0.VEP\n\n";
 
-`/opt/common/CentOS_6/bin/v1/perl /opt/common/CentOS_6/vcf2maf/v1.5.4/maf2maf.pl --tmp-dir $output/tmp --ref-fasta $output/ref/$ref_base --vep-forks 4 --vep-path $VEP --vep-data $VEP --retain-cols $VEP_COLUMN_NAMES --input-maf $output/$pre\_merge_maf0.txt --output-maf $output/$pre\_merge_maf0.VEP > $output/$pre\_merge_maf0.log 2>&1`;
+`$PERL/perl $VCF2MAF/maf2maf.pl --tmp-dir $output/tmp --ref-fasta $output/ref/$ref_base --vep-forks 4 --vep-path $VEP --vep-data $VEP --retain-cols $VEP_COLUMN_NAMES --input-maf $output/$pre\_merge_maf0.txt --output-maf $output/$pre\_merge_maf0.VEP > $output/$pre\_merge_maf0.log 2>&1`;
 
 #This removes any records that don't have a gene name at the front
-`grep -v ^Unknown $output/$pre\_merge_maf0.VEP > $output/$pre\_haplotect_VEP_MAF.txt`;
-`grep -v ^# $output/$pre\_haplotect_VEP_MAF.txt | cut -f-34 > $output/$pre\_haplotect_TCGA_MAF.txt`;
+#`grep -v ^Unknown $output/$pre\_merge_maf0.VEP > $output/$pre\_merge_maf0.VEP`;
+`cut -f-34 $output/$pre\_merge_maf0.VEP > $output/$pre\_haplotect_TCGA_MAF.txt`;
 
 ## creating MAF for cbio portal submission
-print "$PYTHON/python $Bin/maf/pA_reSortCols.py -i $output/$pre\_haplotect_VEP_MAF.txt -f $Bin/maf/finalCols_PORTAL.txt -o $output/$pre\_haplotect_TCGA_PORTAL_MAF.txt\n\n";
-`$PYTHON/python $Bin/maf/pA_reSortCols.py -i $output/$pre\_haplotect_VEP_MAF.txt -f $Bin/maf/finalCols_PORTAL.txt -o $output/$pre\_haplotect_TCGA_PORTAL_MAF.txt`;
+print "$PYTHON/python $Bin/maf/pA_reSortCols.py -i $output/$pre\_merge_maf0.VEP -f $Bin/maf/finalCols_PORTAL.txt -o $output/$pre\_haplotect_TCGA_PORTAL_MAF.txt\n\n";
+`$PYTHON/python $Bin/maf/pA_reSortCols.py -i $output/$pre\_merge_maf0.VEP -f $Bin/maf/finalCols_PORTAL.txt -o $output/$pre\_haplotect_TCGA_PORTAL_MAF.txt`;
 
 ###       NOTE: This is different than the MAF4.txt because there are different headers here.
 ###       header information is missing everything after the first 39 columns, which is caller specific
-print "creating clean MAF file\n";
-print "$PYTHON/python $Bin/maf/pA_reSortCols.py -i $output/$pre\_haplotect_VEP_MAF.txt -f $Bin/maf/haplotect_abbrev_cols.txt -o $output/$pre\_haplotect_merged_MAF.txt\n\n";
+#print "creating clean MAF file\n";
+#print "$PYTHON/python $Bin/maf/pA_reSortCols.py -i $output/$pre\_merge_maf0.VEP -f $Bin/maf/haplotect_abbrev_cols.txt -o $output/$pre\_haplotect_merged_MAF.txt\n\n";
 # Create nice MAF with essential columns
-`$PYTHON/python $Bin/maf/pA_reSortCols.py -i $output/$pre\_haplotect_VEP_MAF.txt -f $Bin/maf/haplotect_abbrev_cols.txt -o $output/$pre\_haplotect_merged_MAF.txt`;
+#`$PYTHON/python $Bin/maf/pA_reSortCols.py -i $output/$pre\_merge_maf0.VEP -f $Bin/maf/haplotect_abbrev_cols.txt -o $output/$pre\_haplotect_merged_MAF.txt`;
 
-print "annotating with cosmic\n";
-print "$PYTHON/python $Bin/maf/maf_annotations/addCosmicAnnotation.py -i $output/$pre\_haplotect_VEP_MAF.txt -o $output/$pre\_haplotect_VEP_COSMIC_MAF_STANDARD.txt -f $Bin/data/hg19/CosmicMutantExport_v67_241013.tsv\n\n";
-print "$PYTHON/python $Bin/maf/maf_annotations/addCosmicAnnotation.py -i $output/$pre\_haplotect_VEP_MAF.txt -o $output/$pre\_haplotect_VEP_COSMIC_MAF_DETAILED.txt -f $Bin/data/hg19/CosmicMutantExport_v67_241013.tsv -d\n\n";
-`$PYTHON/python $Bin/maf/maf_annotations/addCosmicAnnotation.py -i $output/$pre\_haplotect_VEP_MAF.txt -o $output/$pre\_haplotect_VEP_COSMIC_MAF_STANDARD.txt -f $Bin/data/hg19/CosmicMutantExport_v67_241013.tsv`;
-`$PYTHON/python $Bin/maf/maf_annotations/addCosmicAnnotation.py -i $output/$pre\_haplotect_VEP_MAF.txt -o $output/$pre\_haplotect_VEP_COSMIC_MAF_DETAILED.txt -f $Bin/data/hg19/CosmicMutantExport_v67_241013.tsv -d`;
+#print "annotating with cosmic\n";
+#print "$PYTHON/python $Bin/maf/maf_annotations/addCosmicAnnotation.py -i $output/$pre\_merge_maf0.VEP -o $output/$pre\_haplotect_VEP_COSMIC_MAF_STANDARD.txt -f $Bin/data/CosmicMutantExport_v67_241013.tsv\n\n";
+#print "$PYTHON/python $Bin/maf/maf_annotations/addCosmicAnnotation.py -i $output/$pre\_merge_maf0.VEP -o $output/$pre\_haplotect_VEP_COSMIC_MAF_DETAILED.txt -f $Bin/data/CosmicMutantExport_v67_241013.tsv -d\n\n";
+#`$PYTHON/python $Bin/maf/maf_annotations/addCosmicAnnotation.py -i $output/$pre\_merge_maf0.VEP -o $output/$pre\_haplotect_VEP_COSMIC_MAF_STANDARD.txt -f $Bin/data/CosmicMutantExport_v67_241013.tsv`;
+#`$PYTHON/python $Bin/maf/maf_annotations/addCosmicAnnotation.py -i $output/$pre\_merge_maf0.VEP -o $output/$pre\_haplotect_VEP_COSMIC_MAF_DETAILED.txt -f $Bin/data/CosmicMutantExport_v67_241013.tsv -d`;
 
-print "annotating with mutation assessor\n";
-print "$PYTHON/python $Bin/maf/maf_annotations/addMAannotation.py -i $output/$pre\_haplotect_VEP_COSMIC_MAF_STANDARD.txt -o $output/$pre\_haplotect_VEP_COSMIC_MA_MAF_STANDARD.txt\n";
-print "$PYTHON/python $Bin/maf/maf_annotations/addMAannotation.py -i $output/$pre\_haplotect_VEP_COSMIC_MAF_DETAILED.txt -o $output/$pre\_haplotect_VEP_COSMIC_MA_MAF_DETAILED.txt -d\n\n";
-`$PYTHON/python $Bin/maf/maf_annotations/addMAannotation.py -i $output/$pre\_haplotect_VEP_COSMIC_MAF_STANDARD.txt -o $output/$pre\_haplotect_VEP_COSMIC_MA_MAF_STANDARD.txt`;
-`$PYTHON/python $Bin/maf/maf_annotations/addMAannotation.py -i $output/$pre\_haplotect_VEP_COSMIC_MAF_DETAILED.txt -o $output/$pre\_haplotect_VEP_COSMIC_MA_MAF_DETAILED.txt -d`;
+#print "annotating with mutation assessor\n";
+#print "$PYTHON/python $Bin/maf/maf_annotations/addMAannotation.py -i $output/$pre\_haplotect_VEP_COSMIC_MAF_STANDARD.txt -o $output/$pre\_haplotect_VEP_COSMIC_MA_MAF_STANDARD.txt\n";
+#print "$PYTHON/python $Bin/maf/maf_annotations/addMAannotation.py -i $output/$pre\_haplotect_VEP_COSMIC_MAF_DETAILED.txt -o $output/$pre\_haplotect_VEP_COSMIC_MA_MAF_DETAILED.txt -d\n\n";
+#`$PYTHON/python $Bin/maf/maf_annotations/addMAannotation.py -i $output/$pre\_haplotect_VEP_COSMIC_MAF_STANDARD.txt -o $output/$pre\_haplotect_VEP_COSMIC_MA_MAF_STANDARD.txt`;
+#`$PYTHON/python $Bin/maf/maf_annotations/addMAannotation.py -i $output/$pre\_haplotect_VEP_COSMIC_MAF_DETAILED.txt -o $output/$pre\_haplotect_VEP_COSMIC_MA_MAF_DETAILED.txt -d`;
 
 if($patient && $bam_dir){
     print "Starting maf fillout\n";
@@ -342,26 +447,72 @@ if($patient && $bam_dir){
 }
 
 
+###
+###
+##
+##
+## BEGINNING OF EXTRA COLUMNS ** This will be updated with a better way of 
+## grabbing and adding this information, but for right now we will just add
+## what Nick's script does
+##
+##
+###
+###
+print "perl $Bin/maf/exact_annotate.pl --in_maf $output/$pre\_merge_maf0.VEP --species $species --output $output --config $config\n";
+`$PERL/perl $Bin/maf/exact_annotate.pl --in_maf $output/$pre\_merge_maf0.VEP --species $species --output $output --config $config`;
+
+print "perl $Bin/maf/bedtools_annotations.pl --in_maf $output/$pre\_merge_maf0.VEP --species $species --output $output --config $config --fastq --target $Bin/targets/IMPACT410_hg19/IMPACT410_hg19_targets_plus5bp.bed --targetname impact410\n";
+`$PERL/perl $Bin/maf/bedtools_annotations.pl --in_maf $output/$pre\_merge_maf0.VEP --species $species --output $output --config $config --fastq --target $Bin/targets/IMPACT410_hg19/IMPACT410_hg19_targets_plus5bp.bed --targetname impact410`;
+
+
+##
+##
+## Merging of extra columns ** I haven't created a way to merge the columns while creating them, so I still
+## have to use Nick's mkTaylorMAF.py, which I am going to rename to mergeExtraCols.py
+##
+##
+print "$PYTHON/python $Bin/maf/mergeExtraCols.py $output/triNucleotide.seq $output/maf_targets.impact410 $output/exact.vcf $output/$pre\_merge_maf0.VEP\n";
+`$PYTHON/python $Bin/maf/mergeExtraCols.py $output/triNucleotide.seq $output/maf_targets.impact410 $output/exact.vcf $output/$pre\_merge_maf0.VEP > $output/$pre\_haplotect_vep_maf.txt`;
+
+## This will join facets.
+##
+## print "$FACETS/facets mafAnno -m $output/$pre\_haplotect_vep_maf.txt -f $output/../../copynumber/facets/facets_mapping.txt -o join.maf\n";
+## `$FACETS/facets mafAnno -m $output/$pre\_haplotect_vep_maf.txt -f $output/../../copynumber/facets/facets_mapping.txt -o join.maf`;
+
+
 ##
 ##
 ## Delete Temp Files
 ##
-if($delete_temp){
+if($delete_temp && -s "$output/$pre\_haplotect_vep_maf.txt"){
     my @files = glob( $output . '/*.maf[12]');
     for my $fname (@files) {
         print "Removing: $fname \n";
         unlink($fname);
     }
-    @files = glob ("$output/*mutect_calls* $output/*Haplotype* $output/*maf2.txt* $output/ref $output/tmp");
+    @files = glob ("$output/exact.vcf $output/maf_targets.* $output/triNucleotide.seq $output/*mutect_calls* $output/*Haplotype* $output/*maf2.txt* $output/ref $output/tmp $output/*basecounts.txt $output/$pre\_merge_maf0.VEP $output/$pre\_merge_maf0.log");
 
 
     for my $fname (@files) {
         print "Removing: $fname \n";
         unlink($fname);
     }
-    `rm -r $output/ref $output/tmp`;
+    `rm -r $output/xtra $output/bed $output/ref $output/tmp`;
 
 }
 
+sub indices {
+  my ($keyword, @paths) = @_;
+  my @results = ();
 
+  for ( my $i = 0; $i < @paths; ++$i )
+  {
+    if ($paths[$i] =~ /$keyword/)
+    {
+      push @results, $i;
+    }
+  }
+
+  return @results;
+}
 
