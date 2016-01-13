@@ -43,6 +43,7 @@ parser.add_argument("GENOME",help="Genome build, must be specified")
 parser.add_argument("maf0", help="Old maf file")
 parser.add_argument("maf1", help="New maf file")
 parser.add_argument('-v','--verbose',action='store_true',help='If specified, create a verbose maf that includes vcf entries with no reads')
+parser.add_argument('-T', '--tsvMode', action='store',help="Include if tsvMode was used in creating the maf0")
 args=parser.parse_args()
 
 NEWFLDS="FILTER QUAL GT GQ ALT_FREQ NORM_GT NORM_GQ NORM_ALT_FREQ".split()
@@ -81,26 +82,30 @@ with open(args.maf1, 'w') as output:
         t_alt_count=rec.AD_ALT,
         Caller=rec.CALLER
       )
-
-      #
-      # Fix mutation signature for INS/DEL
-      # to confirm to TCGA standard
-      #
-
-      if maf.Variant_Type=="DEL":
-        maf.Start_Position=str(int(maf.Start_Position)+1)
-        maf.Reference_Allele=maf.Reference_Allele[1:]
-        if len(maf.Tumor_Seq_Allele2)>1:
+    
+      tsvMode = False
+      if args.tsvMode:
+          tsvMode = True
+      if tsvMode:
+        #
+        # Fix mutation signature for INS/DEL
+        # to confirm to TCGA standard
+        #
+ 
+        if maf.Variant_Type=="DEL":
+          maf.Start_Position=str(int(maf.Start_Position)+1)
+          maf.Reference_Allele=maf.Reference_Allele[1:]
+          if len(maf.Tumor_Seq_Allele2)>1:
+            maf.Tumor_Seq_Allele2=maf.Tumor_Seq_Allele2[1:]
+          else:
+            maf.Tumor_Seq_Allele2="-"
+        elif maf.Variant_Type=="INS":
+          if len(maf.Reference_Allele)>1:
+              maf.Reference_Allele=maf.Reference_Allele[1:]
+          else:
+              maf.End_Position=str(int(maf.End_Position)+1)
+              maf.Reference_Allele="-"
           maf.Tumor_Seq_Allele2=maf.Tumor_Seq_Allele2[1:]
-        else:
-          maf.Tumor_Seq_Allele2="-"
-      elif maf.Variant_Type=="INS":
-        if len(maf.Reference_Allele)>1:
-            maf.Reference_Allele=maf.Reference_Allele[1:]
-        else:
-            maf.End_Position=str(int(maf.End_Position)+1)
-            maf.Reference_Allele="-"
-        maf.Tumor_Seq_Allele2=maf.Tumor_Seq_Allele2[1:]
 
 
       #
