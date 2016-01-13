@@ -10,7 +10,7 @@ class TCGA_MAF(object):
             "Verification_Status","Validation_Status","Mutation_Status",
             "Sequencing_Phase","Sequence_Source","Validation_Method",
             "Score","BAM_File","Sequencer",
-            "Tumor_Sample_UUID","Match_Norm_Sample_UUID",
+            "Tumor_Sample_UUID","Matched_Norm_Sample_UUID",
             "t_ref_count", "t_alt_count", "n_ref_count", "n_alt_count", "Caller"]
     @classmethod
     def header(cls):
