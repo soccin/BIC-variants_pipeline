@@ -23,7 +23,7 @@ def getALT(s):
 
 def getVarType(s):
     alt=getALT(s)
-    if len(s.REF)==len(alt):
+    if len(s.REF)==len(alt) and s.REF != "-" and alt != "-":
         if len(s.REF)==1:
             return "SNP"
         elif len(s.REF)==2:
@@ -32,10 +32,12 @@ def getVarType(s):
             return "TNP"
         else:
             return "ONP"
-    elif len(s.REF)>len(alt):
+    elif if alt == "-" :
         return "DEL"
-    else:
+    else if s.REF == "-":
         return "INS"
+    else:
+        return "UNKOWN"
 
 import argparse
 parser=argparse.ArgumentParser()
