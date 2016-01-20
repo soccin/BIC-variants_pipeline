@@ -14,18 +14,23 @@ do
     echo "X: $x"
     echo "C: $C"
 
+    rm $DIR/*
+
     $FACETS/facets doFacets -D $DIR -t $TAG -f $FILE -G T -pc $PC -c $C
      
-    EXITVAL=$?;
-
-    #if [ $EXITVAL == 0 ]
-    if [ -e $DIR/$TAG_hisens.CNCF.png ]
+    if [ -e $DIR"/"$TAG"_hisens.CNCF.png" ]
     then
         x=1;
+        exit 0
     fi
 
-    echo "EXITVALUE=$EXITVAL";
+    echo $DIR"/"$TAG"_hisens.CNCF.png";
+
     C=$[$C+$C]
     x=$[$x-1]
 done
 
+if [ ! -e $DIR"/"$TAG"_hisens.CNCF.png" ]
+then
+    exit 1;
+fi
