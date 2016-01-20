@@ -76,6 +76,19 @@ with open(exacFile) as fp:
 
             exacDb["chr%s:%s-%s" % (chrom,start,end)]=info
 
+extra_cols=list()
+if seqDb:
+    extra_cols.append("TriNuc")
+if len(impact410):
+    extra_cols.append("IMPACT_410")
+if len(extra_cols) or exacDb:
+    extra_cols.extend(["t_var_freq","n_var_freq"])
+    if exacDb: ## Removing ExAC_AF because Cyriac has this field already
+        extra_cols.extend(["ExAC_AC","ExAC_AN"])
+else:
+    print >> sys.stderr, "There are no annotations to add. Exiting."
+    sys.exit()
+
 events=dict()
 with open(origMAFFile) as fp:
     commentHeader=fp.readline().strip()
@@ -101,11 +114,13 @@ with open(origMAFFile) as fp:
         r["POS"]=pos
         r["TAG"]=tag
         r["LABEL"]=label
-        if pos in seqDb:
-            r["TriNuc"]=seqDb[pos]
-        else:
-            r["TriNuc"]=""
-        r["IMPACT_410"]="T" if pos in impact410 else "F"
+        if seqDb:
+            if pos in seqDb:
+                r["TriNuc"]=seqDb[pos]
+            else:
+                r["TriNuc"]=""
+        if len(impact410):
+            r["IMPACT_410"]="T" if pos in impact410 else "F"
 
         if r["t_depth"]=="":
             print >>sys.stderr, label
@@ -122,15 +137,15 @@ with open(origMAFFile) as fp:
             else:
                 r["n_var_freq"]=0.0
 
-        if pos in exacDb:
-            r["ExAC_AC"]=exacDb[pos]["AC"]
-            r["ExAC_AF"]=exacDb[pos]["AF"]
-            r["ExAC_AN"]=exacDb[pos]["AN"]
+        if len(exacDb):
+            if pos in exacDb:
+                r["ExAC_AC"]=exacDb[pos]["AC"]
+                #r["ExAC_AF"]=exacDb[pos]["AF"]
+                r["ExAC_AN"]=exacDb[pos]["AN"]
 
         events[label]=r
 
-outFields=cin.fieldnames+["POS","TAG","LABEL","TriNuc","IMPACT_410","t_var_freq","n_var_freq",
-                            "ExAC_AC","ExAC_AF","ExAC_AN"]
+outFields=cin.fieldnames+["POS","TAG","LABEL"] + extra_cols
 cout=csv.DictWriter(sys.stdout,outFields,delimiter="\t")
 
 print commentHeader
