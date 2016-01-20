@@ -6,12 +6,13 @@ use FindBin qw($Bin);
 use File::Path qw(make_path remove_tree);
 use File::Basename;
 
-my ($input, $fastq, $target, $species, $output, $config, $help, $targetName);
+my ($input, $somatic, $fastq, $target, $species, $output, $config, $help, $targetName);
 
 GetOptions ('in_maf=s' => \$input,
 'species=s' => \$species,
 'output=s' => \$output,
 'config=s' => \$config,
+'somatic=s' => \$somatic,
 'fastq|f' => \$fastq,
 'target=s' => \$target,
 'targetname=s' => \$targetName,
@@ -22,6 +23,12 @@ chomp $uID;
 
 if(!$input || !$species || !$output || !$config ){
     die "you are missing some input";
+}
+
+if($somatic){
+$somatic = "_$somatic";
+}else{
+$somatic = "";
 }
 
 if($target){
@@ -35,6 +42,8 @@ if($target){
 
 my $PERL = '';
 my $HG19_FASTA = '';
+my $MM10_FASTA = '';
+my $B37_FASTA = '';
 my $BEDTOOLS = '';
 
 open(CONFIG, "$config") or warn "CAN'T OPEN CONFIG FILE $config SO USING DEFAULT SETTINGS";
@@ -67,12 +76,32 @@ while(<CONFIG>){
         }
         $HG19_FASTA = $conf[1];
     }
+    elsif($conf[0] =~ /mm10_fasta/i){
+        if(!-e "$conf[1]"){
+            die "CAN'T FIND $conf[1] $!";
+        }
+        $MM10_FASTA = $conf[1];
+    }
+    elsif($conf[0] =~ /b37_fasta/i){
+        if(!-e "$conf[1]"){
+            if($species =~ /human|^b37$/i){
+                die "CAN'T FIND $conf[1] $!";
+            }
+        }
+        $B37_FASTA = $conf[1];
+    }
 }
 close CONFIG;
 
 ## FOR RIGHT NOW, ONLY HG19 IS BEING USED
 
 my $REF_FASTA = $HG19_FASTA;
+if($species =~ /b37/i){
+    $REF_FASTA = $B37_FASTA;
+}
+if($species =~ /mm10/i){
+    $REF_FASTA = $MM10_FASTA;
+}
 my $REF_DICT= $REF_FASTA;
 $REF_DICT =~ s/\.[^.]+$//;
 $REF_DICT = "$REF_DICT.dict";
@@ -87,31 +116,31 @@ if(!-e $BEDTOOLS){
 
 my $ref_base = basename($REF_FASTA);
 # softlink reference
-if(!-e "$output/ref"){
-    mkdir("$output/ref", 0755) or die "Making ref didn't work $!";
+if(!-e "$output/ref$somatic"){
+    mkdir("$output/ref$somatic", 0755) or die "Making ref didn't work $!";
 }
-if(!-e "$output/ref/$ref_base"){
-    symlink($REF_FASTA, "$output/ref/$ref_base");
-    symlink("$REF_FASTA.fai", "$output/ref/$ref_base.fai");
+if(!-e "$output/ref$somatic/$ref_base"){
+    symlink($REF_FASTA, "$output/ref$somatic/$ref_base");
+    symlink("$REF_FASTA.fai", "$output/ref$somatic/$ref_base.fai");
 }
 
 my $refDictBase = basename($REF_DICT);
-if (!-e "$output/ref/$refDictBase"){
-    symlink($REF_DICT, "$output/ref/$refDictBase");
+if (!-e "$output/ref$somatic/$refDictBase"){
+    symlink($REF_DICT, "$output/ref$somatic/$refDictBase");
 }
 
-if( ! -d "$output/bed/" ){
-    print "$output/bed/ does not exist. Will create it now\n";
-    mkdir("$output/bed", 0755) or die "Making tmp didn't work $!";
+if( ! -d "$output/bed$somatic/" ){
+    print "$output/bed$somatic/ does not exist. Will create it now\n";
+    mkdir("$output/bed$somatic", 0755) or die "Making tmp didn't work $!";
 }
 else{
-    remove_tree("$output/bed") or die "Not able to remove directory $!";
-    mkdir("$output/bed", 0755) or die "Making tmp didn't work $!";
+    remove_tree("$output/bed$somatic") or die "Not able to remove directory $!";
+    mkdir("$output/bed$somatic", 0755) or die "Making tmp didn't work $!";
 }
 
 # first no matter what make the maf a simple bed
 open(my $in_fh, "<", $input);
-open(my $out_fh, ">", "$output/bed/simple_maf.bed");
+open(my $out_fh, ">", "$output/bed$somatic/simple_maf.bed");
 my @lines = <$in_fh>;
 foreach my $line (@lines){
     #print "$line\n";
@@ -127,17 +156,17 @@ close $out_fh;
 # pick fastq
 if($fastq){
 # take the hg19 Dict, and parse it into a genome file that bedtools takes in
-    `grep "^\@SQ" $output/ref/$refDictBase | cut -f 2-3 | sed -e 's/SN://g' -e 's/LN://g' > $output/bed/bedtools_genome.txt`; 
-    `$BEDTOOLS/bedtools slop -g $output/bed/bedtools_genome.txt -b 1 -i $output/bed/simple_maf.bed | $BEDTOOLS/bedtools getfasta -tab -fi $output/ref/$ref_base -fo $output/bed/triNucleotide.seq -bed -`;
+    `grep "^\@SQ" $output/ref$somatic/$refDictBase | cut -f 2-3 | sed -e 's/SN://g' -e 's/LN://g' > $output/bed$somatic/bedtools_genome.txt`; 
+    `$BEDTOOLS/bedtools slop -g $output/bed$somatic/bedtools_genome.txt -b 1 -i $output/bed$somatic/simple_maf.bed | $BEDTOOLS/bedtools getfasta -tab -fi $output/ref$somatic/$ref_base -fo $output/bed$somatic/triNucleotide.seq -bed -`;
 
-    `mv $output/bed/triNucleotide.seq $output/triNucleotide.seq`;
+    `mv $output/bed$somatic/triNucleotide.seq $output/triNucleotide.seq`;
 }
 
 if($target){
-    `$BEDTOOLS/bedtools intersect -a $output/bed/simple_maf.bed -b $target -wa | $BEDTOOLS/bedtools sort -i - | uniq > $output/bed/temp_intersect.txt`;
+    `$BEDTOOLS/bedtools intersect -a $output/bed$somatic/simple_maf.bed -b $target -wa | $BEDTOOLS/bedtools sort -i - | uniq > $output/bed$somatic/temp_intersect.txt`;
 
-    open(my $in_temp, "<", "$output/bed/temp_intersect.txt");
-    open(my $out_temp, ">", "$output/bed/maf_targets.$targetName"); 
+    open(my $in_temp, "<", "$output/bed$somatic/temp_intersect.txt");
+    open(my $out_temp, ">", "$output/bed$somatic/maf_targets.$targetName"); 
     my @lines = <$in_temp>;
     foreach my $line (@lines){
         my @parts = split("\t", $line);
@@ -148,6 +177,6 @@ if($target){
     close $in_temp;
     close $out_temp;
 
-    `mv $output/bed/maf_targets.$targetName $output/maf_targets.$targetName`;
+    `mv $output/bed$somatic/maf_targets.$targetName $output/maf_targets.$targetName`;
 }
 

@@ -6,11 +6,12 @@ use FindBin qw($Bin);
 use File::Path qw(make_path remove_tree);
 use File::Basename;
 
-my ($input, $species, $output, $config, $help);
+my ($input, $somatic, $species, $output, $config, $help);
 
 GetOptions ('in_maf=s' => \$input,
 'species=s' => \$species,
 'output=s' => \$output,
+'somatic=s' => \$somatic,
 'config=s' => \$config,
 'help|h' => \$help ) or exit(1);
 
@@ -21,9 +22,16 @@ if(!$input || !$species || !$output || !$config ){
     die "you are missing some input";
 }
 
+if($somatic){
+    $somatic = "_$somatic";
+} else {
+    $somatic = "";
+}
+
 my $PERL = '';
 my $VCF2MAF = '';
 my $HG19_FASTA = '';
+my $B37_FASTA = '';
 my $PICARD = '';
 my $JAVA = '';
 my $BCFTOOLS = '';
@@ -71,6 +79,14 @@ while(<CONFIG>){
         }
         $HG19_FASTA = $conf[1];
     }
+    elsif($conf[0] =~ /b37_fasta/i){
+        if(!-e "$conf[1]"){
+            if($species =~ /human|^b37$/i){
+                die "CAN'T FIND $conf[1] $!";
+            }
+        }
+        $B37_FASTA = $conf[1];
+    }
     elsif($conf[0] =~ /picard/i){
         if(!-e "$conf[1]/picard.jar"){
             die "CAN'T FIND picard.jar IN $conf[1] $!";
@@ -91,6 +107,9 @@ close CONFIG;
 ## FOR RIGHT NOW, ONLY HG19 IS BEING USED
 
 my $REF_FASTA = $HG19_FASTA;
+if($species =~ /b37/i){
+    $REF_FASTA = $B37_FASTA;
+}
 my $REF_DICT= $REF_FASTA;
 $REF_DICT =~ s/\.[^.]+$//;
 $REF_DICT = "$REF_DICT.dict";
@@ -108,17 +127,17 @@ my $ref_base = basename($REF_FASTA);
 if(!-e "$output/ref"){
     mkdir("$output/ref", 0755) or die "Making ref didn't work $!";
 }
-if(!-e "$output/ref/$ref_base"){
-    symlink($REF_FASTA, "$output/ref/$ref_base");
-    symlink("$REF_FASTA.fai", "$output/ref/$ref_base.fai");
+if(!-e "$output/ref$somatic/$ref_base"){
+    symlink($REF_FASTA, "$output/ref$somatic/$ref_base");
+    symlink("$REF_FASTA.fai", "$output/ref$somatic/$ref_base.fai");
 }
 my $refDictBase = basename($REF_DICT);
-if (!-e "$output/ref/$refDictBase"){
-    symlink($REF_DICT, "$output/ref/$refDictBase");
+if (!-e "$output/ref$somatic/$refDictBase"){
+    symlink($REF_DICT, "$output/ref$somatic/$refDictBase");
 }
 
-if( ! -d "$output/xtra/" ){
-    print "$output/xtra/ does not exist. Will create it now\n";
+if( ! -d "$output/xtra$somatic/" ){
+    print "$output/xtra$somatic/ does not exist. Will create it now\n";
     mkdir("$output/xtra", 0755) or die "Making tmp didn't work $!";
 }
 else{
@@ -127,17 +146,17 @@ else{
 }
 
 # To make simple vcf, first use the maf2vcf.pl from cyriac...
-`/opt/common/CentOS_6/bin/v1/perl $VCF2MAF/maf2vcf.pl --input-maf $input --ref-fasta $output/ref/$ref_base --output-dir $output/xtra`;
-#`echo "##fileformat=VCFv4.2" > $output/xtra/simpleVCF.vcf; echo "#CHROM POS ID REF ALT QUAL FILTER INFO" | tr ' ' '\t' >> $output/xtra/simpleVCF.vcf`;
+`/opt/common/CentOS_6/bin/v1/perl $VCF2MAF/maf2vcf.pl --input-maf $input --ref-fasta $output/ref$somatic/$ref_base --output-dir $output/xtra`;
+#`echo "##fileformat=VCFv4.2" > $output/xtra$somatic/simpleVCF.vcf; echo "#CHROM POS ID REF ALT QUAL FILTER INFO" | tr ' ' '\t' >> $output/xtra$somatic/simpleVCF.vcf`;
 
-#open(my $out_fh, ">", "$output/xtra/simpleVCF.vcf");
+#open(my $out_fh, ">", "$output/xtra$somatic/simpleVCF.vcf");
 #print $out_fh "##fileformat=VCFv4.2\n#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n";
 
-my @files = glob("$output/xtra/*.vcf");
+my @files = glob("$output/xtra$somatic/*.vcf");
 foreach my $file (@files) {
-    if("$file" ne "$output/xtra/simpleVCF.vcf"){
+    if("$file" ne "$output/xtra$somatic/simpleVCF.vcf"){
         print "$file\n";
-        #`grep -v '^#' $file | awk ' {print $1'\t'$2'\t'$3't'$4't'$5'\t.\t.\t.'}' >>  $output/xtra/simpleVCF.vcf`;
+        #`grep -v '^#' $file | awk ' {print $1'\t'$2'\t'$3't'$4't'$5'\t.\t.\t.'}' >>  $output/xtra$somatic/simpleVCF.vcf`;
         open(my $outCurr , ">", "$file\_stripped.vcf");
         open(my $curr_file, "<", $file);
         print $outCurr "##fileformat=VCFv4.2\n#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n";
@@ -156,17 +175,17 @@ foreach my $file (@files) {
 
 # Then I want to sort the vcf.
 
-my $strippedFiles = join(" INPUT=", glob("$output/xtra/*.vcf_stripped.vcf"));
+my $strippedFiles = join(" INPUT=", glob("$output/xtra$somatic/*.vcf_stripped.vcf"));
 
-`$JAVA/java -Djava.io.tmpdir=/scratch/$uID -jar $PICARD/picard.jar SortVcf VALIDATION_STRINGENCY=LENIENT INPUT=$strippedFiles  OUTPUT=$output/xtra/sortedSimpleVCF.vcf SEQUENCE_DICTIONARY=$output/ref/$refDictBase`;
+`$JAVA/java -Djava.io.tmpdir=/scratch/$uID -jar $PICARD/picard.jar SortVcf VALIDATION_STRINGENCY=LENIENT INPUT=$strippedFiles  OUTPUT=$output/xtra$somatic/sortedSimpleVCF.vcf SEQUENCE_DICTIONARY=$output/ref$somatic/$refDictBase`;
 
-`sed 's/chr//g;s/ID=chr/ID=/g' $output/xtra/sortedSimpleVCF.vcf | uniq > tmp; mv tmp $output/xtra/sortedSimpleVCF.vcf`;
+`sed 's/chr//g;s/ID=chr/ID=/g' $output/xtra$somatic/sortedSimpleVCF.vcf | uniq > tmp; mv tmp $output/xtra$somatic/sortedSimpleVCF.vcf`;
 
 # BGZIP, tabix stuff:
-`bgzip -f $output/xtra/sortedSimpleVCF.vcf`;
-`tabix -p vcf $output/xtra/sortedSimpleVCF.vcf.gz`;
+`bgzip -f $output/xtra$somatic/sortedSimpleVCF.vcf`;
+`tabix -p vcf $output/xtra$somatic/sortedSimpleVCF.vcf.gz`;
 
-`$BCFTOOLS/bcftools annotate --annotations $Bin/../data/ExAC.r0.3.sites.pass.minus_somatic.vcf.gz --columns AC,AN,AF --output-type v --output $output/xtra/exac.vcf $output/xtra/sortedSimpleVCF.vcf.gz`;
+`$BCFTOOLS/bcftools annotate --annotations $Bin/../data/$species/ExAC.r0.3.sites.pass.minus_somatic.vcf.gz --columns AC,AN,AF --output-type v --output $output/xtra$somatic/exac.vcf $output/xtra$somatic/sortedSimpleVCF.vcf.gz`;
 
 ## for right now, just move the vcf to the main output. LATER, I will add to this script to give an intermediate file.
-`mv $output/xtra/exac.vcf $output/exact.vcf`;
+`mv $output/xtra$somatic/exac.vcf $output/exact.vcf`;
