@@ -80,6 +80,7 @@ my $STRELKA = '';
 my $SCALPEL = '';
 my $VIRMID = '';
 my $JAVA = '';
+my $FACETS = '';
 my $PYTHON = '';
 my $PERL = '';
 my $B37_FASTA = '';
@@ -101,6 +102,12 @@ while(<CONFIG>){
 	    die "CAN'T FIND GenomeAnalysisTK.jar IN $conf[1] $!";
 	}
 	$ABRA = $conf[1];
+    }
+    elsif($conf[0] =~ /facets/i){
+        if(!-e "$conf[1]/facets"){
+            die "CAN'T FIND facets IN $conf[1] $!";
+        }
+        $FACETS = $conf[1];
     }
     elsif($conf[0] =~ /gatk/i){
 	if(!-e "$conf[1]/GenomeAnalysisTK.jar"){
@@ -335,10 +342,15 @@ while(<BGR>){
 close BGR;
 
 my $targets_bed_padded = "$Bin/targets/$targets/$targets\_targets_plus5bp.bed";
+my $target_design = "$Bin/targets/$targets/$targets\__DESIGN.berger";
+### std normals prefix; $targets\_norms_title.txt and $targets\_norms\_ALL_intervalnomapqcoverage_loess.txt required
+my $target_std_normals = "$Bin/targets/$targets/StdNormals/$targets\_norms";
 if(-d $targets){
     my @path = split(/\//, $targets);
     my $assay = pop @path;
     $targets_bed_padded = "$targets/$assay\_targets_plus5bp.bed";
+    $target_design = "$targets/$assay\__DESIGN.berger";
+    $target_std_normals = "$targets/StdNormals/$assay\_norms";
 }
 
 if(!-e "$targets_bed_padded"){
@@ -773,12 +785,19 @@ if($pair){
     `/bin/mkdir -m 775 -p $output/variants/virmid`;
     `/bin/mkdir -m 775 -p $output/variants/scalpel`;
     `/bin/mkdir -m 775 -p $output/variants/strelka`;
+    `/bin/mkdir -m 775 -p $output/variants/haplotect`;
+    `/bin/mkdir -m 775 -p $output/variants/copynumber`;
+    `/bin/mkdir -m 775 -p $output/variants/copynumber/facets`;
+    `/bin/echo "Tumor_Sample_Barcode\tRdata_filename" > $output/variants/copynumber/facets/facets_mapping.txt `;
     ###`/bin/mkdir -m 775 -p $output/variants/varscan`;
 
     open(PAIR, "$pair") or die "Can't open $pair file";
     my %submitted_lns = ();
     my @mu_jids = ();
     my $ran_mutect_glob = 0;
+    my $haplotect_run = 0;
+    my $facets_run = 0;
+    my @facets_jid = ();
     ### NOTE: THE SAMPLE NAMES IN THE PAIRING FILE MUST MATCH EXACTLY THE SAMPLE NAMES IN THE REALIGNED/RECALIBRATED BAM FILE
     while(<PAIR>){
 	chomp;
@@ -971,22 +990,101 @@ if($pair){
 	    ###`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PYTHON/python $Bin/maf/vcf2maf0.py -i $output/variants/strelka/$data[0]\_$data[1]\_strelka/results/passed.somatic.indels.vcf -c strelka -o $output/variants/strelka/$data[0]\_$data[1]\_strelka/results/$pre\_$data[0]\_$data[1]\_STRELKA_passed.somatic.indels_MAF.txt -n $data[0] -t $data[1]`;
 	    ###`/bin/touch $output/progress/$pre\_$uID\_$data[0]\_$data[1]\_STRELKA_RUN_MAF.done`;
 	    ###	}
+
+        ## Here we will add the facets scripts
+        ## These are the #'s Nick uses
+        my $MINCOV=0;
+        my $BASEQ=20;
+        my $MAPQ=15;
+	
+        ## Set up tumor and normal counts
+        `/bin/mkdir -m 775 -p $output/variants/copynumber/facets/$data[0]\_$data[1]\_facets`;
+        `/bin/mkdir -m 775 -p $output/variants/copynumber/facets/$data[0]\_$data[1]\_facets/tmp`;
+        my $facetsSETUP_jid = '';
+        my $facets_setup = 0;
+        if(! -e "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_facets_SETUP.done" || $ssfj ) {
+            my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$data[0]\_facets_SETUP",  cpu => "4", mem => "5", job_hold => "$ssfj", cluster_out => "$output/progress/$pre\_$uID\_$data[0]\_facets_SETUP.log");
+            my $standardParams = Schedule::queuing(%stdParams);
+            my %addParams = (runtime => "30");
+            my $additionalParams = Schedule::additionalParams(%addParams);
+            `$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{job_hold} $standardParams->{cluster_out} $additionalParams $Bin/facets/bin/GetBaseCounts --filter_improper_pair --sort_output --fasta $REF_SEQ --vcf $DB_SNP --maq $MAPQ --baq $BASEQ --cov $MINCOV --bam $output/alignments/$pre\_indelRealigned_recal\_$data[0]\.bam --out $output/variants/copynumber/facets/$data[0]\_$data[1]\_facets/tmp/$pre\_indelRealigned_recal\_$data[0].dat`;
+	    
+            %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$data[1]\_facets_SETUP",  cpu => "4", mem => "5", job_hold => "$ssfj", cluster_out => "$output/progress/$pre\_$uID\_$data[1]\_facets_SETUP.log");
+            my $standardParams2 = Schedule::queuing(%stdParams);
+            %addParams = (runtime => "30");
+            my $additionalParams2 = Schedule::additionalParams(%addParams);
+            `$standardParams2->{submit} $standardParams2->{job_name} $standardParams2->{cpu} $standardParams2->{mem} $standardParams2->{job_hold} $standardParams2->{cluster_out} $additionalParams2 $Bin/facets/bin/GetBaseCounts --filter_improper_pair --sort_output --fasta $REF_SEQ --vcf $DB_SNP --maq $MAPQ --baq $BASEQ --cov $MINCOV --bam $output/alignments/$pre\_indelRealigned_recal\_$data[1]\.bam --out $output/variants/copynumber/facets/$data[0]\_$data[1]\_facets/tmp/$pre\_indelRealigned_recal\_$data[1].dat`;
+	    
+	    
+            %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$data[0]\_$data[1]\_merge_counts_facets_SETUP",  cpu => "4", mem => "18", job_hold => "$pre\_$uID\_$data[0]\_facets_SETUP,$pre\_$uID\_$data[1]\_facets_SETUP", cluster_out => "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_facets_SETUP.log");
+            my $standardParams3 = Schedule::queuing(%stdParams);
+            %addParams = (runtime => "30");
+            my $additionalParams3 = Schedule::additionalParams(%addParams); 
+            `$standardParams3->{submit} $standardParams3->{job_name} $standardParams3->{cpu} $standardParams3->{mem} $standardParams3->{job_hold} $standardParams3->{cluster_out} $additionalParams3 $Bin/facets/mergeTN.R  $output/variants/copynumber/facets/$data[0]\_$data[1]\_facets/tmp/$pre\_indelRealigned_recal\_$data[1].dat  $output/variants/copynumber/facets/$data[0]\_$data[1]\_facets/tmp/$pre\_indelRealigned_recal\_$data[0].dat $output/variants/copynumber/facets/$data[0]\_$data[1]\_facets/tmp/$pre\_countsMerged_$data[0]\_$data[1].dat.gz`;
+	    
+            $facets_setup = 1;
+            `/bin/touch $output/progress/$pre\_$uID\_$data[0]\_$data[1]\_facets_SETUP.done`;
+            $facetsSETUP_jid = "$pre\_$uID\_$data[0]\_$data[1]\_merge_counts_facets_SETUP";
+        }
+        ## now facets
+        if(! -e "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_facets_RUN.done" || $facets_setup){ 
+	    
+            my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$data[0]\_$data[1]\_facets_RUN",  cpu => "3", mem => "2", job_hold => "$facetsSETUP_jid", cluster_out => "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_facets_RUN.log");
+            my $standardParams = Schedule::queuing(%stdParams);
+            my %addParams = (runtime => "10");
+            my $additionalParams = Schedule::additionalParams(%addParams);
+            `$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{job_hold} $standardParams->{cluster_out} $additionalParams $Bin/facets/facets_RUN.sh $FACETS $output/variants/copynumber/facets/$data[0]\_$data[1]\_facets $data[0]\_$data[1] $output/variants/copynumber/facets/$data[0]\_$data[1]\_facets/tmp/$pre\_countsMerged_$data[0]\_$data[1].dat 300 100`;
+	    push @facets_jid, "$pre\_$uID\_$data[0]\_$data[1]\_facets_RUN" ;
+            $facets_run = 1;
+            `/bin/touch $output/progress/$pre\_$uID\_$data[0]\_$data[1]\_facets_RUN.done`; 
+        }
+    `/bin/echo "$data[1]\t$output/variants/copynumber/facets/$data[0]\_$data[1]\_facets/$data[0]\_$data[1]\_hisens.Rdata" >> $output/variants/copynumber/facets/facets_mapping.txt`;
     }
     close PAIR;
 
-    if(!-e "$output/progress/$pre\_HAPLOTECT.done" || $ran_mutect_glob || $ran_ar_indel_hc){
+    ## run merge seg script
+    my $facets_haplotect_jid = ''; 
+    if(! -e "$output/progress/$pre\_$uID\_merge_facets_seg.done" || $facets_run){
+        my $seg_outfile = "$output/variants/copynumber/facets/$pre\_facets_merge_hisens.seg";
+        if( -f "$seg_outfile"){
+            unlink("$seg_outfile") or die "Cannot delete? $!";
+        }
+        my $facets_js = join(",", @facets_jid);
+	
+        my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_merge_facets_seg",  cpu => "1", mem => "1", job_hold => "$facets_js", cluster_out => "$output/progress/$pre\_$uID\_merge_facets_seg.log");
+        my $standardParams = Schedule::queuing(%stdParams);
+        my %addParams = (scheduler => "$scheduler", runtime => "1", priority_project=> "$priority_project", priority_group=> "$priority_group", queues => "lau.q,lcg.q,nce.q", rerun => "1", iounits => "0");
+        my $additionalParams = Schedule::additionalParams(%addParams);
+        `$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{job_hold} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/facets/merge_facets_seg.pl -facets_dir $output/variants/copynumber/facets -outfile $seg_outfile`;
+	
+        `/bin/touch $output/progress/$pre\_$uID\_merge_facets_seg.done`;
+        $facets_haplotect_jid = "$pre\_$uID\_merge_facets_seg";
+    }
+
+    if(!-e "$output/progress/$pre\_$uID\_HAPLOTECT.done" || $ran_mutect_glob || $ran_ar_indel_hc){
 	sleep(2);
         my $patientFile = "";
         if($patient){
             $patientFile = "-patient $patient";
         }
 	my $muj = join(",", @mu_jids);
-	my %addParams_I = (scheduler => "$scheduler", runtime => "500", priority_project=> "$priority_project", priority_group=> "$priority_group", queues => "ito.q", iounits => "1");
-	my $additionalParams_I = Schedule::additionalParams(%addParams_I);
-	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_HAPLOTECT", job_hold => "$arihcj,$muj", cpu => "4", mem => "8", internet => "1", cluster_out => "$output/progress/$pre\_HAPLOTECT.log");
+	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_HAPLOTECT", job_hold => "$arihcj,$muj", cpu => "4", mem => "8", cluster_out => "$output/progress/$pre\_$uID\_HAPLOTECT.log");
 	my $standardParams = Schedule::queuing(%stdParams);
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $standardParams->{internet} $additionalParams_I $PERL/perl $Bin/haploTect_merge.pl -pair $pair -hc_vcf $output/variants/haplotypecaller/$pre\_HaplotypeCaller.vcf -pre $pre -output $output/variants/haplotect -mutect_dir $output/variants/mutect -config $config $patientFile -align_dir $output/alignments/ -delete_temp`;
-	`/bin/touch $output/progress/$pre\_HAPLOTECT.done`;
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/haploTect_merge.pl -pair $pair -hc_vcf $output/variants/haplotypecaller/$pre\_HaplotypeCaller.vcf -species $species -pre $pre -output $output/variants/haplotect -mutect_dir $output/variants/mutect -config $config $patientFile -align_dir $output/alignments/ -delete_temp`;
+
+        $haplotect_run = 1;
+	`/bin/touch $output/progress/$pre\_$uID\_HAPLOTECT.done`;
+        $facets_haplotect_jid .= ",$pre\_$uID\_HAPLOTECT";
+    }
+
+    ## Now join maf
+    if(!-e "$output/progress/$pre\_$uID\_join_maf.done" || $haplotect_run || $facets_run){
+        sleep(2);
+
+       my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_join_maf", job_hold => "$facets_haplotect_jid", cpu => "4", mem => "8", cluster_out => "$output/progress/$pre\_$uID\_join_maf.log");
+        my $standardParams = Schedule::queuing(%stdParams); 
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $FACETS/facets mafAnno -m $output/variants/haplotect/$pre\_haplotect_vep_maf.txt -f $output/variants/copynumber/facets/facets_mapping.txt -o $output/variants/$pre\_CMO_MAF.txt`; 
+        `/bin/touch $output/progress/$pre\_$uID\_join_maf.done`;
     }
 
     open(GROUP, "$group") || die "CAN'T OPEN SAMPLE GROUPING FILE $group $!";
@@ -999,27 +1097,39 @@ if($pair){
     }
     close GROUP;
     close BLIST;
+
+    if(!-e "$output/progress/$pre\_$uID\_DMP_CNV.done" || $ran_ssf){
+	sleep(2);
+  
+	### NOTE: DMP CNV only supported for impact410/hemepactv3 because they are the only ones that we have standard normals bams for
+	if($targets =~ /IMPACT410|HemePACT_v3/i && -e $patient && -e "$target_std_normals\_title.txt" && -e "$target_std_normals\_ALL_intervalnomapqcoverage_loess.txt"){
+	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_DMP_CNV", job_hold => "$ssfj", cpu => "1", mem => "10", cluster_out => "$output/progress/$pre\_$uID\_DMP_CNV.log");
+	    my $standardParams = Schedule::queuing(%stdParams);
+	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/exome_cnv.pl -pre $pre -result $output/variants/copynumber/dmp_cnv -berger $target_design -bamlist $output/intFiles/$pre\_sv_bam_list.txt -patient $patient -std_covg $target_std_normals -genome $species -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group`;
+	    `/bin/touch $output/progress/$pre\_$uID\_DMP_CNV.done`;
+	}
+    }
     
     my $ran_strvar = 0;
-    if(!-e "$output/progress/$pre\_$uID\_STRVAR.done" || $ran_ssf){
+    if(!-e "$output/progress/$pre\_$uID\_DELLY.done" || $ran_ssf){
 	sleep(2);
-	if(-d "$output/strvar"){
-	    `/bin/rm -rf $output/strvar`;
+	if(-d "$output/variants/structvar/delly"){
+	    `/bin/rm -rf $output/variants/structvar/delly`;
 	}
 	
-	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_STRVAR", job_hold => "$ssfj", cpu => "1", mem => "10", cluster_out => "$output/progress/$pre\_$uID\_STRVAR.log");
+	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_DELLY", job_hold => "$ssfj", cpu => "1", mem => "10", cluster_out => "$output/progress/$pre\_$uID\_DELLY.log");
 	my $standardParams = Schedule::queuing(%stdParams);
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/RunStructuralVariantPipeline_Delly.pl -pre $pre -out $output/strvar -pair $pair -bam_list $output/intFiles/$pre\_sv_bam_list.txt -genome $species -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group`;
-	`/bin/touch $output/progress/$pre\_$uID\_STRVAR.done`;
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/RunStructuralVariantPipeline_Delly.pl -pre $pre -out $output/variants/structvar/delly -pair $pair -bam_list $output/intFiles/$pre\_sv_bam_list.txt -genome $species -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group`;
+	`/bin/touch $output/progress/$pre\_$uID\_DELLY.done`;
 	$ran_strvar = 1;
     }
     
     if(!-e "$output/progress/$pre\_$uID\_CDNA_CONTAM.done" || $ran_strvar){
 	sleep(2);
 	
-	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_CDNA_CONTAM", job_hold => "$pre\_$uID\_STRVAR", cpu => "1", mem => "4", cluster_out => "$output/progress/$pre\_$uID\_CDNA_CONTAM.log");
+	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_CDNA_CONTAM", job_hold => "$pre\_$uID\_DELLY", cpu => "1", mem => "4", cluster_out => "$output/progress/$pre\_$uID\_CDNA_CONTAM.log");
 	my $standardParams = Schedule::queuing(%stdParams);
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PYTHON/python $Bin/qc/check_cDNA_contamination.py -s $output/strvar/$pre\_AllAnnotatedSVs.txt -o $output/metrics/$pre\_cDNA_contamination.txt`;
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PYTHON/python $Bin/qc/check_cDNA_contamination.py -s $output/variants/structvar/delly/$pre\_AllAnnotatedSVs.txt -o $output/metrics/$pre\_cDNA_contamination.txt`;
 	`/bin/touch $output/progress/$pre\_$uID\_CDNA_CONTAM.done`;
     }
 }
@@ -1037,29 +1147,25 @@ sub generateMaf{
     my $jna = $vcf;
     $jna =~ s/\//_/g;
 
-    my %addParams = (scheduler => "$scheduler", runtime => "500", priority_project=> "$priority_project", priority_group=> "$priority_group", queues => "ito.q");
-    my $additionalParams = Schedule::additionalParams(%addParams);
-
     my $patientFile = "";
-
     if($patient){
         $patientFile = "-patient $patient";
     }
 
     if($pair){
-	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$jna\_MAF_PAIRED", job_hold => "$hold", cpu => "2", mem => "2", internet => "1", cluster_out => "$output/progress/$pre\_$uID\_$jna\_MAF_PAIRED.log");
+	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$jna\_MAF_PAIRED", job_hold => "$hold", cpu => "2", mem => "2", cluster_out => "$output/progress/$pre\_$uID\_$jna\_MAF_PAIRED.log");
 	my $standardParams = Schedule::queuing(%stdParams);
-	### `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $standardParams->{internet} $additionalParams $Bin/generateMAF.pl -vcf $vcf -pairing $pair -species $species -config $config -caller $type $n_sample $t_sample $patientFile -align_dir $output/alignments -delete_temp`;
+	### `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/generateMAF.pl -vcf $vcf -pairing $pair -species $species -config $config -caller $type $n_sample $t_sample $patientFile -align_dir $output/alignments -delete_temp`;
 	
 	if($type =~ /unifiedgenotyper|ug|haplotypecaller|hc/i){
-	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$jna\_MAF_UNPAIRED", job_hold => "$hold", cpu => "2", mem => "2", internet => "1", cluster_out => "$output/progress/$pre\_$uID\_$jna\_MAF_UNPAIRED.log");
+	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$jna\_MAF_UNPAIRED", job_hold => "$hold", cpu => "2", mem => "2", cluster_out => "$output/progress/$pre\_$uID\_$jna\_MAF_UNPAIRED.log");
 	    my $standardParams = Schedule::queuing(%stdParams);
-	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $standardParams->{internet} $additionalParams $Bin/generateMAF.pl -vcf $vcf -species $species -config $config -caller $type $patientFile -align_dir $output/alignments -delete_temp`;
+	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/generateMAF.pl -vcf $vcf -species $species -config $config -caller $type $patientFile -align_dir $output/alignments -delete_temp`;
 	}
     }
     else{
-	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$jna\_MAF_UNPAIRED", job_hold => "$hold", cpu => "2", mem => "2", internet => "1", cluster_out => "$output/progress/$pre\_$uID\_$jna\_MAF_UNPAIRED.log");
+	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$jna\_MAF_UNPAIRED", job_hold => "$hold", cpu => "2", mem => "2", cluster_out => "$output/progress/$pre\_$uID\_$jna\_MAF_UNPAIRED.log");
 	my $standardParams = Schedule::queuing(%stdParams);
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $standardParams->{internet} $additionalParams $Bin/generateMAF.pl -vcf $vcf -species $species -config $config -caller $type $patientFile -align_dir $output/alignments -delete_temp`;
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/generateMAF.pl -vcf $vcf -species $species -config $config -caller $type $patientFile -align_dir $output/alignments -delete_temp`;
     }
 }
