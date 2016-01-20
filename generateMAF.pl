@@ -9,7 +9,7 @@ use File::Basename;
 ### OUTPUT: 2 maf files; 
 
 ## CONSTANT FOR VEP
-my $VEP_COLUMN_NAMES = "Center,Verification_Status,Validation_Status,Mutation_Status,Sequencing_Phase,Sequence_Source,Validation_Method,Score,BAM_file,Sequencer,Tumor_Sample_UUID,Match_Norm_Sample_UUID,Caller";
+my $VEP_COLUMN_NAMES = "Center,Verification_Status,Validation_Status,Mutation_Status,Sequencing_Phase,Sequence_Source,Validation_Method,Score,BAM_file,Sequencer,Tumor_Sample_UUID,Matched_Norm_Sample_UUID,Caller";
 
 my ($vcf, $pairing, $patient, $bam_dir, $species, $config, $caller, $normal_sample, $tumor_sample, $delete_temp);
 GetOptions ('vcf=s' => \$vcf,
@@ -55,7 +55,7 @@ if($bam_dir){
     }
 }
 
-if($species !~ /hg19/){ ##    UNCOMMENT LATER   |mm10|mouse/i){
+if($species !~ /b37|hg19/i){ ##    UNCOMMENT LATER   |mm10|mouse/i){
     print "THIS WILL ONLY PRINT OUT A TCGA MAF, NO ANNOATION\n";
 }
 
@@ -67,8 +67,12 @@ my $REF_FASTA = '';
 my $HG19_FASTA = '';
 my $PYTHON = '';
 my $PERL = '';
+my $VCF2MAF = '';
 my $VEP = '';
 my $MM10_FASTA = '';
+my $B37_FASTA = '';
+my $B37_MM10_HYBRID_FASTA = '';
+
 open(CONFIG, "$config") or warn "CAN'T OPEN CONFIG FILE $config SO USING DEFAULT SETTINGS";
 while(<CONFIG>){
     chomp;
@@ -94,17 +98,39 @@ while(<CONFIG>){
 	}
 	$PYTHON = $conf[1];
     }
-    elsif($conf[0] =~ /perl/i){
-	if(!-e "$conf[1]/perl"){
-	    die "CAN'T FIND perl IN $conf[1] $!";
-	}
-	$PERL = $conf[1];
+    elsif($conf[0] =~ /b37_fasta/i){
+        if(!-e "$conf[1]"){
+            if($species =~ /human|^b37$/i){
+                die "CAN'T FIND $conf[1] $!";
+            }
+        }
+        $B37_FASTA = $conf[1];
     }
-    elsif($conf[0] =~ /vep/i){
+    elsif($conf[0] =~ /b37_mm10_hybrid_fasta/i){
+        if(!-e "$conf[1]"){
+            if($species =~ /hybrid|b37_mm10/i){
+                die "CAN'T FIND $conf[1] $!";
+            }
+        }
+        $B37_MM10_HYBRID_FASTA = $conf[1];
+    }
+    elsif($conf[0] =~ /^perl/i){
+        if(!-e "$conf[1]/perl"){
+            die "CAN'T FIND perl IN $conf[1] $!";
+        }
+        $PERL = $conf[1];
+    }
+    elsif($conf[0] =~ /^vep/i){
         if(!-e "$conf[1]/variant_effect_predictor.pl"){
             die "CAN'T FIND VEP IN $conf[1] $!";
         }
         $VEP = $conf[1];
+    }
+    elsif($conf[0] =~/vcf2maf/i){
+        if(!-e "$conf[1]/maf2maf.pl"){
+            die "CAN'T FIND maf2maf.pl in $conf[1] $!";
+        }
+        $VCF2MAF = $conf[1];
     }
     elsif($conf[0] =~ /samtools/i){
         if(!-e "$conf[1]/samtools"){
@@ -127,13 +153,21 @@ close CONFIG;
 if(!-e $VEP ){
     die "VEP path from config file does not exist";
 }
-
+if(!-e $VCF2MAF ) {
+    die "Cannot find vcf2maf. Either add or correct config file. $!";
+}
 
 my $NCBI_BUILD = '';
 my $VEP_SPECIES = '';
 if($species =~ /hg19/i){
     $species = 'hg19';
     $REF_FASTA = "$HG19_FASTA";
+    $NCBI_BUILD = "GRCh37";
+    $VEP_SPECIES = "homo_sapiens";
+}
+elsif($species =~ /human|^b37/i){
+    $species = 'b37';
+    $REF_FASTA = "$B37_FASTA";
     $NCBI_BUILD = "GRCh37";
     $VEP_SPECIES = "homo_sapiens";
 }
@@ -222,14 +256,14 @@ print "$PYTHON/python $Bin/maf/oldMAF2tcgaMAF.py $species \<$vcf\_$somatic\_maf0
 `$PYTHON/python $Bin/maf/oldMAF2tcgaMAF.py $species $vcf\_$somatic\_maf0.txt $vcf\_$somatic\_maf1.txt`;
 
 
-if($species !~ /hg19/i) { ###   |mm10|mouse/i) { uncomment later!
+if($species !~ /hg19|b37|mm10|mouse|human/i) { ###   |mm10|mouse/i) { uncomment later!
     print "End of species ambiguous portion of the script.\n";
     exit 0;
 }
 
 print "\n#######\n#######\nStarting VEP. \n";
 # these are names needed for the "retain-cols" option in VEP
-# my $VEP_COLUMN_NAMES = "Center,Verification_Status,Validation_Status,Mutation_Status,Sequencing_Phase,Sequence_Source,Validation_Method,Score,BAM_file,Sequencer,Tumor_Sample_UUID,Match_Norm_Sample_UUID,Caller";
+#/ my $VEP_COLUMN_NAMES = "Center,Verification_Status,Validation_Status,Mutation_Status,Sequencing_Phase,Sequence_Source,Validation_Method,Score,BAM_file,Sequencer,Tumor_Sample_UUID,Match_Norm_Sample_UUID,Caller";
 my $output = dirname($vcf);
 # ## Create tmp and ref directory. Delete these later*
  if( ! -d "$output/tmp_$somatic/" ){
@@ -248,40 +282,20 @@ symlink($REF_FASTA, "$output/ref_$somatic/$ref_base");
 symlink("$REF_FASTA.fai", "$output/ref$somatic/$ref_base.fai");
 
 
-## vep-forks is at 4 because that is how many CPUs we ask for
-#print "\n/opt/common/CentOS_6/bin/v1/perl /opt/common/CentOS_6/vcf2maf/v1.6.1/maf2maf.pl --tmp-dir $output/tmp_$somatic --ref-fasta $output/ref_$somatic/$ref_base --vep-forks 4 --species $VEP_SPECIES --vep-path $VEP --vep-data $VEP --retain-cols $VEP_COLUMN_NAMES --input-maf $vcf\_$somatic\_maf1.txt --output-maf $vcf\_$somatic\_maf2_VEP.txt --ncbi-build $NCBI_BUILD \n\n";
+print "\n$PERL/perl $VCF2MAF/maf2maf.pl --tmp-dir $output/tmp_$somatic --ref-fasta $output/ref_$somatic/$ref_base --ncbi-build $NCBI_BUILD --species $VEP_SPECIES --vep-forks 4 --vep-path $VEP --vep-data $VEP --retain-cols $VEP_COLUMN_NAMES --input-maf $vcf\_$somatic\_maf1.txt --output-maf $vcf\_$somatic\_maf1.VEP\n\n";
 
-#`/opt/common/CentOS_6/bin/v1/perl /opt/common/CentOS_6/vcf2maf/v1.6.1/maf2maf.pl --tmp-dir $output/tmp_$somatic --ref-fasta $output/ref_$somatic/$ref_base --vep-forks 4 --vep-path $VEP --species $VEP_SPECIES --vep-data $VEP --retain-cols $VEP_COLUMN_NAMES --input-maf $vcf\_$somatic\_maf1.txt --output-maf $vcf\_$somatic\_maf2_VEP.txt --ncbi-build $NCBI_BUILD > $vcf\_$somatic\_maf2_VEP.log 2>&1`;
+`$PERL/perl $VCF2MAF/maf2maf.pl --tmp-dir $output/tmp_$somatic --ref-fasta $output/ref_$somatic/$ref_base --ncbi-build $NCBI_BUILD --species $VEP_SPECIES --vep-forks 4 --vep-path $VEP --vep-data $VEP --retain-cols $VEP_COLUMN_NAMES --input-maf $vcf\_$somatic\_maf1.txt --output-maf $vcf\_$somatic\_maf1.VEP > $vcf\_$somatic\_maf1.log 2>&1`;
 
-print "/opt/common/CentOS_6/bin/v1/perl /opt/common/CentOS_6/vcf2maf/v1.5.4/maf2maf.pl --tmp-dir $output/tmp_$somatic --ref-fasta $output/ref_$somatic/$ref_base --vep-forks 4 --vep-path $VEP --vep-data $VEP --retain-cols $VEP_COLUMN_NAMES --input-maf $vcf\_$somatic\_maf1.txt --output-maf $vcf\_$somatic\_maf2_VEP.txt > $vcf\_$somatic\_maf2_VEP.log 2>&1";
-                 
-`/opt/common/CentOS_6/bin/v1/perl /opt/common/CentOS_6/vcf2maf/v1.5.4/maf2maf.pl --tmp-dir $output/tmp_$somatic --ref-fasta $output/ref_$somatic/$ref_base --vep-forks 4 --vep-path $VEP --vep-data $VEP --retain-cols $VEP_COLUMN_NAMES --input-maf $vcf\_$somatic\_maf1.txt --output-maf $vcf\_$somatic\_maf2_VEP.txt > $vcf\_$somatic\_maf2_VEP.log 2>&1`;
 
 print "creating TCGA-formatted MAF file... \n";
 #This removes any records that don't have a gene name at the front
-`grep -v ^Unknown $vcf\_$somatic\_maf2_VEP.txt  > $vcf\_$somatic\_VEP_MAF.txt`;
-`grep -v ^# $vcf\_$somatic\_VEP_MAF.txt | cut -f-34 > $vcf\_$somatic\_TCGA_MAF.txt`;
+#`grep -v ^Unknown $vcf\_$somatic\_maf1.VEP  > $vcf\_$somatic\_VEP_MAF.txt`;
+`cut -f-34 $vcf\_$somatic\_maf1.VEP > $vcf\_$somatic\_TCGA_MAF.txt`;
 
 print "creating MAF for cbio portal submission";
-print "$PYTHON/python $Bin/maf/pA_reSortCols.py -i $vcf\_$somatic\_VEP_MAF.txt -f $Bin/maf/finalCols_PORTAL.txt -o $vcf\_$somatic\_TCGA_PORTAL_MAF.txt\n\n";
-`$PYTHON/python $Bin/maf/pA_reSortCols.py -i $vcf\_$somatic\_VEP_MAF.txt -f $Bin/maf/finalCols_PORTAL.txt -o $vcf\_$somatic\_TCGA_PORTAL_MAF.txt`;
+print "$PYTHON/python $Bin/maf/pA_reSortCols.py -i $vcf\_$somatic\_maf1.VEP -f $Bin/maf/finalCols_PORTAL.txt -o $vcf\_$somatic\_TCGA_PORTAL_MAF.txt\n\n";
+`$PYTHON/python $Bin/maf/pA_reSortCols.py -i $vcf\_$somatic\_maf1.VEP -f $Bin/maf/finalCols_PORTAL.txt -o $vcf\_$somatic\_TCGA_PORTAL_MAF.txt`;
 
-print "creating clean MAF file\n";
-print "$PYTHON/python $Bin/maf/pA_reSortCols.py -i $vcf\_$somatic\_VEP_MAF.txt -f $Bin/maf/finalCols.txt -o $vcf\_$somatic\_MAF4.txt\n\n";
-# Create nice MAF with essential columns
-`$PYTHON/python $Bin/maf/pA_reSortCols.py -i $vcf\_$somatic\_VEP_MAF.txt -f $Bin/maf/finalCols.txt -o $vcf\_$somatic\_MAF4.txt`;
-
-print "annotating with cosmic\n";
-print "$PYTHON/python $Bin/maf/maf_annotations/addCosmicAnnotation.py -i $vcf\_$somatic\_VEP_MAF.txt -o $vcf\_$somatic\_VEP_COSMIC_MAF_STANDARD.txt -f $Bin/data/b37/CosmicMutantExport_v67_241013.tsv\n\n";
-print "$PYTHON/python $Bin/maf/maf_annotations/addCosmicAnnotation.py -i $vcf\_$somatic\_VEP_MAF.txt -o $vcf\_$somatic\_VEP_COSMIC_MAF_DETAILED.txt -f $Bin/data/b37/CosmicMutantExport_v67_241013.tsv -d\n\n";
-`$PYTHON/python $Bin/maf/maf_annotations/addCosmicAnnotation.py -i $vcf\_$somatic\_VEP_MAF.txt -o $vcf\_$somatic\_VEP_COSMIC_MAF_STANDARD.txt -f $Bin/data/b37/CosmicMutantExport_v67_241013.tsv`;
-`$PYTHON/python $Bin/maf/maf_annotations/addCosmicAnnotation.py -i $vcf\_$somatic\_VEP_MAF.txt -o $vcf\_$somatic\_VEP_COSMIC_MAF_DETAILED.txt -f $Bin/data/b37/CosmicMutantExport_v67_241013.tsv -d`;
-
-print "annotating with mutation assessor\n";
-print "$PYTHON/python $Bin/maf/maf_annotations/addMAannotation.py -i $vcf\_$somatic\_VEP_COSMIC_MAF_STANDARD.txt -o $vcf\_$somatic\_VEP_COSMIC_MA_MAF_STANDARD.txt\n";
-print "$PYTHON/python $Bin/maf/maf_annotations/addMAannotation.py -i $vcf\_$somatic\_VEP_COSMIC_MAF_DETAILED.txt -o $vcf\_$somatic\_VEP_COSMIC_MA_MAF_DETAILED.txt -d\n\n";
-`$PYTHON/python $Bin/maf/maf_annotations/addMAannotation.py -i $vcf\_$somatic\_VEP_COSMIC_MAF_STANDARD.txt -o $vcf\_$somatic\_VEP_COSMIC_MA_MAF_STANDARD.txt`;
-`$PYTHON/python $Bin/maf/maf_annotations/addMAannotation.py -i $vcf\_$somatic\_VEP_COSMIC_MAF_DETAILED.txt -o $vcf\_$somatic\_VEP_COSMIC_MA_MAF_DETAILED.txt -d`;
 
 if($patient && $bam_dir){
     #if($pairing){
@@ -326,7 +340,27 @@ if($patient && $bam_dir){
 }
 
 
+if($species =~ /hg19|human|b37/){
+    print "$PERL/perl $Bin/maf/bedtools_annotations.pl --in_maf $vcf\_$somatic\_maf1.VEP --species $species --output $output --config $config --fastq --target $Bin/targets/IMPACT410_$species/IMPACT410_$species\_targets_plus5bp.bed --targetname impact410 --somatic $somatic\n";
+    `$PERL/perl $Bin/maf/bedtools_annotations.pl --in_maf $vcf\_$somatic\_maf1.VEP --species $species --output $output --config $config --fastq --target $Bin/targets/IMPACT410_$species/IMPACT410_$species\_targets_plus5bp.bed --targetname impact410 --somatic $somatic`;
+
+    print "perl $Bin/maf/exact_annotate.pl --in_maf $vcf\_$somatic\_maf1.VEP --species $species --output $output --config $config --somatic $somatic\n";
+    `$PERL/perl $Bin/maf/exact_annotate.pl --in_maf $vcf\_$somatic\_maf1.VEP --species $species --output $output --config $config --somatic $somatic`;
+
+    print "$PYTHON/python $Bin/maf/mergeExtraCols.py $output/triNucleotide.seq $output/maf_targets.impact410 $output/exact.vcf $vcf\_$somatic\_maf1.VEP\n";
+    `$PYTHON/python $Bin/maf/mergeExtraCols.py $output/triNucleotide.seq $output/maf_targets.impact410 $output/exact.vcf $vcf\_$somatic\_maf1.VEP > $vcf\_$somatic\_vep_maf.txt`;
+}else{ ## MOUSE
+    print "$PERL/perl $Bin/maf/bedtools_annotations.pl --in_maf $vcf\_$somatic\_maf1.VEP --species $species --output $output --config $config --fastq --somatic $somatic\n";
+    `$PERL/perl $Bin/maf/bedtools_annotations.pl --in_maf $vcf\_$somatic\_maf1.VEP --species $species --output $output --config $config --fastq --somatic $somatic`;
+
+    `/bin/touch $output/blank`;
+    print "$PYTHON/python $Bin/maf/mergeExtraCols.py $output/triNucleotide.seq $output/blank $output/blank $vcf\_$somatic\_maf1.VEP > $vcf\_$somatic\_vep_maf.txt\n";
+    `$PYTHON/python $Bin/maf/mergeExtraCols.py $output/triNucleotide.seq $output/blank $output/blank $vcf\_$somatic\_maf1.VEP > $vcf\_$somatic\_vep_maf.txt`;
+
+}
+
+
 if($delete_temp){
-    `/bin/rm $vcf\_PAIRED.maf $vcf\_$somatic\_maf0.log $vcf\_UNPAIRED.maf $vcf\_$somatic\_UNFILTERED.txt $vcf\_$somatic\_maf2.txt $vcf\_$somatic\_maf3.txt $vcf\_$somatic\_MAF3_HUGO.log $vcf\_$somatic\_maf3.txt_ambiguous $vcf\_$somatic\_maf3.txt_hugo_modified $vcf\_$somatic\_VEP_COSMIC_MAF_STANDARD.txt $vcf\_$somatic\_VEP_COSMIC_MAF_DETAILED.txt $vcf\_$somatic\_UNFILTERED.txt $vcf\_$somatic\_rescued.txt $vcf\_$somatic\_maf0_rescue.log`;
-    `/bin/rm -r $output/tmp_$somatic $output/ref_$somatic`;
+    `/bin/rm $vcf\_PAIRED.maf $vcf\_$somatic\_maf0.log $vcf\_UNPAIRED.maf $vcf\_$somatic\_UNFILTERED.txt $vcf\_$somatic\_UNFILTERED.txt $vcf\_$somatic\_rescued.txt $vcf\_$somatic\_maf0_rescue.log $output/exact.vcf $output/*.seq $output/maf_targets.* $output/blank`;
+    `/bin/rm -r $output/tmp_$somatic $output/ref_$somatic $output/xtra $output/bed_$somatic`;
 }

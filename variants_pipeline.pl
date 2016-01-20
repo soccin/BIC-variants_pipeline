@@ -133,7 +133,6 @@ $cd =~ s/\//_/g;
 
 if($output !~ /^\//){
     $output = "$curDir/$output";
-
 }
 
 my $commandLine = reconstructCL();
