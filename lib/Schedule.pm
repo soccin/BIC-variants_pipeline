@@ -135,11 +135,11 @@ sub lsf {
 	$cluster->job_name("");
     }
 
-    if($lsfParams{'job_hold'} =~ /^[a-zA-Z]/){
+    if($lsfParams{'job_hold'} =~ /^[a-zA-Z|,]/){
       ###$cluster->job_hold("-w \"post_done($lsfParams{'job_hold'})\"");
 	my @jobs = split(/,/, $lsfParams{'job_hold'});
 	my @holds = ();
-	foreach my $job (@jobs){
+	foreach my $job (@jobs){	    
 	    if(!$job){
 		next;
 	    }
