@@ -74,6 +74,11 @@ my $priority_group = "Pipeline";
 my $r1adaptor = 'AGATCGGAAGAGCACACGTCT';
 my $r2adaptor = 'AGATCGGAAGAGCGTCGTGTA';
 
+my $uID = `/usr/bin/id -u -n`;
+chomp $uID;
+my $rsync = "/ifs/solres/$uID";
+
+
 GetOptions ('map=s' => \$map,
 	    'group=s' => \$group,
 	    'pair=s' => \$pair,
@@ -89,6 +94,7 @@ GetOptions ('map=s' => \$map,
 	    'noMD|nomd|nomarkdups|noMarkdups' => \$noMD,
 	    'ug|unifiedgenotyper' => \$ug,
  	    'output|out|o=s' => \$output,
+	    'rsync=s' => \$rsync,
  	    'scheduler=s' => \$scheduler,
  	    'priority_project=s' => \$priority_project,
  	    'priority_group=s' => \$priority_group,
@@ -111,6 +117,7 @@ if(!$map || !$species || !$config || !$scheduler || !$targets || $help){
         * PATIENT: if a patient file is given, patient wide fillout will be added to maf file
 	* PRE: output prefix (default: TEMP)
 	* OUTPUT: output results directory (default: results)
+	* RSYNC:  path to rsync data for archive (default: /ifs/solres/USER_ID)
 	* PRIORITY_PROJECT: sge notion of priority assigned to projects (default: ngs)
 	* PRIORITY_GROUP: lsf notion of priority assigned to groups (default: Pipeline)
 	* -nosnps: if no snps to be called; e.g. when only indelrealigned/recalibrated bams needed
@@ -176,9 +183,6 @@ my $GATK = '';
 
 &verifyConfig($config);
 processInputs();
-
-my $uID = `/usr/bin/id -u -n`;
-chomp $uID;
 
 my %samp_libs_run = ();
 my $slr_count = 0;
@@ -302,6 +306,9 @@ sub reconstructCL {
     }
     if($output){
 	$rCL .= " -output $output";
+    }
+    if($rsync){
+	$rCL .= " -rsync $rsync";
     }
     if($targets){
 	$rCL .= " -targets $targets";
@@ -1326,7 +1333,7 @@ sub callSNPS {
     
     if($species =~ /b37|hg19|hybrid/i){
 	###`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/process_alignments_human.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra $run_step1 $patientFile -species $species`;
-	`$Bin/process_alignments_human.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra $run_step1 $patientFile -species $species`;
+	`$Bin/process_alignments_human.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra $run_step1 $patientFile -species $species -rsync $rsync`;
     }
     elsif($species =~ /mm9|^mm10$|mm10_custom/i){
 	###`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/process_alignments_mouse.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group -species $species $run_abra $run_step1`;

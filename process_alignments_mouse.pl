@@ -14,6 +14,10 @@ my $pre = 'TEMP';
 my $output = "results";
 my $species = 'mm10';
 
+my $uID = `/usr/bin/id -u -n`;
+chomp $uID;
+my $rsync = "/ifs/solres/$uID";
+
 GetOptions ('pre=s' => \$pre,
 	    'pair=s' => \$pair,
 	    'group=s' => \$group,
@@ -29,6 +33,7 @@ GetOptions ('pre=s' => \$pre,
  	    'priority_project=s' => \$priority_project,
  	    'priority_group=s' => \$priority_group,
 	    'help' => \$help,
+	    'rsync=s' => \$rsync,
  	    'output|out|o=s' => \$output) or exit(1);
 
 
@@ -45,6 +50,7 @@ if(!$group || !$config || !$scheduler || !$targets || !$bamgroup || $help){
 	* PRE: output prefix (default: TEMP)
 	* SPECIES: mm10 (default), mm10_custom, and mm9
 	* OUTPUT: output results directory (default: results)
+	* RSYNC:  path to rsync data for archive (default: /ifs/solres/USER_ID)
 	* PRIORITY_PROJECT: sge notion of priority assigned to projects (default: ngs)
 	* PRIORITY_GROUP: lsf notion of priority assigned to groups (default: Pipeline)
 	* -nosnps: if no snps to be called; e.g. when only indelrealigned/recalibrated bams needed
@@ -55,8 +61,11 @@ HELP
 exit;
 }
 
-my $uID = `/usr/bin/id -u -n`;
-chomp $uID;
+my $curDir = `pwd`;
+chomp $curDir;
+if($output !~ /^\//){
+    $output = "$curDir/$output";
+}
 
 if($pre =~ /^\d+/){
     $pre = "s_$pre";
@@ -282,6 +291,7 @@ my $ran_pr_glob = 0;
 my @prg_jids = ();
 my $ran_ssf = 0;
 my @ssf_jids = ();
+my @all_jids = ();
 
 `/bin/mkdir -m 775 -p $output`;
 `/bin/mkdir -m 775 -p $output/intFiles`;
@@ -425,7 +435,9 @@ while(<IN>){
 }
 
 my $ssfj = join(",", @ssf_jids);
-    my @mq_metrics_jid = ();
+push @all_jids, @ssf_jids;
+my @mq_metrics_jid = ();
+my $ran_mqm = 0;
 if(!-e "$output/progress/$pre\_$uID\_MQ.done" || $ran_ssf){
     sleep(2);
     foreach my $finalBam (@finalBams){
@@ -440,6 +452,7 @@ if(!-e "$output/progress/$pre\_$uID\_MQ.done" || $ran_ssf){
 	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Djava.io.tmpdir=/scratch/$uID -jar $PICARD/picard.jar MeanQualityByCycle INPUT=$finalBam OUTPUT=$output/intFiles/$pre\_MeanQualityByCycle_$samp.txt CHART_OUTPUT=$output/intFiles/$pre\_MeanQualityByCycle_$samp.pdf REFERENCE_SEQUENCE=$REF_SEQ VALIDATION_STRINGENCY=LENIENT ASSUME_SORTED=true TMP_DIR=/scratch/$uID`;
 	    push @mq_metrics_jid, "$pre\_$uID\_MQ_METRICS_$samp";
 	    `/bin/touch $output/progress/$pre\_$uID\_MQ_METRICS_$samp\.done`;
+	    $ran_mqm = 1; 
 	}
     }
 }
@@ -449,6 +462,17 @@ my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_MERGE_MQ", 
 my $standardParams = Schedule::queuing(%stdParams);
 `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PYTHON/python $Bin/qc/mergeMeanQualityHistograms.py $output '*_MeanQualityByCycle_*.txt' $output/metrics/$pre\_post_recal_MeanQualityByCycle.txt $output/metrics/$pre\_pre_recal_MeanQualityByCycle.txt`;
 `/bin/touch $output/progress/$pre\_$uID\_MERGE_MQ.done`;
+push @all_jids, "$pre\_$uID\_MERGE_MQ";
+
+my $allj = join(",", @all_jids);
+if(!-e "$output/progress/$pre\_$uID\_RSYNC_1.done" || $ran_ssf || $ran_mqm){
+    sleep(2);
+    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_RSYNC_1", job_hold => "$allj", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_RSYNC_1.log");
+    my $standardParams = Schedule::queuing(%stdParams);
+    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams /usr/bin/rsync -azvP --exclude 'intFiles' --exclude 'progress' $curDir $rsync`;
+    push @all_jids, "$pre\_$uID\_RSYNC_1";
+    `/bin/touch $output/progress/$pre\_$uID\_RSYNC_1.done`;
+}
 
 if($nosnps){
     exit;
@@ -587,6 +611,7 @@ if($pair){
 	    `/bin/touch $output/progress/$pre\_$uID\_$data[0]\_$data[1]\_MUTECT.done`;
 	    $mutectj = "$pre\_$uID\_$data[0]\_$data[1]\_MUTECT";
 	    push @mu_jids, "$pre\_$uID\_$data[0]\_$data[1]\_MUTECT";
+	    push @all_jids, $mutectj;
 	    $ran_mutect = 1;
 	    $ran_mutect_glob = 1;
 	}
@@ -600,6 +625,7 @@ if($pair){
 	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $SOMATIC_SNIPER/bam-somaticsniper -F vcf -f $REF_SEQ -q 1 $output/alignments/$pre\_indelRealigned_recal\_$data[1]\.bam $output/alignments/$pre\_indelRealigned_recal\_$data[0]\.bam $output/variants/somaticsniper/$pre\_indelRealigned_recal\_$data[0]\_$data[1]\_somatic_sniper.vcf`;
 	    `/bin/touch $output/progress/$pre\_$uID\_$data[0]\_$data[1]\_SOMATIC_SNIPER.done`;
 	    $ssj = "$pre\_$uID\_$data[0]\_$data[1]\_SOMATIC_SNIPER";
+	    push @all_jids, $ssj;
 	    $ran_somatic_sniper = 1;
 	}	    
 
@@ -614,6 +640,7 @@ if($pair){
 	    my $standardParams = Schedule::queuing(%stdParams);
 	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx12g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $VIRMID/Virmid.jar -R $REF_SEQ -D $output/alignments/$pre\_indelRealigned_recal\_$data[1]\.bam -N $output/alignments/$pre\_indelRealigned_recal\_$data[0]\.bam -t 4 -o $pre\_$data[0]\_$data[1]\_virmid -w $output/variants/virmid/$data[0]\_$data[1]\_virmid`;
 	    `/bin/touch $output/progress/$pre\_$uID\_$data[0]\_$data[1]\_VIRMID.done`;
+	    push @all_jids, "$pre\_$uID\_$data[0]\_$data[1]\_VIRMID";
 	    $ran_virmid = 1;
 	}
 	
@@ -702,6 +729,7 @@ if($pair){
 	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$data[0]\_$data[1]\_SCALPEL_CLEANUP", job_hold => "$pre\_$uID\_$data[0]\_$data[1]\_SCALPEL", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_SCALPEL_CLEANUP.log");
 	    my $standardParams = Schedule::queuing(%stdParams);
 	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams /bin/rm -rf $output/variants/scalpel/$data[0]\_$data[1]\_scalpel/main/ $output/variants/scalpel/$data[0]\_$data[1]\_scalpel/validation/`;
+	    push @all_jids, "$pre\_$uID\_$data[0]\_$data[1]\_SCALPEL_CLEANUP";
 	}
 
 	if($ran_strelka_run){
@@ -709,6 +737,7 @@ if($pair){
 	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$data[0]\_$data[1]\_STRELKA_CLEANUP", job_hold => "$pre\_$uID\_$data[0]\_$data[1]\_STRELKA_RUN", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_STRELKA_CLEANUP.log");
 	    my $standardParams = Schedule::queuing(%stdParams);
 	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams /bin/rm -rf $output/variants/strelka/$data[0]\_$data[1]\_strelka/config $output/variants/strelka/$data[0]\_$data[1]\_strelka/chromosomes $output/variants/strelka/$data[0]\_$data[1]\_strelka/Makefile $output/variants/strelka/$data[0]\_$data[1]\_strelka/task.complete`;
+	    push @all_jids, "$pre\_$uID\_$data[0]\_$data[1]\_STRELKA_CLEANUP";
 	}
 
 	###if(!-e "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_STRELKA_RUN_MAF.done" || $ran_strelka_run){
@@ -726,6 +755,12 @@ if($pair){
     }
     close PAIR;
 }
+
+my $allj2 = join(",", @all_jids);
+my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_RSYNC_2", job_hold => "$allj2", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_RSYNC_2.log");
+my $standardParams = Schedule::queuing(%stdParams);
+`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams /usr/bin/rsync -azvP --exclude 'intFiles' --exclude 'progress' $curDir $rsync`;
+`/bin/touch $output/progress/$pre\_$uID\_RSYNC_2.done`;
 
 sub generateMaf{
     my ($vcf, $type, $hold, $normal_sample, $tumor_sample) = @_;
@@ -756,4 +791,7 @@ sub generateMaf{
 	my $standardParams = Schedule::queuing(%stdParams);
 	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/generateMAF.pl -vcf $vcf -species $species -config $config -caller $type -delete_temp`;
     }
+
+    push @all_jids, "$pre\_$uID\_$jna\_MAF_UNPAIRED";
+
 }
