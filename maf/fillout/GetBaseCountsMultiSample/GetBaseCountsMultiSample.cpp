@@ -33,7 +33,7 @@ using namespace std;
 using namespace BamTools;
 
 
-const string VERSION = "GetBaseCountsMultiSample 1.1.1";
+const string VERSION = "GetBaseCountsMultiSample 1.1.4";
 
 string input_fasta_file;
 map<string, string> input_bam_files;
@@ -48,8 +48,8 @@ int filter_improper_pair = 1;
 int filter_qc_failed = 0;
 int filter_indel = 0;
 int filter_non_primary = 1;
-char bases[] = {'A', 'C', 'G', 'T', 'a', 'c', 'g', 't', 'R', 'r', 'M', 'm', 'U', 'u'}; // M/m for matched insertion/deletion, u/U for unmatched insertion/deletion, R/r for matched reference
-size_t base_size = 14;
+int output_positive_strand_count = 0;
+int output_fragment_count = 0;
 int maximum_variant_block_size = 10000;
 int maximum_variant_block_distance = 100000;
 int num_thread = 1;
@@ -57,6 +57,8 @@ string count_method = "DMP";
 bool input_variant_is_maf = false;
 bool input_variant_is_vcf = false;
 const size_t BIN_SIZE = 16*1024;
+const float FRAGMENT_REF_WEIGHT = 0.5;
+const float FRAGMENT_ALT_WEIGHT = 0.5;
 
 
 void printUsage(string msg = "")
@@ -81,6 +83,8 @@ void printUsage(string msg = "")
     cout << "\t--filter_qc_failed      [0, 1]                          Whether to filter reads that are marked as failed quality control. 0=off, 1=on. Default 0" << endl;
     cout << "\t--filter_indel          [0, 1]                          Whether to filter reads that have indels. 0=off, 1=on. Default 0" << endl;
     cout << "\t--filter_non_primary    [0, 1]                          Whether to filter reads that are marked as non primary alignment. Default 1" << endl;
+    cout << "\t--positive_count        [0, 1]                          Whether to output positive strand read counts DPP/RDP/ADP. 0=off, 1=on. Default 0" << endl;
+    cout << "\t--fragment_count        [0, 1]                          Whether to output fragment read counts DPF/RDF/ADF. 0=off, 1=on. Default 0" << endl;
     cout << "\t--help                                                  Print command line usage" << endl;
     cout << endl;
     cout << "[ADVANCED ARGUMENTS, CHANGING THESE ARGUMENTS WILL SIGNIFICANTLY AFFECT MEMORY USAGE AND RUNNING TIME. USE WITH CAUTION]" << endl;
@@ -108,6 +112,8 @@ static struct option long_options[] =
     {"filter_qc_failed",        required_argument,      0,     'l'},
     {"filter_indel",            required_argument,      0,     'i'},
     {"filter_non_primary",      required_argument,      0,     'n'},
+    {"positive_count",          required_argument,      0,     'P'},
+    {"fragment_count",          required_argument,      0,     'F'},
     {"max_block_size",          required_argument,      0,     'M'},
     {"max_block_dist",          required_argument,      0,     'm'},
     {"help",                    no_argument,            0,     'h'},
@@ -168,7 +174,7 @@ void parseOption(int argc, const char* argv[])
     int option_index = 0;
     do
     {
-        next_option = getopt_long(argc, const_cast<char**>(argv), "f:b:v:V:o:t:Q:q:d:p:l:i:n:M:m:h", long_options, &option_index);
+        next_option = getopt_long(argc, const_cast<char**>(argv), "f:b:v:V:o:t:Q:q:d:p:l:i:n:P:F:M:m:h", long_options, &option_index);
         switch(next_option)
         {
             case 'f':
@@ -184,6 +190,7 @@ void parseOption(int argc, const char* argv[])
             case 'V':
                 addVariantFile(optarg);
                 input_variant_is_vcf = true;
+                break;
             case 'o':
                 output_file = optarg;
                 break;
@@ -210,6 +217,12 @@ void parseOption(int argc, const char* argv[])
                 break;
             case 'n':
                 filter_non_primary = atoi(optarg);
+                break;
+            case 'P':
+                output_positive_strand_count = atoi(optarg);
+                break;
+            case 'F':
+                output_fragment_count = atoi(optarg);
                 break;
             case 'M':
                 maximum_variant_block_size = atoi(optarg);
@@ -250,6 +263,10 @@ void parseOption(int argc, const char* argv[])
         printUsage("[ERROR] --filter_indel should be 0 or 1");
     if(filter_non_primary != 0 && filter_non_primary != 1)
         printUsage("[ERROR] --filter_non_primary should be 0 or 1");
+    if(output_positive_strand_count != 0 && output_positive_strand_count != 1)
+        printUsage("[ERROR] --positive_count should be 0 or 1");
+    if(output_fragment_count != 0 && output_fragment_count != 1)
+        printUsage("[ERROR] --fragment_count should be 0 or 1");
     if(input_variant_is_maf && input_variant_is_vcf)
         printUsage("[ERROR] --maf and --vcf are mutually exclusive");
     base_quality_threshold += quality_scale;
@@ -413,10 +430,15 @@ public:
     {
         for(map<string, string>::iterator it = input_bam_files.begin(); it != input_bam_files.end(); it ++)
         {
-            for(size_t i = 0; i < base_size; i++)
-            {
-                base_count[it->first][bases[i]] = 0;
-            }
+            base_count[it->first]["DP"] = 0.0;
+            base_count[it->first]["RD"] = 0.0;
+            base_count[it->first]["AD"] = 0.0;
+            base_count[it->first]["DPP"] = 0.0;
+            base_count[it->first]["RDP"] = 0.0;
+            base_count[it->first]["ADP"] = 0.0;
+            base_count[it->first]["DPF"] = 0.0;
+            base_count[it->first]["RDF"] = 0.0;
+            base_count[it->first]["ADF"] = 0.0;
         }
         pos = 0;
         end_pos = 0;
@@ -440,7 +462,7 @@ public:
     string normal_sample;
     bool insertion;
     bool deletion;
-    map<string, map<char, int> > base_count;    //<sample_name, <allele, count> >
+    map<string, map<string, float> > base_count;    //<sample_name, <count_type, count> >
     string gene;                                // gene name from input maf
     string effect;                              // effect from input maf
     int t_ref_count;                            // tumor ref count from input maf
@@ -578,8 +600,11 @@ void loadVariantFileMAF(vector<string>& input_file_names, vector<VariantEntry>& 
         
         VariantFile my_vf(input_file_names[file_index]);
         string line;
-        
-        my_vf.get_next(line); //header
+        while(my_vf.get_next(line))
+        {
+            if(line[0] != '#') // first non-comment line is the header line
+                break;
+        }
         vector<string> header_items;
         split(line, '\t', header_items);
         for(size_t header_index = 0; header_index < header_items.size(); header_index++)
@@ -588,7 +613,7 @@ void loadVariantFileMAF(vector<string>& input_file_names, vector<VariantEntry>& 
         }
         if(header_index_hash.find("Hugo_Symbol") == header_index_hash.end() || header_index_hash.find("Chromosome") == header_index_hash.end() ||
            header_index_hash.find("Start_Position") == header_index_hash.end() || header_index_hash.find("End_Position") == header_index_hash.end() ||
-           header_index_hash.find("Reference_Allele") == header_index_hash.end() || header_index_hash.find("Tumor_Seq_Allele2") == header_index_hash.end() ||
+           header_index_hash.find("Reference_Allele") == header_index_hash.end() || header_index_hash.find("Tumor_Seq_Allele1") == header_index_hash.end() || header_index_hash.find("Tumor_Seq_Allele2") == header_index_hash.end() ||
            header_index_hash.find("Tumor_Sample_Barcode") == header_index_hash.end() || header_index_hash.find("Matched_Norm_Sample_Barcode") == header_index_hash.end() ||
            header_index_hash.find("t_ref_count") == header_index_hash.end() || header_index_hash.find("t_alt_count") == header_index_hash.end() ||
            header_index_hash.find("n_ref_count") == header_index_hash.end() || header_index_hash.find("n_alt_count") == header_index_hash.end() ||
@@ -610,6 +635,18 @@ void loadVariantFileMAF(vector<string>& input_file_names, vector<VariantEntry>& 
             new_variant.end_pos = atoi(variant_items[header_index_hash["End_Position"]].c_str()) - 1;
             new_variant.ref = variant_items[header_index_hash["Reference_Allele"]];
             new_variant.alt = variant_items[header_index_hash["Tumor_Seq_Allele2"]];
+            if(new_variant.alt.empty())
+                new_variant.alt = variant_items[header_index_hash["Tumor_Seq_Allele1"]];
+            if(new_variant.alt.empty())
+            {
+                cerr << "Could not find alt allele for variant: " << new_variant.chrom << "\t" << new_variant.pos << endl;
+                exit(1);
+            }
+            if(new_variant.ref == new_variant.alt)
+            {
+                cerr << "The ref and alt alleles are the same for variant: " << new_variant.chrom << "\t" << new_variant.pos << endl;
+                exit(1);
+            }
             new_variant.tumor_sample = variant_items[header_index_hash["Tumor_Sample_Barcode"]];
             new_variant.normal_sample = variant_items[header_index_hash["Matched_Norm_Sample_Barcode"]];
             new_variant.t_ref_count = atoi(variant_items[header_index_hash["t_ref_count"]].c_str());
@@ -728,58 +765,6 @@ void sortAndIndexVariant16K(vector<VariantEntry>& variant_vec, vector<pair<size_
 }
 
 
-/*void printCounts(vector<VariantEntry>& variant_vec)
-{
-    ofstream output_fs(output_file.c_str());
-    if(!output_fs)
-    {
-        cerr << "[ERROR] fail to open output file: " << output_file << endl;
-        exit(1);
-    }
-    output_fs << "chrom" << "\t" << "pos" << "\t" << "ref" << "\t" << "alt";
-    for(map<string, map<char, int> >::iterator it = variant_vec[0].base_count.begin(); it != variant_vec[0].base_count.end(); it++)
-    {
-        output_fs << "\t" << it->first;
-    }
-    output_fs << endl;
-    
-    for(size_t i = 0; i < variant_vec.size(); i++)
-    {
-        output_fs << variant_vec[i].chrom << "\t" << (variant_vec[i].pos + 1) << "\t" << variant_vec[i].ref << "\t" << variant_vec[i].alt;
-        for(map<string, map<char, int> >::iterator it = variant_vec[i].base_count.begin(); it != variant_vec[i].base_count.end(); it++)
-        {
-            int dp_count = 0;
-            int rd_count = 0;
-            int ad_count = 0;
-            for(map<char, int>::iterator it2 = it->second.begin(); it2 != it->second.end(); it2++)
-            {
-                dp_count += it2->second;
-                if(variant_vec[i].insertion || variant_vec[i].deletion)
-                {
-                    if(toupper(it2->first) == 'M')
-                        ad_count += it2->second;
-                    else if(toupper(it2->first) == 'R')
-                        rd_count += it2->second;
-                }
-                else if(toupper(it2->first) == variant_vec[i].ref[0]) // ref base
-                {
-                    rd_count += it2->second;
-                }
-                else if(toupper(it2->first) == variant_vec[i].alt[0])
-                {
-                    ad_count += it2->second;
-                }
-            }
-            double vf_count = 0;
-            if(dp_count > 0)
-                vf_count = (double)ad_count / (double)dp_count;
-            output_fs << "\t" << "DP=" << dp_count << ";RD=" << rd_count << ";AD=" << ad_count << ";VF=" << vf_count;
-        }
-        output_fs << endl;
-    }
-    output_fs.close();
-}*/
-
 void printCountsSIMPLE(vector<VariantEntry>& variant_vec) // print counts for vcf-like variants
 {
     ofstream output_fs(output_file.c_str());
@@ -789,7 +774,7 @@ void printCountsSIMPLE(vector<VariantEntry>& variant_vec) // print counts for vc
         exit(1);
     }
     output_fs << "Chrom" << "\t" << "Pos" << "\t" << "Ref" << "\t" << "Alt";
-    for(map<string, map<char, int> >::iterator it = variant_vec[0].base_count.begin(); it != variant_vec[0].base_count.end(); it++)
+    for(map<string, map<string, float> >::iterator it = variant_vec[0].base_count.begin(); it != variant_vec[0].base_count.end(); it++)
     {
         output_fs << "\t" << it->first;
     }
@@ -798,41 +783,22 @@ void printCountsSIMPLE(vector<VariantEntry>& variant_vec) // print counts for vc
     for(size_t i = 0; i < variant_vec.size(); i++)
     {
         output_fs << variant_vec[i].chrom << "\t" << (variant_vec[i].pos + 1 )<< "\t" << variant_vec[i].ref << "\t" << variant_vec[i].alt;
-        map<string, map<char, int> >* base_count_ptr = NULL;
+        map<string, map<string, float> >* base_count_ptr = NULL;
         if(variant_vec[i].duplicate_variant_ptr != NULL)
             base_count_ptr = &(variant_vec[i].duplicate_variant_ptr->base_count); // there is another duplicate variant that has the count
         else
             base_count_ptr = &(variant_vec[i].base_count);                        // current variant has the count
-        for(map<string, map<char, int> >::iterator it = base_count_ptr->begin(); it != base_count_ptr->end(); it++)
+        for(map<string, map<string, float> >::iterator it = base_count_ptr->begin(); it != base_count_ptr->end(); it++)
         {
-            int dp_count = 0;
-            int rd_count = 0;
-            int ad_count = 0;
-            for(map<char, int>::iterator it2 = it->second.begin(); it2 != it->second.end(); it2++)
-            {
-                dp_count += it2->second;
-                if(variant_vec[i].insertion || variant_vec[i].deletion) // insertion or deletion
-                {
-                    if(toupper(it2->first) == 'M')    // M for exact matched indel
-                        ad_count += it2->second;
-                    else if(toupper(it2->first) == 'R')  // R for matched ref
-                        rd_count += it2->second;
-                    //else if(toupper(it2->first) == 'U') // U for unmatched indel, snp
-                }
-                else if(toupper(it2->first) == variant_vec[i].ref[0]) // ref allele for snp
-                {
-                    rd_count += it2->second;
-                }
-                else if(toupper(it2->first) == variant_vec[i].alt[0]) // alt allele for snp
-                {
-                    ad_count += it2->second;
-                }
-                //else                                                // other unmatched snp, indel
-            }
-            double vf_count = 0;
-            if(dp_count > 0)
-                vf_count = (double)ad_count / (double)dp_count;
-            output_fs << "\t" << "DP=" << dp_count << ";RD=" << rd_count << ";AD=" << ad_count << ";VF=" << vf_count;
+            float vf_count = 0.0;
+            if(it->second["DP"] > 0)
+                vf_count = it->second["AD"] / it->second["DP"];
+            output_fs << "\t" << "DP=" << it->second["DP"]  << ";RD=" << it->second["RD"] << ";AD=" << it->second["AD"] << ";VF=" << vf_count;
+            if(output_positive_strand_count)
+                output_fs << ";DPP=" << it->second["DPP"]  << ";RDP=" << it->second["RDP"] << ";ADP=" << it->second["ADP"];
+            if(output_fragment_count)
+                output_fs << ";DPF=" << it->second["DPF"]  << ";RDF=" << it->second["RDF"] << ";ADF=" << it->second["ADF"];
+
         }
         output_fs << endl;
     }
@@ -848,7 +814,7 @@ void printCountsFILLOUT(vector<VariantEntry>& variant_vec) // print counts for t
         exit(1);
     }
     output_fs << "Sample\tNormalUsed\tChrom\tStart\tRef\tAlt\tVariantClass\tGene\tExon\tCall_Confidence\tComments\tTranscriptID\tcDNAchange\tAAchange\tdbSNP_ID\tCosmic_ID\t1000G_MAF\tFailureReason\tN_TotalDepth\tN_RefCount\tN_AltCount\tN_AltFreq\tT_TotalDepth\tT_RefCount\tT_AltCount\tT_AltFreq\tT_Ref+\tT_Ref-\tT_Alt+\tT_Alt-\tAll_N_Aggregate_AlleleDepth\tAll_N_Median_AlleleFreq\tT_freq/All_N_Freq\tOccurence_in_Normals";
-    for(map<string, map<char, int> >::iterator it = variant_vec[0].base_count.begin(); it != variant_vec[0].base_count.end(); it++)
+    for(map<string, map<string, float> >::iterator it = variant_vec[0].base_count.begin(); it != variant_vec[0].base_count.end(); it++)
     {
         output_fs << "\t" << it->first;
     }
@@ -861,41 +827,21 @@ void printCountsFILLOUT(vector<VariantEntry>& variant_vec) // print counts for t
         << "\t" << "\t" << "\t" << "\t" << "\t" << "\t" << "\t" << "\t" << "\t" << variant_vec[i].n_ref_count << "\t" << variant_vec[i].n_alt_count << "\t"
         << "\t" << "\t" << variant_vec[i].t_ref_count << "\t" << variant_vec[i].t_alt_count << "\t"  << "\t" << "\t" << "\t" << "\t" << "\t" << "\t" << "\t"
         << "\t";
-        map<string, map<char, int> >* base_count_ptr = NULL;
+        map<string, map<string, float> >* base_count_ptr = NULL;
         if(variant_vec[i].duplicate_variant_ptr != NULL)
             base_count_ptr = &(variant_vec[i].duplicate_variant_ptr->base_count);
         else
             base_count_ptr = &(variant_vec[i].base_count);
-        for(map<string, map<char, int> >::iterator it = base_count_ptr->begin(); it != base_count_ptr->end(); it++)
+        for(map<string, map<string, float> >::iterator it = base_count_ptr->begin(); it != base_count_ptr->end(); it++)
         {
-            int dp_count = 0;
-            int rd_count = 0;
-            int ad_count = 0;
-            for(map<char, int>::iterator it2 = it->second.begin(); it2 != it->second.end(); it2++)
-            {
-                dp_count += it2->second;
-                if(variant_vec[i].insertion || variant_vec[i].deletion)
-                {
-                    if(toupper(it2->first) == 'M')                     // M for exact matched indel
-                        ad_count += it2->second;
-                    else if(toupper(it2->first) == 'R')                // R for matched ref
-                        rd_count += it2->second;
-                    //else if(toupper(it2->first) == 'U')              // U for unmatched indel, snp
-                }
-                else if(toupper(it2->first) == variant_vec[i].ref[0])  // ref allele for snp
-                {
-                    rd_count += it2->second;
-                }
-                else if(toupper(it2->first) == variant_vec[i].alt[0])  // alt allele for snp
-                {
-                    ad_count += it2->second;
-                }
-                //else                                                // other unmatched snp, indel
-            }
-            double vf_count = 0;
-            if(dp_count > 0)
-                vf_count = (double)ad_count / (double)dp_count;
-            output_fs << "\t" << "DP=" << dp_count << ";RD=" << rd_count << ";AD=" << ad_count << ";VF=" << vf_count;
+            float vf_count = 0.0;
+            if(it->second["DP"] > 0)
+                vf_count = it->second["AD"] / it->second["DP"];
+            output_fs << "\t" << "DP=" << it->second["DP"]  << ";RD=" << it->second["RD"] << ";AD=" << it->second["AD"] << ";VF=" << vf_count;
+            if(output_positive_strand_count)
+                output_fs << ";DPP=" << it->second["DPP"]  << ";RDP=" << it->second["RDP"] << ";ADP=" << it->second["ADP"];
+            if(output_fragment_count)
+                output_fs << ";DPF=" << it->second["DPF"]  << ";RDF=" << it->second["RDF"] << ";ADF=" << it->second["ADF"];
         }
         output_fs << endl;
     }
@@ -905,6 +851,9 @@ void printCountsFILLOUT(vector<VariantEntry>& variant_vec) // print counts for t
 void baseCountSNP(VariantEntry& my_variant_entry, vector<BamAlignment>& bam_vec, size_t& start_bam_index, string sample_name)  // get counts for snps
 {
     bool start_bam_index_set = false;
+    map<string, map<int, int> > DPF_MAP;
+    map<string, map<int, int> > RDF_MAP;
+    map<string, map<int, int> > ADF_MAP;
     for(size_t bam_index = start_bam_index; bam_index < bam_vec.size(); bam_index++)
     {
         BamAlignment &my_bam_alignment = bam_vec[bam_index];
@@ -972,22 +921,110 @@ void baseCountSNP(VariantEntry& my_variant_entry, vector<BamAlignment>& bam_vec,
             cur_alt = my_bam_alignment.QueryBases[variant_pos];
             cur_bq = my_bam_alignment.Qualities[variant_pos];
         }
-        
         if(cur_bq >= base_quality_threshold) // possible base values for snp: A T G C a t g c U u
         {
-            if(my_bam_alignment.IsReverseStrand())
-                my_variant_entry.base_count[sample_name][tolower(cur_alt)] ++;  // lower case for - strand
-            else
-                my_variant_entry.base_count[sample_name][toupper(cur_alt)] ++;  // upper case for + strand
+            int end_no = my_bam_alignment.IsFirstMate() ? 1 : 2;
+            // count total read depth
+            my_variant_entry.base_count[sample_name]["DP"] ++;
+            if(!(my_bam_alignment.IsReverseStrand()))
+                my_variant_entry.base_count[sample_name]["DPP"] ++;
+            if(DPF_MAP.find(my_bam_alignment.Name) == DPF_MAP.end())
+            {
+                map<int, int> new_end_count_map;
+                DPF_MAP.insert(make_pair(my_bam_alignment.Name, new_end_count_map));
+            }
+            if(DPF_MAP[my_bam_alignment.Name].find(end_no) == DPF_MAP[my_bam_alignment.Name].end())
+            {
+                DPF_MAP[my_bam_alignment.Name][end_no] = 0;
+            }
+            DPF_MAP[my_bam_alignment.Name][end_no]++;
+  
+            // count ref depth
+            if(toupper(cur_alt) == my_variant_entry.ref[0])
+            {
+                my_variant_entry.base_count[sample_name]["RD"] ++;
+                if(!(my_bam_alignment.IsReverseStrand()))
+                    my_variant_entry.base_count[sample_name]["RDP"] ++;
+                if(RDF_MAP.find(my_bam_alignment.Name) == RDF_MAP.end())
+                {
+                    map<int, int> new_end_count_map;
+                    RDF_MAP.insert(make_pair(my_bam_alignment.Name, new_end_count_map));
+                }
+                if(RDF_MAP[my_bam_alignment.Name].find(end_no) == RDF_MAP[my_bam_alignment.Name].end())
+                {
+                    RDF_MAP[my_bam_alignment.Name][end_no] = 0;
+                }
+                RDF_MAP[my_bam_alignment.Name][end_no]++;
+            } // count alt depth
+            else if(toupper(cur_alt) == my_variant_entry.alt[0])
+            {
+                my_variant_entry.base_count[sample_name]["AD"] ++;
+                if(!(my_bam_alignment.IsReverseStrand()))
+                    my_variant_entry.base_count[sample_name]["ADP"] ++;
+                if(ADF_MAP.find(my_bam_alignment.Name) == ADF_MAP.end())
+                {
+                    map<int, int> new_end_count_map;
+                    ADF_MAP.insert(make_pair(my_bam_alignment.Name, new_end_count_map));
+                }
+                if(ADF_MAP[my_bam_alignment.Name].find(end_no) == ADF_MAP[my_bam_alignment.Name].end())
+                {
+                    ADF_MAP[my_bam_alignment.Name][end_no] = 0;
+                }
+                ADF_MAP[my_bam_alignment.Name][end_no]++;
+            }
         }
     }
+    
+    // get fragment counts
+    my_variant_entry.base_count[sample_name]["DPF"] = DPF_MAP.size();
+    for(map<string, map<int, int> >::iterator it_dpf = DPF_MAP.begin(); it_dpf != DPF_MAP.end(); it_dpf++)
+    {
+        bool overlap_multimap = false;
+        for(map<int, int>::iterator it_count = it_dpf->second.begin(); it_count != it_dpf->second.end(); it_count ++)
+        {
+            if(it_count->second > 1)
+            {
+                cout << "Warning: fragment " << it_dpf->first << " has overlapping multiple mapped alignment at site: " << my_variant_entry.chrom << ":" << my_variant_entry.pos << endl;
+                overlap_multimap = true;
+                break;
+            }
+        }
+        if(overlap_multimap)
+            continue;
+        if(RDF_MAP.find(it_dpf->first) != RDF_MAP.end())
+        {
+            if(ADF_MAP.find(it_dpf->first) != ADF_MAP.end()) // both ref and alt found in fragment
+            {
+                my_variant_entry.base_count[sample_name]["RDF"] += FRAGMENT_REF_WEIGHT;
+                my_variant_entry.base_count[sample_name]["ADF"] += FRAGMENT_ALT_WEIGHT;
+            }
+            else                                                     // only ref found in fragment
+            {
+                my_variant_entry.base_count[sample_name]["RDF"] ++;
+            }
+        }
+        else
+        {
+            if(ADF_MAP.find(it_dpf->first) != ADF_MAP.end())  // only alt found in fragment
+            {
+                my_variant_entry.base_count[sample_name]["ADF"] ++;
+            }
+            else  //no ref or alt
+            {
 
+            }
+        }
+    }
+    
 }
 
 // DMP count method, for indels, count the ref depth and total read depth at 1 base ahead (vcf_pos + 1)
 void baseCountIndelDMP(VariantEntry& my_variant_entry, vector<BamAlignment>& bam_vec, size_t& start_bam_index, string sample_name, map<string, string>& reference_sequence)
 {
     bool start_bam_index_set = false;
+    map<string, map<int, int> > DPF_MAP;
+    map<string, map<int, int> > RDF_MAP;
+    map<string, map<int, int> > ADF_MAP;
     for(size_t bam_index = start_bam_index; bam_index < bam_vec.size(); bam_index++)
     {
         BamAlignment &my_bam_alignment = bam_vec[bam_index];
@@ -1111,7 +1148,7 @@ void baseCountIndelDMP(VariantEntry& my_variant_entry, vector<BamAlignment>& bam
             cur_alt = 'M';
             cur_bq = my_bam_alignment.Qualities[variant_pos]; // apply base quality threshold to the base right before indel
         }
-        else // ref
+        else // ref or noise
         {
             cur_alt = my_bam_alignment.QueryBases[variant_pos];
             cur_bq = my_bam_alignment.Qualities[variant_pos];
@@ -1120,15 +1157,100 @@ void baseCountIndelDMP(VariantEntry& my_variant_entry, vector<BamAlignment>& bam
             else
                 cur_alt = 'U';   // noise
         }
-        if(cur_bq >= base_quality_threshold) // possible base values for indel: U M R u m r
+        if(cur_bq >= base_quality_threshold) // possible base values for snp: A T G C a t g c U u
         {
-            if(my_bam_alignment.IsReverseStrand())
-                my_variant_entry.base_count[sample_name][tolower(cur_alt)] ++;  // lower case for - strand
-            else
-                my_variant_entry.base_count[sample_name][toupper(cur_alt)] ++;  // upper case for + strand
+            int end_no = my_bam_alignment.IsFirstMate() ? 1 : 2;
+            // count total read depth
+            my_variant_entry.base_count[sample_name]["DP"] ++;
+            if(!(my_bam_alignment.IsReverseStrand()))
+                my_variant_entry.base_count[sample_name]["DPP"] ++;
+            if(DPF_MAP.find(my_bam_alignment.Name) == DPF_MAP.end())
+            {
+                map<int, int> new_end_count_map;
+                DPF_MAP.insert(make_pair(my_bam_alignment.Name, new_end_count_map));
+            }
+            if(DPF_MAP[my_bam_alignment.Name].find(end_no) == DPF_MAP[my_bam_alignment.Name].end())
+            {
+                DPF_MAP[my_bam_alignment.Name][end_no] = 0;
+            }
+            DPF_MAP[my_bam_alignment.Name][end_no]++;
+            
+            // count ref depth
+            if(cur_alt == 'R')
+            {
+                my_variant_entry.base_count[sample_name]["RD"] ++;
+                if(!(my_bam_alignment.IsReverseStrand()))
+                    my_variant_entry.base_count[sample_name]["RDP"] ++;
+                if(RDF_MAP.find(my_bam_alignment.Name) == RDF_MAP.end())
+                {
+                    map<int, int> new_end_count_map;
+                    RDF_MAP.insert(make_pair(my_bam_alignment.Name, new_end_count_map));
+                }
+                if(RDF_MAP[my_bam_alignment.Name].find(end_no) == RDF_MAP[my_bam_alignment.Name].end())
+                {
+                    RDF_MAP[my_bam_alignment.Name][end_no] = 0;
+                }
+                RDF_MAP[my_bam_alignment.Name][end_no]++;
+            } // count alt depth
+            else if(cur_alt == 'M')
+            {
+                my_variant_entry.base_count[sample_name]["AD"] ++;
+                if(!(my_bam_alignment.IsReverseStrand()))
+                    my_variant_entry.base_count[sample_name]["ADP"] ++;
+                if(ADF_MAP.find(my_bam_alignment.Name) == ADF_MAP.end())
+                {
+                    map<int, int> new_end_count_map;
+                    ADF_MAP.insert(make_pair(my_bam_alignment.Name, new_end_count_map));
+                }
+                if(ADF_MAP[my_bam_alignment.Name].find(end_no) == ADF_MAP[my_bam_alignment.Name].end())
+                {
+                    ADF_MAP[my_bam_alignment.Name][end_no] = 0;
+                }
+                ADF_MAP[my_bam_alignment.Name][end_no]++;
+            }
         }
     }
-
+    
+    // get fragment counts
+    my_variant_entry.base_count[sample_name]["DPF"] = DPF_MAP.size();
+    for(map<string, map<int, int> >::iterator it_dpf = DPF_MAP.begin(); it_dpf != DPF_MAP.end(); it_dpf++)
+    {
+        bool overlap_multimap = false;
+        for(map<int, int>::iterator it_count = it_dpf->second.begin(); it_count != it_dpf->second.end(); it_count ++)
+        {
+            if(it_count->second > 1)
+            {
+                cout << "Warning: fragment " << it_dpf->first << " has overlapping multiple mapped alignment at site: " << my_variant_entry.chrom << ":" << my_variant_entry.pos << endl;
+                overlap_multimap = true;
+                break;
+            }
+        }
+        if(overlap_multimap)
+            continue;
+        if(RDF_MAP.find(it_dpf->first) != RDF_MAP.end())
+        {
+            if(ADF_MAP.find(it_dpf->first) != ADF_MAP.end()) // both ref and alt found in fragment
+            {
+                my_variant_entry.base_count[sample_name]["RDF"] += FRAGMENT_REF_WEIGHT;
+                my_variant_entry.base_count[sample_name]["ADF"] += FRAGMENT_ALT_WEIGHT;
+            }
+            else                                                     // only ref found in fragment
+            {
+                my_variant_entry.base_count[sample_name]["RDF"] ++;
+            }
+        }
+        else
+        {
+            if(ADF_MAP.find(it_dpf->first) != ADF_MAP.end())  // only alt found in fragment
+            {
+                my_variant_entry.base_count[sample_name]["ADF"] ++;
+            }
+            else  //no ref or alt
+            {
+                
+            }
+        }
+    }
 }
 
 

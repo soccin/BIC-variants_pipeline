@@ -9,6 +9,7 @@ from collections import defaultdict
 from lib import *
 
 validCallers=["hc", "haplotypecaller", "mt", "mutect", "haplotect"] # haplotect is special.  INDELs == haplotype caller, SNPS == muTect (untill I fix)
+validSpOptions=["hg19", "b37", "mm10"]
 
 def validFile(filename):
     if not os.path.exists(filename):
@@ -20,6 +21,11 @@ def validCaller(c):
         print >> sys.stderr, "".join(["[ERROR] ", c, " is not a valid caller. Valid caller are: ", ", ".join(validCallers), "\n"])
         sys.exit(1) 
 
+def validSpecies(s):
+    if s not in validSpOptions:
+        print >> sys.stderr, "".join(["[ERROR] ", s, " is not a valid species. Valid species are: ", ", ".join(validSpOptions), "\n"])
+        sys.exit(1) 
+
 parser=argparse.ArgumentParser()
 parser.add_argument("-m","--maf",help="Original Maf File", required=True)
 parser.add_argument("-p","--pairing",help="Pairing File")
@@ -27,12 +33,20 @@ parser.add_argument("-P","--patient",help="Patient File", required=True)
 parser.add_argument("-b","--baseCounts",help="Base Counts File", required=True)
 parser.add_argument("-o","--output",help="Output Maf Filename", required=True)
 parser.add_argument("-c","--caller",help="Caller that generated variants", required=True)
+parser.add_argument("-s","--species", help="Species used", required=True)
 args=parser.parse_args()
 
 # verify maf, pairing, and patient are all files.
 validCaller(args.caller)
 validFile(args.maf)
 validFile(args.patient)
+validSpecies(args.species)
+
+### For human, if species is hg19 or b37, NCBI value is GRCh37
+### For mouse it is GRCm38
+NCBI="GRCh37"
+if args.species == "mm10":
+    NCBI="GRCm38"
 
 pairs=dict()
 
@@ -132,6 +146,7 @@ for rec in bunchStream(cin):
 
     maf=TCGA_MAF_Ext(Hugo_Symbol=rec.Gene,
         Center=CenterTag,
+        NCBI_Build=NCBI,
         Chromosome=rec.Chrom,
         Start_Position=startPos,
         End_Position=endPos,
@@ -170,7 +185,7 @@ for ei in sorted(eventDb):
     # for each mutated sample at that position
     for si in eventDb[ei]["mutSamples"]:
         maf1=copy.copy(eventDb[ei])["MAF"]
-        maf1=fillSampleMAFFields(maf1,si,ei,eventDb,pairs, caller)
+        maf1=fillSampleMAFFields(maf1,si,ei,eventDb,pairs,caller,args.species)
 
         # changes mutaiton status based on if this is unpaired, paired with matched normal, or 
         # paired with pooled nomral
@@ -206,7 +221,7 @@ for ei in sorted(eventDb):
         #
         if sampleDb[si].Class.upper().find("NORMAL")==-1:
             maf1=copy.copy(eventDb[ei])["MAF"]
-            maf1=fillSampleMAFFields(maf1,si,ei,eventDb,pairs,caller)
+            maf1=fillSampleMAFFields(maf1,si,ei,eventDb,pairs,caller, args.species)
             maf1.Mutation_Status = "NONE"
             maf1.Tumor_Seq_Allele1=maf1.Reference_Allele
             output.write(str(maf1)+"\n")

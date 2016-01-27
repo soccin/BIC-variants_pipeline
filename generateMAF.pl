@@ -279,7 +279,7 @@ my $ref_base = basename($REF_FASTA);
 
 # softlink reference
 symlink($REF_FASTA, "$output/ref_$somatic/$ref_base");
-symlink("$REF_FASTA.fai", "$output/ref$somatic/$ref_base.fai");
+symlink("$REF_FASTA.fai", "$output/ref_$somatic/$ref_base.fai");
 
 
 print "\n$PERL/perl $VCF2MAF/maf2maf.pl --tmp-dir $output/tmp_$somatic --ref-fasta $output/ref_$somatic/$ref_base --ncbi-build $NCBI_BUILD --species $VEP_SPECIES --vep-forks 4 --vep-path $VEP --vep-data $VEP --retain-cols $VEP_COLUMN_NAMES --input-maf $vcf\_$somatic\_maf1.txt --output-maf $vcf\_$somatic\_maf1.VEP\n\n";
@@ -327,15 +327,16 @@ if($patient && $bam_dir){
 
         my $bam_inputs = join(" ", @bamList);
 
-        print "$Bin/maf/fillout/GetBaseCountsMutliSample/GetBaseCountsMultiSample --fasta $REF_FASTA $bam_inputs --output $vcf\_$somatic\_TCGA_basecounts.txt --maf $vcf\_$somatic\_TCGA_PORTAL_MAF.txt --filter_improper_pair 0\n\n";
-        `$Bin/maf/fillout/GetBaseCountsMutliSample/GetBaseCountsMultiSample --fasta $REF_FASTA $bam_inputs --output $vcf\_$somatic\_TCGA_basecounts.txt --maf $vcf\_$somatic\_TCGA_PORTAL_MAF.txt --filter_improper_pair 0`;
+        print "$Bin/maf/fillout/GetBaseCountsMultiSample/GetBaseCountsMultiSample --fasta $REF_FASTA $bam_inputs --output $vcf\_$somatic\_TCGA_basecounts.txt --maf $vcf\_$somatic\_TCGA_PORTAL_MAF.txt --filter_improper_pair 0\n\n";
+        `$Bin/maf/fillout/GetBaseCountsMultiSample/GetBaseCountsMultiSample --fasta $REF_FASTA $bam_inputs --output $vcf\_$somatic\_TCGA_basecounts.txt --maf $vcf\_$somatic\_TCGA_PORTAL_MAF.txt --filter_improper_pair 0`;
 
     if($pairing){
-        print "$PYTHON/python $Bin/maf/fillout/dmp2portalMAF -m $vcf\_$somatic\_TCGA_PORTAL_MAF.txt -p $pairing -P $patient -c $caller -b $vcf\_$somatic\_TCGA_basecounts.txt -o $vcf\_$somatic\_TCGA_PORTAL_MAF_fillout.txt\n";    
-        `$PYTHON/python $Bin/maf/fillout/dmp2portalMAF -m $vcf\_$somatic\_TCGA_MAF.txt -p $pairing -P $patient -c $caller -b $vcf\_$somatic\_TCGA_basecounts.txt -o $vcf\_$somatic\_TCGA_PORTAL_MAF_fillout.txt`;
+        `/bin/sleep 25`;
+        print "$PYTHON/python $Bin/maf/fillout/dmp2portalMAF -s $species -m $vcf\_$somatic\_TCGA_PORTAL_MAF.txt -p $pairing -P $patient -c $caller -b $vcf\_$somatic\_TCGA_basecounts.txt -o $vcf\_$somatic\_TCGA_PORTAL_MAF_fillout.txt\n";    
+        `$PYTHON/python $Bin/maf/fillout/dmp2portalMAF -s $species -m $vcf\_$somatic\_TCGA_MAF.txt -p $pairing -P $patient -c $caller -b $vcf\_$somatic\_TCGA_basecounts.txt -o $vcf\_$somatic\_TCGA_PORTAL_MAF_fillout.txt`;
     } else {
-        print "$PYTHON/python $Bin/maf/fillout/dmp2portalMAF -m $vcf\_$somatic\_TCGA_PORTAL_MAF.txt -P $patient -c $caller -b $vcf\_$somatic\_TCGA_basecounts.txt -o $vcf\_$somatic\_TCGA_PORTAL_MAF_fillout.txt\n";
-        `$PYTHON/python $Bin/maf/fillout/dmp2portalMAF -m $vcf\_$somatic\_TCGA_MAF.txt -P $patient -c $caller -b $vcf\_$somatic\_TCGA_basecounts.txt -o $vcf\_$somatic\_TCGA_PORTAL_MAF_fillout.txt`;
+        print "$PYTHON/python $Bin/maf/fillout/dmp2portalMAF -s $species -m $vcf\_$somatic\_TCGA_PORTAL_MAF.txt -P $patient -c $caller -b $vcf\_$somatic\_TCGA_basecounts.txt -o $vcf\_$somatic\_TCGA_PORTAL_MAF_fillout.txt\n";
+        `$PYTHON/python $Bin/maf/fillout/dmp2portalMAF -s $species -m $vcf\_$somatic\_TCGA_MAF.txt -P $patient -c $caller -b $vcf\_$somatic\_TCGA_basecounts.txt -o $vcf\_$somatic\_TCGA_PORTAL_MAF_fillout.txt`;
     }
 }
 
@@ -361,6 +362,6 @@ if($species =~ /hg19|human|b37/){
 
 
 if($delete_temp){
-    `/bin/rm $vcf\_PAIRED.maf $vcf\_$somatic\_maf0.log $vcf\_UNPAIRED.maf $vcf\_$somatic\_UNFILTERED.txt $vcf\_$somatic\_UNFILTERED.txt $vcf\_$somatic\_rescued.txt $vcf\_$somatic\_maf0_rescue.log $output/exact.vcf $output/*.seq $output/maf_targets.* $output/blank`;
-    `/bin/rm -r $output/tmp_$somatic $output/ref_$somatic $output/xtra $output/bed_$somatic`;
+    `/bin/rm $vcf\_PAIRED.maf $vcf\_$somatic\_maf0.log $vcf\_UNPAIRED.maf $vcf\_$somatic\_UNFILTERED.txt $vcf\_$somatic\_UNFILTERED.txt $vcf\_$somatic\_rescued.txt $vcf\_$somatic\_maf0_rescue.log $output/exact.vcf $output/*.seq $output/maf_targets.* $output/blank $output/*basecounts.txt`;
+    `/bin/rm -r $output/tmp_$somatic $output/ref_$somatic $output/xtra_$somatic $output/bed_$somatic`;
 }

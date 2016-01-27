@@ -444,11 +444,11 @@ if($patient && $bam_dir){
 
     my $bam_inputs = join(" ", @bamList);
 
-    print "$Bin/maf/fillout/GetBaseCountsMutliSample/GetBaseCountsMultiSample --fasta $REF_FASTA $bam_inputs --output $output/$pre/_haplotect_TCGA_basecounts.txt --maf $output/$pre\_haplotect_TCGA_PORTAL_MAF.txt --filter_improper_pair 0\n\n";
-    `$Bin/maf/fillout/GetBaseCountsMutliSample/GetBaseCountsMultiSample --fasta $REF_FASTA $bam_inputs --output $output/$pre\_haplotect_TCGA_basecounts.txt --maf $output/$pre\_haplotect_TCGA_PORTAL_MAF.txt --filter_improper_pair 0`;
+    print "$Bin/maf/fillout/GetBaseCountsMultiSample/GetBaseCountsMultiSample --fasta $REF_FASTA $bam_inputs --output $output/$pre/_haplotect_TCGA_basecounts.txt --maf $output/$pre\_haplotect_TCGA_PORTAL_MAF.txt --filter_improper_pair 0\n\n";
+    `$Bin/maf/fillout/GetBaseCountsMultiSample/GetBaseCountsMultiSample --fasta $REF_FASTA $bam_inputs --output $output/$pre\_haplotect_TCGA_basecounts.txt --maf $output/$pre\_haplotect_TCGA_PORTAL_MAF.txt --filter_improper_pair 0`;
 
-    print "$PYTHON/python $Bin/maf/fillout/dmp2portalMAF -m $output/$pre\_haplotect_TCGA_PORTAL_MAF.txt -p $pairing -P $patient -c haplotect -b $output/$pre\_haplotect_TCGA_basecounts.txt -o $output/$pre\_haplotect_TCGA_PORTAL_MAF_fillout.txt\n";
-    `$PYTHON/python $Bin/maf/fillout/dmp2portalMAF -m $output/$pre\_haplotect_TCGA_PORTAL_MAF.txt -p $pairing -P $patient -c haplotect -b $output/$pre\_haplotect_TCGA_basecounts.txt -o $output/$pre\_haplotect_TCGA_PORTAL_MAF_fillout.txt`;
+    print "$PYTHON/python $Bin/maf/fillout/dmp2portalMAF -s $species -m $output/$pre\_haplotect_TCGA_PORTAL_MAF.txt -p $pairing -P $patient -c haplotect -b $output/$pre\_haplotect_TCGA_basecounts.txt -o $output/$pre\_haplotect_TCGA_PORTAL_MAF_fillout.txt\n\n";
+    `$PYTHON/python $Bin/maf/fillout/dmp2portalMAF -s $species -m $output/$pre\_haplotect_TCGA_PORTAL_MAF.txt -p $pairing -P $patient -c haplotect -b $output/$pre\_haplotect_TCGA_basecounts.txt -o $output/$pre\_haplotect_TCGA_PORTAL_MAF_fillout.txt`;
 }
 
 
@@ -465,24 +465,24 @@ my $extraStuff = '';
 if ($species =~ /hg19|human|b37/i){
     $extraStuff =  " --target $Bin/targets/IMPACT410_$species/IMPACT410_$species\_targets_plus5bp.bed --targetname impact410";
 }
-print "$PERL/perl $Bin/maf/bedtools_annotations.pl --in_maf $output/$pre\_merge_maf0.VEP --species $species --output $output --config $config --fastq $extraStuff \n";
+print "$PERL/perl $Bin/maf/bedtools_annotations.pl --in_maf $output/$pre\_merge_maf0.VEP --species $species --output $output --config $config --fastq $extraStuff \n\n";
 `$PERL/perl $Bin/maf/bedtools_annotations.pl --in_maf $output/$pre\_merge_maf0.VEP --species $species --output $output --config $config --fastq $extraStuff`;
 
 
 # exac annotate 
 if($species =~ /hg19|b37|human/i){
  
-    print "perl $Bin/maf/exact_annotate.pl --in_maf $output/$pre\_merge_maf0.VEP --species $species --output $output --config $config\n";
+    print "perl $Bin/maf/exact_annotate.pl --in_maf $output/$pre\_merge_maf0.VEP --species $species --output $output --config $config\n\n";
     `$PERL/perl $Bin/maf/exact_annotate.pl --in_maf $output/$pre\_merge_maf0.VEP --species $species --output $output --config $config`;
 ##
 ## Merging of extra columns ** I haven't created a way to merge the columns while creating them, so I still
 ## have to use Nick's mkTaylorMAF.py, which I am going to rename to mergeExtraCols.py
 ##
-    print "$PYTHON/python $Bin/maf/mergeExtraCols.py $output/triNucleotide.seq $output/maf_targets.impact410 $output/exact.vcf $output/$pre\_merge_maf0.VEP\n";
+    print "$PYTHON/python $Bin/maf/mergeExtraCols.py $output/triNucleotide.seq $output/maf_targets.impact410 $output/exact.vcf $output/$pre\_merge_maf0.VEP\n\n";
     `$PYTHON/python $Bin/maf/mergeExtraCols.py $output/triNucleotide.seq $output/maf_targets.impact410 $output/exact.vcf $output/$pre\_merge_maf0.VEP > $output/$pre\_haplotect_vep_maf.txt`;
 } else {
     `/bin/touch $output/blank`;
-    print "$PYTHON/python $Bin/maf/mergeExtraCols.py $output/triNucleotide.seq $output/blank $output/blank $output/$pre\_merge_maf0.VEP > $output/$pre\_haplotect_vep_maf.txt";
+    print "$PYTHON/python $Bin/maf/mergeExtraCols.py $output/triNucleotide.seq $output/blank $output/blank $output/$pre\_merge_maf0.VEP > $output/$pre\_haplotect_vep_maf.txt\n\n";
     `$PYTHON/python $Bin/maf/mergeExtraCols.py $output/triNucleotide.seq $output/blank $output/blank $output/$pre\_merge_maf0.VEP > $output/$pre\_haplotect_vep_maf.txt`;
 }
 
