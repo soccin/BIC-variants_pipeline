@@ -4,6 +4,7 @@ FACETS=$1
 DIR=$2
 TAG=$3
 FILE=$4
+GENOME=$5
 PC=300
 C=100
 
@@ -16,7 +17,7 @@ do
 
     rm $DIR/*
 
-    $FACETS/facets doFacets -D $DIR -t $TAG -f $FILE -G T -pc $PC -c $C
+    $FACETS/facets doFacets -D $DIR -t $TAG -f $FILE -g $GENOME -G T -pc $PC -c $C
      
     if [ -e $DIR"/"$TAG"_hisens.CNCF.png" ]
     then

@@ -8,7 +8,7 @@ use lib "$Bin/lib";
 use Schedule;
 use Cluster;
 
-my ($pair, $group, $bamgroup, $config, $nosnps, $targets, $ug, $scheduler, $priority_project, $priority_group, $abra, $help, $step1);
+my ($pair, $patient, $group, $bamgroup, $config, $nosnps, $targets, $ug, $scheduler, $priority_project, $priority_group, $abra, $help, $step1);
 
 my $pre = 'TEMP';
 my $output = "results";
@@ -20,7 +20,8 @@ my $rsync = "/ifs/solres/$uID";
 
 GetOptions ('pre=s' => \$pre,
 	    'pair=s' => \$pair,
-	    'group=s' => \$group,
+	    'patient=s' => \$patient,
+            'group=s' => \$group,
 	    'config=s' => \$config,
 	    'targets=s' => \$targets,
 	    'species=s' => \$species,
@@ -74,6 +75,7 @@ if($pre =~ /^\d+/){
 my $ABRA = '';
 my $GATK = '';
 my $PICARD = '';
+my $FACETS = '';
 my $MUTECT = '';
 my $SAMTOOLS = '';
 my $SOMATIC_SNIPER = '';
@@ -114,6 +116,12 @@ while(<CONFIG>){
 	    die "CAN'T FIND muTect.jar IN $conf[1] $!";
 	}
 	$MUTECT = $conf[1];
+    }
+    elsif($conf[0] =~ /facets/i){
+        if(!-e "$conf[1]/facets"){
+            die "CAN'T FIND facets IN $conf[1] $!";
+        }
+        $FACETS = $conf[1];
     }
     elsif($conf[0] =~ /picard/i){
 	if(!-e "$conf[1]/picard.jar"){
@@ -587,11 +595,18 @@ if($pair){
     `/bin/mkdir -m 775 -p $output/variants/virmid`;
     `/bin/mkdir -m 775 -p $output/variants/scalpel`;
     `/bin/mkdir -m 775 -p $output/variants/strelka`;
+    `/bin/mkdir -m 775 -p $output/variants/haplotect`;
+    #`/bin/mkdir -m 775 -p $output/variants/copynumber`;
+    #`/bin/mkdir -m 775 -p $output/variants/copynumber/facets`;
 
     open(PAIR, "$pair") or die "Can't open $pair file";
     my %submitted_lns = ();
     my @mu_jids = ();
     my $ran_mutect_glob = 0;
+    my $haplotect_run = 0;
+    my $facets_run = 0;
+    my @facets_jid = ();
+
        while(<PAIR>){
 	chomp;
 	
@@ -752,9 +767,115 @@ if($pair){
 	    ###`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PYTHON/python $Bin/maf/vcf2maf0.py -i $output/variants/strelka/$data[0]\_$data[1]\_strelka/results/passed.somatic.indels.vcf -c strelka -o $output/variants/strelka/$data[0]\_$data[1]\_strelka/results/$pre\_$data[0]\_$data[1]\_STRELKA_passed.somatic.indels_MAF.txt -n $data[0] -t $data[1]`;
 	    ###`/bin/touch $output/progress/$pre\_$uID\_$data[0]\_$data[1]\_STRELKA_RUN_MAF.done`;
 	    ###	}
+=begin FOR_FACETS
+        ## Here we will add the facets scripts
+        ## These are the #'s Nick uses
+        my $MINCOV=0;
+        my $BASEQ=20;
+        my $MAPQ=15;
+
+        ## Set up tumor and normal counts
+        `/bin/mkdir -m 775 -p $output/variants/copynumber/facets/$data[0]\_$data[1]\_facets`;
+        `/bin/mkdir -m 775 -p $output/variants/copynumber/facets/$data[0]\_$data[1]\_facets/tmp`;
+        my $facetsSETUP_jid = '';
+        my $facets_setup = 0;
+        if(! -e "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_facets_SETUP.done" || $ssfj ) {
+            my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$data[0]\_facets_SETUP",  cpu => "4", mem => "5", job_hold => "$ssfj", cluster_out => "$output/progress/$pre\_$uID\_$data[0]\_facets_SETUP.log");
+            my $standardParams = Schedule::queuing(%stdParams);
+            my %addParams = (runtime => "30");
+            my $additionalParams = Schedule::additionalParams(%addParams);
+            `$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{job_hold} $standardParams->{cluster_out} $additionalParams $Bin/facets/bin/GetBaseCounts --filter_improper_pair --sort_output --fasta $REF_SEQ --vcf $DB_SNP --maq $MAPQ --baq $BASEQ --cov $MINCOV --bam $output/alignments/$pre\_indelRealigned_recal\_$data[0]\.bam --out $output/variants/copynumber/facets/$data[0]\_$data[1]\_facets/tmp/$pre\_indelRealigned_recal\_$data[0].dat`;
+
+            %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$data[1]\_facets_SETUP",  cpu => "4", mem => "5", job_hold => "$ssfj", cluster_out => "$output/progress/$pre\_$uID\_$data[1]\_facets_SETUP.log");
+            my $standardParams2 = Schedule::queuing(%stdParams);
+            %addParams = (runtime => "30");
+            my $additionalParams2 = Schedule::additionalParams(%addParams);
+            `$standardParams2->{submit} $standardParams2->{job_name} $standardParams2->{cpu} $standardParams2->{mem} $standardParams2->{job_hold} $standardParams2->{cluster_out} $additionalParams2 $Bin/facets/bin/GetBaseCounts --filter_improper_pair --sort_output --fasta $REF_SEQ --vcf $DB_SNP --maq $MAPQ --baq $BASEQ --cov $MINCOV --bam $output/alignments/$pre\_indelRealigned_recal\_$data[1]\.bam --out $output/variants/copynumber/facets/$data[0]\_$data[1]\_facets/tmp/$pre\_indelRealigned_recal\_$data[1].dat`;
+
+
+            %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$data[0]\_$data[1]\_merge_counts_facets_SETUP",  cpu => "4", mem => "18", job_hold => "$pre\_$uID\_$data[0]\_facets_SETUP,$pre\_$uID\_$data[1]\_facets_SETUP", cluster_out => "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_facets_SETUP.log");
+            my $standardParams3 = Schedule::queuing(%stdParams);
+            %addParams = (runtime => "30");
+            my $additionalParams3 = Schedule::additionalParams(%addParams);
+            `$standardParams3->{submit} $standardParams3->{job_name} $standardParams3->{cpu} $standardParams3->{mem} $standardParams3->{job_hold} $standardParams3->{cluster_out} $additionalParams3 $Bin/facets/mergeTN.R  $output/variants/copynumber/facets/$data[0]\_$data[1]\_facets/tmp/$pre\_indelRealigned_recal\_$data[1].dat  $output/variants/copynumber/facets/$data[0]\_$data[1]\_facets/tmp/$pre\_indelRealigned_recal\_$data[0].dat $output/variants/copynumber/facets/$data[0]\_$data[1]\_facets/tmp/$pre\_countsMerged_$data[0]\_$data[1].dat.gz`;
+
+            $facets_setup = 1;
+            `/bin/touch $output/progress/$pre\_$uID\_$data[0]\_$data[1]\_facets_SETUP.done`;
+            $facetsSETUP_jid = "$pre\_$uID\_$data[0]\_$data[1]\_merge_counts_facets_SETUP";
+        }
+        ## now facets
+        if(! -e "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_facets_RUN.done" || $facets_setup){
+
+            my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$data[0]\_$data[1]\_facets_RUN",  cpu => "3", mem => "2", job_hold => "$facetsSETUP_jid", cluster_out => "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_facets_RUN.log");
+            my $standardParams = Schedule::queuing(%stdParams);
+            my %addParams = (runtime => "10");
+            my $additionalParams = Schedule::additionalParams(%addParams);
+            `$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{job_hold} $standardParams->{cluster_out} $additionalParams $Bin/facets/facets_RUN.sh $FACETS $output/variants/copynumber/facets/$data[0]\_$data[1]\_facets $data[0]\_$data[1] $output/variants/copynumber/facets/$data[0]\_$data[1]\_facets/tmp/$pre\_countsMerged_$data[0]\_$data[1].dat $species 300 100`;
+            push @facets_jid, "$pre\_$uID\_$data[0]\_$data[1]\_facets_RUN" ;
+            $facets_run = 1;
+            `/bin/touch $output/progress/$pre\_$uID\_$data[0]\_$data[1]\_facets_RUN.done`;
+        }
+        `/bin/echo "$data[1]\t$output/variants/copynumber/facets/$data[0]\_$data[1]\_facets/$data[0]\_$data[1]\_hisens.Rdata" >> $output/variants/copynumber/facets/facets_mapping.txt`;
+=end FOR_FACETS
+=cut
+    
     }
     close PAIR;
+    my $facets_haplotect_jid = '';
+=begin FOR_FACETS
+    if(! -e "$output/progress/$pre\_$uID\_merge_facets_seg.done" || $facets_run){
+        my $seg_outfile = "$output/variants/copynumber/facets/$pre\_facets_merge_hisens.seg";
+        if( -f "$seg_outfile"){
+            unlink("$seg_outfile") or die "Cannot delete? $!";
+        }
+        my $facets_js = join(",", @facets_jid);
+
+        my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_merge_facets_seg",  cpu => "1", mem => "1", job_hold => "$facets_js", cluster_out => "$output/progress/$pre\_$uID\_merge_facets_seg.log");
+        my $standardParams = Schedule::queuing(%stdParams);
+        my %addParams = (scheduler => "$scheduler", runtime => "1", priority_project=> "$priority_project", priority_group=> "$priority_group", queues => "lau.q,lcg.q,nce.q", rerun => "1", iounits => "0");
+        my $additionalParams = Schedule::additionalParams(%addParams);
+        `$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{job_hold} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/facets/merge_facets_seg.pl -facets_dir $output/variants/copynumber/facets -outfile $seg_outfile`;
+
+        `/bin/touch $output/progress/$pre\_$uID\_merge_facets_seg.done`;
+        $facets_haplotect_jid = "$pre\_$uID\_merge_facets_seg";
+    }
+=end FOR_FACETS
+=cut
+
+    if(!-e "$output/progress/$pre\_$uID\_HAPLOTECT.done" || $ran_mutect_glob || $ran_hc){
+        sleep(2);
+        my $patientFile = "";
+        if($patient){
+            $patientFile = "-patient $patient";
+        }
+        my $muj = join(",", @mu_jids);
+        my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_HAPLOTECT", job_hold => "$ran_hc,$muj", cpu => "4", mem => "8", cluster_out => "$output/progress/$pre\_$uID\_HAPLOTECT.log");
+        my $standardParams = Schedule::queuing(%stdParams);
+        `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/haploTect_merge.pl -pair $pair -hc_vcf $output/variants/haplotypecaller/$pre\_HaplotypeCaller.vcf -species $species -pre $pre -output $output/variants/haplotect -mutect_dir $output/variants/mutect -config $config $patientFile -align_dir $output/alignments/ -delete_temp`;
+
+        $haplotect_run = 1;
+        `/bin/touch $output/progress/$pre\_$uID\_HAPLOTECT.done`;
+        $facets_haplotect_jid .= ",$pre\_$uID\_HAPLOTECT";
+         push @all_jids, "$pre\_$uID\_HAPLOTECT";
+    }
+
+=begin FOR_FACETS
+
+    if(!-e "$output/progress/$pre\_$uID\_join_maf.done" || $haplotect_run || $facets_run){
+        sleep(2);
+
+        my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_join_maf", job_hold => "$facets_haplotect_jid", cpu => "4", mem => "8", cluster_out => "$output/progress/$pre\_$uID\_join_maf.log");
+        my $standardParams = Schedule::queuing(%stdParams);
+        `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $FACETS/facets mafAnno -m $output/variants/haplotect/$pre\_haplotect_vep_maf.txt -f $output/variants/copynumber/facets/facets_mapping.txt -o $output/variants/$pre\_CMO_MAF.txt`;
+        `/bin/touch $output/progress/$pre\_$uID\_join_maf.done`;
+        push @all_jids, "$pre\_$uID\_join_maf";
+    }
+
+=end FOR_FACETS
+=cut
+
 }
+
 
 my $allj2 = join(",", @all_jids);
 my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_RSYNC_2", job_hold => "$allj2", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_RSYNC_2.log");

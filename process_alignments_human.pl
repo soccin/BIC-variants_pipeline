@@ -1055,11 +1055,13 @@ if($pair){
         ## now facets
         if(! -e "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_facets_RUN.done" || $facets_setup){ 
 	    
+            my $sub_species = $species eq 'b37' ? 'hg19' : $species;
+
             my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$data[0]\_$data[1]\_facets_RUN",  cpu => "3", mem => "2", job_hold => "$facetsSETUP_jid", cluster_out => "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_facets_RUN.log");
             my $standardParams = Schedule::queuing(%stdParams);
             my %addParams = (runtime => "10");
             my $additionalParams = Schedule::additionalParams(%addParams);
-            `$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{job_hold} $standardParams->{cluster_out} $additionalParams $Bin/facets/facets_RUN.sh $FACETS $output/variants/copynumber/facets/$data[0]\_$data[1]\_facets $data[0]\_$data[1] $output/variants/copynumber/facets/$data[0]\_$data[1]\_facets/tmp/$pre\_countsMerged_$data[0]\_$data[1].dat 300 100`;
+            `$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{job_hold} $standardParams->{cluster_out} $additionalParams $Bin/facets/facets_RUN.sh $FACETS $output/variants/copynumber/facets/$data[0]\_$data[1]\_facets $data[0]\_$data[1] $output/variants/copynumber/facets/$data[0]\_$data[1]\_facets/tmp/$pre\_countsMerged_$data[0]\_$data[1].dat $sub_species 300 100`;
 	    push @facets_jid, "$pre\_$uID\_$data[0]\_$data[1]\_facets_RUN" ;
             $facets_run = 1;
             `/bin/touch $output/progress/$pre\_$uID\_$data[0]\_$data[1]\_facets_RUN.done`; 
