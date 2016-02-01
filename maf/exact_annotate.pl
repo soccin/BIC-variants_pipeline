@@ -6,19 +6,20 @@ use FindBin qw($Bin);
 use File::Path qw(make_path remove_tree);
 use File::Basename;
 
-my ($input, $somatic, $species, $output, $config, $help);
+my ($input, $somatic, $species, $output, $config, $data, $help);
 
 GetOptions ('in_maf=s' => \$input,
 'species=s' => \$species,
 'output=s' => \$output,
 'somatic=s' => \$somatic,
 'config=s' => \$config,
+'data=s' => \$data,
 'help|h' => \$help ) or exit(1);
 
 my $uID = `/usr/bin/id -u -n`;
 chomp $uID;
 
-if(!$input || !$species || !$output || !$config ){
+if(!$input || !$species || !$output || !$config || !$data){
     die "you are missing some input";
 }
 
@@ -121,6 +122,9 @@ if(!-e $VCF2MAF ) {
 if(!-e $PERL) {
     die "Need PERL specified in config. $!";
 }
+if(!-e "$data/$species/ExAC.r0.3.sites.pass.minus_somatic.vcf.gz" ){               ##
+    die "Cannot find $data/$species/ExAC.r0.3.sites.pass.minus_somatic.vcf.gz $!"; ## Caitlin added 2/1/16
+}                                                                                  ##
 
 my $ref_base = basename($REF_FASTA);
 # softlink reference
@@ -185,7 +189,11 @@ my $strippedFiles = join(" INPUT=", glob("$output/xtra$somatic/*.vcf_stripped.vc
 `bgzip -f $output/xtra$somatic/sortedSimpleVCF.vcf`;
 `tabix -p vcf $output/xtra$somatic/sortedSimpleVCF.vcf.gz`;
 
-`$BCFTOOLS/bcftools annotate --annotations $Bin/../data/$species/ExAC.r0.3.sites.pass.minus_somatic.vcf.gz --columns AC,AN,AF --output-type v --output $output/xtra$somatic/exac.vcf $output/xtra$somatic/sortedSimpleVCF.vcf.gz`;
+### Caitlin modified 2/1/16 - perl couldn't find file with "/../" in the path
+#`$BCFTOOLS/bcftools annotate --annotations $Bin/../data/$species/ExAC.r0.3.sites.pass.minus_somatic.vcf.gz --columns AC,AN,AF --output-type v --output $output/xtra$somatic/exac.vcf $output/xtra$somatic/sortedSimpleVCF.vcf.gz`;
+`$BCFTOOLS/bcftools annotate --annotations $data/$species/ExAC.r0.3.sites.pass.minus_somatic.vcf.gz --columns AC,AN,AF --output-type v --output $output/xtra$somatic/exac.vcf $output/xtra$somatic/sortedSimpleVCF.vcf.gz`;
+
+
 
 ## for right now, just move the vcf to the main output. LATER, I will add to this script to give an intermediate file.
 `mv $output/xtra$somatic/exac.vcf $output/exact.vcf`;

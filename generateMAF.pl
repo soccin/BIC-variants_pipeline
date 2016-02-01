@@ -402,8 +402,8 @@ if($species =~ /hg19|human|b37/){
 
     if($force_run || !-e "$progress/" . basename("$vcf") . "_exac_anno.done"){
         $force_run = 1;
-        print "perl $Bin/maf/exact_annotate.pl --in_maf $vcf\_$somatic\_maf1.VEP --species $species --output $output --config $config --somatic $somatic\n";
-        `$PERL/perl $Bin/maf/exact_annotate.pl --in_maf $vcf\_$somatic\_maf1.VEP --species $species --output $output --config $config --somatic $somatic`;
+        print "perl $Bin/maf/exact_annotate.pl --in_maf $vcf\_$somatic\_maf1.VEP --species $species --output $output --config $config --somatic $somatic --data $Bin/data\n";
+        `$PERL/perl $Bin/maf/exact_annotate.pl --in_maf $vcf\_$somatic\_maf1.VEP --species $species --output $output --config $config --somatic $somatic --data $Bin/data`;
         &checkResult($?, $progress, basename("$vcf") . "_exac_anno");
     }
 
