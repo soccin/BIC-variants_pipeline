@@ -327,6 +327,7 @@ foreach my $line (@pair_lines) {
     next if ($tumor eq 'na' || $normal eq 'na');
     $pairedCount ++;
     my @vcfIndex = indices("$normal\_$tumor\_mutect", @mutect_vcfs);
+    
     if(scalar @vcfIndex != 1){
         if(scalar @vcfIndex  < 1){
             die "No vcf file matches with these tumor/normal pair: $tumor $normal\n";
@@ -472,8 +473,8 @@ print "$PERL/perl $Bin/maf/bedtools_annotations.pl --in_maf $output/$pre\_merge_
 # exac annotate 
 if($species =~ /hg19|b37|human/i){
  
-    print "perl $Bin/maf/exact_annotate.pl --in_maf $output/$pre\_merge_maf0.VEP --species $species --output $output --config $config\n\n";
-    `$PERL/perl $Bin/maf/exact_annotate.pl --in_maf $output/$pre\_merge_maf0.VEP --species $species --output $output --config $config`;
+    print "perl $Bin/maf/exact_annotate.pl --in_maf $output/$pre\_merge_maf0.VEP --species $species --output $output --config $config --data $Bin/data\n\n";
+    `$PERL/perl $Bin/maf/exact_annotate.pl --in_maf $output/$pre\_merge_maf0.VEP --species $species --output $output --config $config --data $Bin/data`;
 ##
 ## Merging of extra columns ** I haven't created a way to merge the columns while creating them, so I still
 ## have to use Nick's mkTaylorMAF.py, which I am going to rename to mergeExtraCols.py
