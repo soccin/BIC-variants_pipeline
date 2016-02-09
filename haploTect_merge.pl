@@ -52,8 +52,8 @@ HELP
 }
 
 ## Check species
-if($species !~ /hg19/i){
-    print "Haplotect only works 100% with hg19 for right now, otherwise we will print out the MAF before annotation and exit";
+if($species !~ /hg19|b37|mm10/i){
+    print "Haplotect only works 100% with hg19/b37/mm10 for right now, otherwise we will print out the MAF before annotation and exit";
 }
 
 ## Checking HC VCF
@@ -110,6 +110,39 @@ for my $vcf (@mutect_vcfs){
         die "The mutect vcf file is not a regular file or is empty. ($vcf)\n";
     }
 }
+
+#check pairing file
+if(! -e $pairing){
+    die "Pairing file doesn't exist\n";
+}
+## Checks the pairing file to make sure mutect tumor/normal vcf files are present
+open(my $pair, "<", $pairing);
+chomp(my @pair_lines = <$pair>);
+close $pair;
+
+## To make sure there are the same number of mutect files as there are pairs
+my $pairedCount = 0;
+
+foreach my $line (@pair_lines) {
+    my($normal,$tumor) = split(/\s+/, $line);
+    next if ($tumor  =~ /^NA$/i || $normal  =~ /^NA$/i );
+    $pairedCount ++;
+    my @vcfIndex = indices("$normal\_$tumor\_mutect", @mutect_vcfs);
+
+    if(scalar @vcfIndex != 1){
+        if(scalar @vcfIndex  < 1){
+            die "No vcf file matches with these tumor/normal pair: $tumor $normal\n";
+        }
+        else {
+            die "More than one vcf file matches with these tumor/normal pair: $tumor $normal?\n";
+        }
+    }
+}
+
+my $l = scalar @mutect_vcfs;
+if($pairedCount != $l) {
+    die "The number of pairs ($pairedCount) is not equal to the number of vcf files ($l)\n";
+} 
 
 ## Make output directory (and path) if it doesn't exist
 my $orig_umask = umask;
@@ -313,29 +346,11 @@ print "$PYTHON/python $Bin/maf/indelOnly.py < $hc_vcf\_HC.maf2 > $hc_vcf\_qSomHC
 ## Get DMP re-filtered MAF from MuTect
 ##
 
-# To make it easier, I will iterate through the pairing file, and connect tumor and normal using the sample names.
-open(my $pair, "<", $pairing);
-chomp(my @pair_lines = <$pair>);
-close $pair;
-
-## To make sure there are the same number of mutect files as there are pairs
-my $pairedCount = 0;
-
 foreach my $line (@pair_lines) {
-
-    my($normal,$tumor) = split("\t", $line);
+    my($normal,$tumor) = split(/\s+/, $line);
     next if ($tumor eq 'na' || $normal eq 'na');
-    $pairedCount ++;
     my @vcfIndex = indices("$normal\_$tumor\_mutect", @mutect_vcfs);
     
-    if(scalar @vcfIndex != 1){
-        if(scalar @vcfIndex  < 1){
-            die "No vcf file matches with these tumor/normal pair: $tumor $normal\n";
-        }
-        else {
-            die "More than one vcf file matches with these tumor/normal pair: $tumor $normal?\n";
-        }
-    }
     my $vcf = $mutect_vcfs[$vcfIndex[0]];
     my $linked_vcf = "$output/$vcf";
     my $linked_txt = $linked_vcf;
@@ -357,11 +372,6 @@ foreach my $line (@pair_lines) {
     print "awk -F\"\\t\" '\$40==\"FILTER\"||\$40==\"PASS\"{print \$0}' $linked_vcf\_maf2.txt > $linked_vcf\_DMPFilter_TCGA_MAF.txt\n\n";
     `awk -F"\t" '\$40=="FILTER"||\$40=="PASS"{print \$0}' $linked_vcf\_maf2.txt > $linked_vcf\_DMPFilter_TCGA_MAF.txt`;
     
-}
-
-my $l = scalar @mutect_vcfs;
-if($pairedCount != $l) {
-    die "The number of pairs ($pairedCount) is not equal to the number of vcf files ($l)\n";
 }
 
 ##
