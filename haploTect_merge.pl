@@ -489,12 +489,12 @@ if($species =~ /hg19|b37|human/i){
 ## Merging of extra columns ** I haven't created a way to merge the columns while creating them, so I still
 ## have to use Nick's mkTaylorMAF.py, which I am going to rename to mergeExtraCols.py
 ##
-    print "$PYTHON/python $Bin/maf/mergeExtraCols.py $output/triNucleotide.seq $output/maf_targets.impact410 $output/exact.vcf $output/$pre\_merge_maf0.VEP\n\n";
-    `$PYTHON/python $Bin/maf/mergeExtraCols.py $output/triNucleotide.seq $output/maf_targets.impact410 $output/exact.vcf $output/$pre\_merge_maf0.VEP > $output/$pre\_haplotect_vep_maf.txt`;
+    print "$PYTHON/python $Bin/maf/mergeExtraCols.py $output/triNucleotide.seq $output/maf_targets.impact410 $output/exact.vcf $output/$pre\_merge_maf0.VEP > $output/$pre\_haplotect_VEP_MAF.txt\n\n";
+    `$PYTHON/python $Bin/maf/mergeExtraCols.py $output/triNucleotide.seq $output/maf_targets.impact410 $output/exact.vcf $output/$pre\_merge_maf0.VEP > $output/$pre\_haplotect_VEP_MAF.txt`;
 } else {
     `/bin/touch $output/blank`;
-    print "$PYTHON/python $Bin/maf/mergeExtraCols.py $output/triNucleotide.seq $output/blank $output/blank $output/$pre\_merge_maf0.VEP > $output/$pre\_haplotect_vep_maf.txt\n\n";
-    `$PYTHON/python $Bin/maf/mergeExtraCols.py $output/triNucleotide.seq $output/blank $output/blank $output/$pre\_merge_maf0.VEP > $output/$pre\_haplotect_vep_maf.txt`;
+    print "$PYTHON/python $Bin/maf/mergeExtraCols.py $output/triNucleotide.seq $output/blank $output/blank $output/$pre\_merge_maf0.VEP > $output/$pre\_haplotect_VEP_MAF.txt\n\n";
+    `$PYTHON/python $Bin/maf/mergeExtraCols.py $output/triNucleotide.seq $output/blank $output/blank $output/$pre\_merge_maf0.VEP > $output/$pre\_haplotect_VEP_MAF.txt`;
 }
 
 ##
@@ -506,7 +506,7 @@ if($delete_temp){
         print "Removing: $fname \n";
         unlink($fname);
     }
-    @files = glob ("$output/exact.vcf $output/maf_targets.* $output/triNucleotide.seq $output/*mutect_calls* $output/blank $output/*Haplotype* $output/*maf2.txt* $output/ref $output/tmp $output/*basecounts.txt");
+    @files = glob ("$output/exact.vcf $output/maf_targets.* $output/triNucleotide.seq $output/*mutect_calls* $output/blank $output/*Haplotype* $output/*maf2.txt* $output/ref $output/tmp $output/*basecounts.txt $output/$pre\_merge_maf0.VEP");
 
 
     for my $fname (@files) {

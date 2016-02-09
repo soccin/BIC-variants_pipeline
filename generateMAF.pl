@@ -410,7 +410,7 @@ if($species =~ /hg19|human|b37/){
     if($force_run || !-e "$progress/" . basename("$vcf") . "_mergeExtraCols.done"){
         $force_run = 1;
         print "$PYTHON/python $Bin/maf/mergeExtraCols.py $output/triNucleotide.seq $output/maf_targets.impact410 $output/exact.vcf $vcf\_$somatic\_maf1.VEP\n";
-       `$PYTHON/python $Bin/maf/mergeExtraCols.py $output/triNucleotide.seq $output/maf_targets.impact410 $output/exact.vcf $vcf\_$somatic\_maf1.VEP > $vcf\_$somatic\_vep_maf.txt`;
+       `$PYTHON/python $Bin/maf/mergeExtraCols.py $output/triNucleotide.seq $output/maf_targets.impact410 $output/exact.vcf $vcf\_$somatic\_maf1.VEP > $vcf\_$somatic\_VEP_MAF.txt`;
         &checkResult($?, $progress, basename("$vcf") . "_mergeExtraCols");
     }
 }else{ ## MOUSE
@@ -424,8 +424,8 @@ if($species =~ /hg19|human|b37/){
     if($force_run || !-e "$progress/" . basename("$vcf") . "_mergeExtraCols.done"){
         $force_run = 1;
         `/bin/touch $output/blank`;
-        print "$PYTHON/python $Bin/maf/mergeExtraCols.py $output/triNucleotide.seq $output/blank $output/blank $vcf\_$somatic\_maf1.VEP > $vcf\_$somatic\_vep_maf.txt\n";
-        `$PYTHON/python $Bin/maf/mergeExtraCols.py $output/triNucleotide.seq $output/blank $output/blank $vcf\_$somatic\_maf1.VEP > $vcf\_$somatic\_vep_maf.txt`;
+        print "$PYTHON/python $Bin/maf/mergeExtraCols.py $output/triNucleotide.seq $output/blank $output/blank $vcf\_$somatic\_maf1.VEP > $vcf\_$somatic\_VEP_MAF.txt\n";
+        `$PYTHON/python $Bin/maf/mergeExtraCols.py $output/triNucleotide.seq $output/blank $output/blank $vcf\_$somatic\_maf1.VEP > $vcf\_$somatic\_VEP_MAF.txt`;
         &checkResult($?, $progress, basename("$vcf") . "_mergeExtraCols");
     }
 }
