@@ -443,6 +443,6 @@ sub checkResult{
 }
 
 if($delete_temp){
-    `/bin/rm $vcf\_PAIRED.maf $vcf\_$somatic\_maf0.log $vcf\_UNPAIRED.maf $vcf\_$somatic\_UNFILTERED.txt $vcf\_$somatic\_UNFILTERED.txt $vcf\_$somatic\_rescued.txt $vcf\_$somatic\_maf0_rescue.log $output/exact.vcf $output/*.seq $output/maf_targets.* $output/blank $output/*basecounts.txt`;
-    `/bin/rm -r $output/tmp_$somatic $output/ref_$somatic $output/xtra_$somatic $output/bed_$somatic`;
+    `/bin/rm $vcf\_PAIRED.maf $vcf\_$somatic\_maf0.log $vcf\_$somatic\_maf0.txt $vcf\_$somatic\_maf1.txt $vcf\_$somatic\_maf1.log $vcf\_$somatic\_maf1.VEP $vcf\_UNPAIRED.maf $vcf\_$somatic\_UNFILTERED.txt $vcf\_$somatic\_UNFILTERED.txt $vcf\_$somatic\_rescued.txt $vcf\_$somatic\_maf0_rescue.log $output/exact.vcf $output/*.seq $output/maf_targets.* $output/blank $output/*basecounts.txt`;
+    `/bin/rm -rf $output/tmp_$somatic $output/ref_$somatic $output/xtra_$somatic $output/bed_$somatic $output/progress_$somatic`;
 }
