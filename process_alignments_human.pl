@@ -798,6 +798,7 @@ if($ug){
     ###}
 }
 
+my $hasPair = 0;
 
 if($pair){
     `/bin/mkdir -m 775 -p $output/variants/snpsIndels`;    
@@ -830,6 +831,8 @@ if($pair){
 	if($data[0] =~ /^NA$/i || $data[1] =~ /^NA$/i){
 	    next;
 	}
+        ## this means that there really is a paired sample set
+        $hasPair=1;
 	
 	### NOTE: NOT AUTOMATICALLY RUNNING EACH SOMATIC CALLER WHEN SSF RUNS
 	###       BCAUSE DON'T WANT TO KICK IT OFF FOR ALL SAMPLE PAIRS
@@ -1029,7 +1032,7 @@ if($pair){
         `/bin/mkdir -m 775 -p $output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets/tmp`;
         my $facetsSETUP_jid = '';
         my $facets_setup = 0;
-        if(! -e "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_facets_SETUP.done" || $ssfj ) {
+        if($hasPair && (! -e "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_facets_SETUP.done" || $ssfj )) {
             my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$data[0]\_facets_SETUP",  cpu => "4", mem => "5", job_hold => "$ssfj", cluster_out => "$output/progress/$pre\_$uID\_$data[0]\_facets_SETUP.log");
             my $standardParams = Schedule::queuing(%stdParams);
             my %addParams = (runtime => "30");
@@ -1054,7 +1057,7 @@ if($pair){
             $facetsSETUP_jid = "$pre\_$uID\_$data[0]\_$data[1]\_merge_counts_facets_SETUP";
         }
         ## now facets
-        if(! -e "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_facets_RUN.done" || $facets_setup){ 
+        if($hasPair && (! -e "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_facets_RUN.done" || $facets_setup)){ 
 	    
             my $sub_species = $species eq 'b37' ? 'hg19' : $species;
 
@@ -1073,7 +1076,7 @@ if($pair){
 
     ## run merge seg script
     my $facets_haplotect_jid = ''; 
-    if(! -e "$output/progress/$pre\_$uID\_merge_facets_seg.done" || $facets_run){
+    if($hasPair && (! -e "$output/progress/$pre\_$uID\_merge_facets_seg.done" || $facets_run)){
         my $seg_outfile = "$output/variants/copyNumber/facets/$pre\_facets_merge_hisens.seg";
         if( -f "$seg_outfile"){
             unlink("$seg_outfile") or die "Cannot delete? $!";
@@ -1090,7 +1093,7 @@ if($pair){
         $facets_haplotect_jid = "$pre\_$uID\_merge_facets_seg";
     }
 
-    if(!-e "$output/progress/$pre\_$uID\_HAPLOTECT.done" || $ran_mutect_glob || $ran_ar_indel_hc){
+    if($hasPair && (!-e "$output/progress/$pre\_$uID\_HAPLOTECT.done" || $ran_mutect_glob || $ran_ar_indel_hc)){
 	sleep(2);
         my $patientFile = "";
         if($patient){
@@ -1107,7 +1110,7 @@ if($pair){
     }
 
     ## Now join maf
-    if(!-e "$output/progress/$pre\_$uID\_join_maf.done" || $haplotect_run || $facets_run){
+    if($hasPair && (!-e "$output/progress/$pre\_$uID\_join_maf.done" || $haplotect_run || $facets_run)){
         sleep(2);
 
        my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_join_maf", job_hold => "$facets_haplotect_jid", cpu => "4", mem => "8", cluster_out => "$output/progress/$pre\_$uID\_join_maf.log");
@@ -1142,7 +1145,7 @@ if($pair){
     }
     
     my $ran_strvar = 0;
-    if(!-e "$output/progress/$pre\_$uID\_DELLY.done" || $ran_ssf){
+    if($hasPair && (!-e "$output/progress/$pre\_$uID\_DELLY.done" || $ran_ssf)){
 	sleep(2);
 	if(-d "$output/variants/structVar/delly"){
 	    `/bin/rm -rf $output/variants/structVar/delly`;
@@ -1155,7 +1158,7 @@ if($pair){
 	$ran_strvar = 1;
     }
     
-    if(!-e "$output/progress/$pre\_$uID\_CDNA_CONTAM.done" || $ran_strvar){
+    if($hasPair && (!-e "$output/progress/$pre\_$uID\_CDNA_CONTAM.done" || $ran_strvar)){
 	sleep(2);
 	
 	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_CDNA_CONTAM", job_hold => "$pre\_$uID\_DELLY", cpu => "1", mem => "4", cluster_out => "$output/progress/$pre\_$uID\_CDNA_CONTAM.log");
