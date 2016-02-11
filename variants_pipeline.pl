@@ -65,7 +65,7 @@ use Cluster;
 ### NOTE: DO NOT SUBMIT THIS WRAPPER SCRIPT TO THE CLUSTER BECAUSE ONCOTATOR STEP WILL FAIL
 ###       DUE TO NODES NOT HAVING NETWORK ACCESS
 
-my ($map, $group, $pair, $patient, $config, $help, $nosnps, $removedups, $species, $ug, $scheduler, $abra, $targets, $mdOnly, $noMD, $DB_SNP);
+my ($map, $group, $pair, $patient, $config, $help, $nosnps, $removedups, $species, $ug, $scheduler, $abra, $targets, $mdOnly, $noMD, $DB_SNP, $noClip);
 
 my $pre = 'TEMP';
 my $output = "results";
@@ -73,6 +73,7 @@ my $priority_project = "ngs";
 my $priority_group = "Pipeline";
 my $r1adaptor = 'AGATCGGAAGAGCACACGTCT';
 my $r2adaptor = 'AGATCGGAAGAGCGTCGTGTA';
+my $bqTrim = '3';
 
 my $uID = `/usr/bin/id -u -n`;
 chomp $uID;
@@ -100,6 +101,8 @@ GetOptions ('map=s' => \$map,
  	    'priority_group=s' => \$priority_group,
 	    'r1adaptor=s' => \$r1adaptor,
 	    'r2adaptor=s' => \$r2adaptor,
+	    'noClip' => \$noClip,
+	    'bqTrim=s' => \$bqTrim,
  	    'db_snp|dbsnp=s' => \$DB_SNP,
 	    'species=s' => \$species) or exit(1);
 
@@ -127,6 +130,8 @@ if(!$map || !$species || !$config || !$scheduler || !$targets || $help){
 	* -noMD: will not run MarkDups
 	* R1ADAPTOR to specify R1 adaptor sequence (default: AGATCGGAAGAGCACACGTCT)
 	* R2ADAPTOR to specify R1 adaptor sequence (default: AGATCGGAAGAGCGTCGTGTA)
+	* NOCLIP: no clipping of adaptor sequences
+	* BASEQTRIM: base quality to trim in reads (default: 3)
 	* DB_SNP: VCF file containing known sites of genetic variation (REQUIRED for species_custom; either here or in config)
 	* haplotypecaller is default; -ug || -unifiedgenotyper to also make unifiedgenotyper variant calls	
 HELP
@@ -346,6 +351,14 @@ sub reconstructCL {
 
     if($r2adaptor){
 	$rCL .= " -r2adaptor $r2adaptor";
+    }
+
+    if($noClip){
+	$rCL .= " -noClip";
+    }
+
+    if($bqTrim){
+	$rCL .= " -bqTrim $bqTrim";
     }
 
     if($DB_SNP){
@@ -861,6 +874,16 @@ sub getTime(){
 
 
 sub alignReads {
+
+    my $no_clip = '';
+    my $aSeq = '';
+    if($noClip){
+	$no_clip = '-noClip'
+    }
+    else{
+	$aSeq = "-r1adaptor $r1adaptor -r2adaptor $r2adaptor";
+    }
+
     open(IN, "$map") or die "Can't open $map $!";
     while(<IN>){
 	chomp;
@@ -916,10 +939,9 @@ sub alignReads {
 	
 	my @currentTime = &getTime();
 	print LOG "$currentTime[2]:$currentTime[1]:$currentTime[0], $currentTime[3]\/$currentTime[4]\/$currentTime[5]\tSTARTING READS PROCESSING/ALIGNMENT FOR $data[1]\_$data[0]\_$data[2]\n";
-	
+
 	if(!-e "$output/progress/reads_files_$data[1]\_$data[0]\_$data[2]\.done"){	    
-	    `$Bin/process_reads.pl -file files_$data[1]\_$data[0]\_$data[2] -pre $pre -run $data[1]\_$data[0]\_$data[2] -readgroup "\@RG\\tID:$data[1]\_$data[0]\_$data[2]\_$seq_type{$data[1]}\\tPL:Illumina\\tPU:$data[1]\_$data[0]\_$data[2]\\tLB:$data[1]\_$data[0]\\tSM:$data[1]" -species $species -config $config -scheduler $scheduler -r1adaptor $r1adaptor -r2adaptor $r2adaptor -priority_project $priority_project -priority_group $priority_group > files_$data[1]\_$data[0]\_$data[2]\_process_reads_$seq_type{$data[1]}\.log 2>&1`;
-	    
+	    `$Bin/process_reads.pl -file files_$data[1]\_$data[0]\_$data[2] -pre $pre -run $data[1]\_$data[0]\_$data[2] -readgroup "\@RG\\tID:$data[1]\_$data[0]\_$data[2]\_$seq_type{$data[1]}\\tPL:Illumina\\tPU:$data[1]\_$data[0]\_$data[2]\\tLB:$data[1]\_$data[0]\\tSM:$data[1]" -species $species -config $config -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $no_clip $aSeq -bqTrim $bqTrim > files_$data[1]\_$data[0]\_$data[2]\_process_reads_$seq_type{$data[1]}\.log 2>&1`;
 	    ###`/common/sge/bin/lx24-amd64/qsub /home/mpirun/tools/qCMD $Bin/solexa_PE.pl -file files -pre $pre -run $data[1]\_$data[0]\_$data[2] -readgroup "\@RG\\\tID:$data[1]\_$data[0]\_$data[2]\_PE\\\tPL:Illumina\\\tPU:$data[1]\_$data[0]\_$data[2]\\\tLB:$data[1]\_$data[0]\\\tSM:$data[1]" -species $species -config $config $targeted -scheduler $scheduler`;
 	    $ran_sol = 1;
 	    $ran_solexa{$data[1]} = 1;
@@ -1337,13 +1359,13 @@ sub callSNPS {
     }
     elsif($species =~ /mm9|^mm10$|mm10_custom/i){
 	###`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/process_alignments_mouse.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group -species $species $run_abra $run_step1`;
-	`$Bin/process_alignments_mouse.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group -species $species $run_abra $run_step1`;
+	`$Bin/process_alignments_mouse.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra $run_step1 -species $species -rsync $rsync`;
     }
     elsif($species =~ /species_custom/i){
 	###`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/process_alignments_species_custom.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra $run_step1`;
-	`$Bin/process_alignments_species_custom.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra $run_step1`;
+	`$Bin/process_alignments_species_custom.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra $run_step1 -rsync $rsync`;
     }
     elsif($species =~ /dm3/i){
-	###`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/process_alignments_dm3.pl -pre $pre -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra $run_step1`;
+	###`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/process_alignments_dm3.pl -pre $pre -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra $run_step1 -species $species -rsync $rsync`;
     }
 }
