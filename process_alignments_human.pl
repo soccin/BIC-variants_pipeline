@@ -607,7 +607,8 @@ if($nosnps){
 }
 
 `/bin/mkdir -m 775 -p $output/variants`;
-`/bin/mkdir -m 775 -p $output/variants/haplotypecaller`;
+`/bin/mkdir -m 775 -p $output/variants/snpsIndels`;    
+`/bin/mkdir -m 775 -p $output/variants/snpsIndels/haplotypecaller`;
 my @ugVariants = ();
 my @hcVariants = ();
 my $ran_ug = 0;
@@ -716,7 +717,7 @@ if(!-e "$output/progress/$pre\_$uID\_AR_INDEL_HC.done" || $ran_vr_indel_hc){
     sleep(2);
     my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_AR_INDEL_HC", job_hold => "$vrihcj", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_AR_INDEL_HC.log");
     my $standardParams = Schedule::queuing(%stdParams);
-    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T ApplyRecalibration -R $REF_SEQ -input $output/intFiles/$pre\_HaplotypeCaller_SNP_vqsr.vcf --ts_filter_level 99.0 -mode INDEL -tranchesFile $output/intFiles/$pre\_HaplotypeCaller_INDEL.tranches -recalFile $output/intFiles/$pre\_HaplotypeCaller_INDEL.recal -o $output/variants/haplotypecaller/$pre\_HaplotypeCaller.vcf -nt 1`;
+    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T ApplyRecalibration -R $REF_SEQ -input $output/intFiles/$pre\_HaplotypeCaller_SNP_vqsr.vcf --ts_filter_level 99.0 -mode INDEL -tranchesFile $output/intFiles/$pre\_HaplotypeCaller_INDEL.tranches -recalFile $output/intFiles/$pre\_HaplotypeCaller_INDEL.recal -o $output/variants/snpsIndels/haplotypecaller/$pre\_HaplotypeCaller.vcf -nt 1`;
     `/bin/touch $output/progress/$pre\_$uID\_AR_INDEL_HC.done`;
     $arihcj = "$pre\_$uID\_AR_INDEL_HC";
     $ran_ar_indel_hc = 1;   
@@ -724,12 +725,12 @@ if(!-e "$output/progress/$pre\_$uID\_AR_INDEL_HC.done" || $ran_vr_indel_hc){
 
 if(!-e "$output/progress/$pre\_$uID\_HC_MAF.done" || $ran_ar_indel_hc){
     sleep(2);
-    &generateMaf("$output/variants/haplotypecaller/$pre\_HaplotypeCaller.vcf", 'haplotypecaller', "$arihcj");
+    &generateMaf("$output/variants/snpsIndels/haplotypecaller/$pre\_HaplotypeCaller.vcf", 'haplotypecaller', "$arihcj");
     `/bin/touch $output/progress/$pre\_$uID\_HC_MAF.done`;
 }
 
 if($ug){
-    `/bin/mkdir -m 775 -p $output/variants/unifiedgenotyper`;
+    `/bin/mkdir -m 775 -p $output/variants/snpsIndels/unifiedgenotyper`;
     my $ugVars = join(" " , @ugVariants);
     my $ran_cv_ug = 0;
     my $cvugj = '';
@@ -785,7 +786,7 @@ if($ug){
 	sleep(2);
 	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_AR_INDEL_UG", job_hold => "$vriugj", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_AR_INDEL_UG.log");
 	my $standardParams = Schedule::queuing(%stdParams);
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T ApplyRecalibration -R $REF_SEQ -input $output/intFiles/$pre\_UnifiedGenotyper_SNP_vqsr.vcf --ts_filter_level 99.0 -mode INDEL -tranchesFile $output/intFiles/$pre\_UnifiedGenotyper_INDEL.tranches -recalFile $output/intFiles/$pre\_UnifiedGenotyper_INDEL.recal -o $output/variants/unifiedgenotyper/$pre\_UnifiedGenotyper.vcf -nt 1`;
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T ApplyRecalibration -R $REF_SEQ -input $output/intFiles/$pre\_UnifiedGenotyper_SNP_vqsr.vcf --ts_filter_level 99.0 -mode INDEL -tranchesFile $output/intFiles/$pre\_UnifiedGenotyper_INDEL.tranches -recalFile $output/intFiles/$pre\_UnifiedGenotyper_INDEL.recal -o $output/variants/snpsIndels/unifiedgenotyper/$pre\_UnifiedGenotyper.vcf -nt 1`;
 	`/bin/touch $output/progress/$pre\_$uID\_AR_INDEL_UG.done`;
 	$ariugj = "$pre\_$uID\_AR_INDEL_UG";
 	$ran_ar_indel_ug = 1;
@@ -793,7 +794,7 @@ if($ug){
 
     ###if(!-e "$output/progress/$pre\_$uID\_UG_MAF.done" || $ran_ar_indel_ug){  
 	###sleep(2);
-	###&generateMaf("$output/variants/unifiedgenotyper/$pre\_UnifiedGenotyper.vcf", 'unifiedgenotyper', "$ariugj");
+	###&generateMaf("$output/variants/snpsIndels/unifiedgenotyper/$pre\_UnifiedGenotyper.vcf", 'unifiedgenotyper', "$ariugj");
 	###`/bin/touch $output/progress/$pre\_$uID\_UG_MAF.done`;
     ###}
 }
@@ -801,7 +802,6 @@ if($ug){
 my $hasPair = 0;
 
 if($pair){
-    `/bin/mkdir -m 775 -p $output/variants/snpsIndels`;    
     `/bin/mkdir -m 775 -p $output/variants/snpsIndels/mutect`;
     `/bin/mkdir -m 775 -p $output/variants/snpsIndels/somaticsniper`;
     `/bin/mkdir -m 775 -p $output/variants/snpsIndels/virmid`;
@@ -1102,7 +1102,7 @@ if($pair){
 	my $muj = join(",", @mu_jids);
 	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_HAPLOTECT", job_hold => "$arihcj,$muj", cpu => "4", mem => "8", cluster_out => "$output/progress/$pre\_$uID\_HAPLOTECT.log");
 	my $standardParams = Schedule::queuing(%stdParams);
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/haploTect_merge.pl -pair $pair -hc_vcf $output/variants/haplotypecaller/$pre\_HaplotypeCaller.vcf -species $species -pre $pre -output $output/variants/snpsIndels/haplotect -mutect_dir $output/variants/snpsIndels/mutect -config $config $patientFile -align_dir $output/alignments/ -delete_temp`;
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/haploTect_merge.pl -pair $pair -hc_vcf $output/variants/snpsIndels/haplotypecaller/$pre\_HaplotypeCaller.vcf -species $species -pre $pre -output $output/variants/snpsIndels/haplotect -mutect_dir $output/variants/snpsIndels/mutect -config $config $patientFile -align_dir $output/alignments/ -delete_temp`;
 
         $haplotect_run = 1;
 	`/bin/touch $output/progress/$pre\_$uID\_HAPLOTECT.done`;

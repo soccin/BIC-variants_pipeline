@@ -487,7 +487,8 @@ if($nosnps){
 }
 
 `/bin/mkdir -m 775 -p $output/variants`;
-`/bin/mkdir -m 775 -p $output/variants/haplotypecaller`;
+`/bin/mkdir -m 775 -p $output/variants/snpsIndels`;
+`/bin/mkdir -m 775 -p $output/variants/snpsIndels/haplotypecaller`;
 my $ran_hc = 0;
 my $ran_ug_snp = 0;
 my $ran_ug_indel = 0;
@@ -523,7 +524,7 @@ if(!-e "$output/progress/$pre\_$uID\_HC.done" || $ran_pr_glob){
     sleep(2);
     my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_HC", job_hold => "$prgj", cpu => "24", mem => "90", cluster_out => "$output/progress/$pre\_$uID\_HC.log");
     my $standardParams = Schedule::queuing(%stdParams);
-    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx90g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T HaplotypeCaller -R $REF_SEQ $multipleTargets --dbsnp $DB_SNP --downsampling_type NONE --annotation AlleleBalanceBySample --annotation ClippingRankSumTest --read_filter BadCigar --num_cpu_threads_per_data_thread 24 --out $output/variants/haplotypecaller/$pre\_HaplotypeCaller.vcf $irBams2`;
+    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx90g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T HaplotypeCaller -R $REF_SEQ $multipleTargets --dbsnp $DB_SNP --downsampling_type NONE --annotation AlleleBalanceBySample --annotation ClippingRankSumTest --read_filter BadCigar --num_cpu_threads_per_data_thread 24 --out $output/variants/snpsIndels/haplotypecaller/$pre\_HaplotypeCaller.vcf $irBams2`;
     `/bin/touch $output/progress/$pre\_$uID\_HC.done`;
     $hcj = "$pre\_$uID\_HC";
     $ran_hc = 1;
@@ -531,12 +532,12 @@ if(!-e "$output/progress/$pre\_$uID\_HC.done" || $ran_pr_glob){
 
 if(!-e "$output/progress/$pre\_$uID\_MAF_HC.done" || $ran_hc){
     sleep(2);
-    &generateMaf("$output/variants/haplotypecaller/$pre\_HaplotypeCaller.vcf", 'haplotypecaller', "$hcj");
+    &generateMaf("$output/variants/snpsIndels/haplotypecaller/$pre\_HaplotypeCaller.vcf", 'haplotypecaller', "$hcj");
     `/bin/touch $output/progress/$pre\_$uID\_MAF_HC.done`;
 }
 
 if($ug){
-    `/bin/mkdir -m 775 -p $output/variants/unifiedgenotyper`;
+    `/bin/mkdir -m 775 -p $output/variants/snpsIndels/unifiedgenotyper`;
     if(!-e "$output/progress/$pre\_$uID\_CV_UG_RAW.done" || $ran_ug_snp || $ran_ug_indel){
 	sleep(2);
 	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_UG_RAW", job_hold => "$ugsj,$ugij", cpu => "1", mem => "2", cluster_out => "$output/progress/$pre\_$uID\_CV_UG_RAW.log");
@@ -575,7 +576,7 @@ if($ug){
 	my $vfugj = join(",", @vfug_jids);
 	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_CV_UG_SI", job_hold => "$vfugj", cpu => "1", mem => "2", cluster_out => "$output/progress/$pre\_$uID\_CV_UG_SI.log");
 	my $standardParams = Schedule::queuing(%stdParams);
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx2g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T CombineVariants -R $REF_SEQ -o $output/variants/unifiedgenotyper/$pre\_UnifiedGenotyper.vcf --assumeIdenticalSamples --variant $output/progress/$pre\_UnifiedGenotyper_SNP_vf.vcf --variant $output/progress/$pre\_UnifiedGenotyper_INDEL_vf.vcf`;
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx2g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T CombineVariants -R $REF_SEQ -o $output/variants/snpsIndels/unifiedgenotyper/$pre\_UnifiedGenotyper.vcf --assumeIdenticalSamples --variant $output/progress/$pre\_UnifiedGenotyper_SNP_vf.vcf --variant $output/progress/$pre\_UnifiedGenotyper_INDEL_vf.vcf`;
 	`/bin/touch $output/progress/$pre\_$uID\_CV_UG_SI.done`;
         $cvugsij = "$pre\_$uID\_CV_UG_SI";
 	$ran_cv_ug_si = 1;
@@ -591,7 +592,6 @@ if($ug){
 my $hasPair = 0;
 
 if($pair){
-    `/bin/mkdir -m 775 -p $output/variants/snpsIndels`;
     `/bin/mkdir -m 775 -p $output/variants/snpsIndels/mutect`;
     `/bin/mkdir -m 775 -p $output/variants/snpsIndels/somaticsniper`;
     `/bin/mkdir -m 775 -p $output/variants/snpsIndels/virmid`;
@@ -855,7 +855,7 @@ if($pair){
         my $muj = join(",", @mu_jids);
         my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_HAPLOTECT", job_hold => "$ran_hc,$muj", cpu => "4", mem => "8", cluster_out => "$output/progress/$pre\_$uID\_HAPLOTECT.log");
         my $standardParams = Schedule::queuing(%stdParams);
-        `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/haploTect_merge.pl -pair $pair -hc_vcf $output/variants/haplotypecaller/$pre\_HaplotypeCaller.vcf -species $species -pre $pre -output $output/variants/snpsIndels/haplotect -mutect_dir $output/variants/snpsIndels/mutect -config $config $patientFile -align_dir $output/alignments/ -delete_temp`;
+        `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/haploTect_merge.pl -pair $pair -hc_vcf $output/variants/snpsIndels/haplotypecaller/$pre\_HaplotypeCaller.vcf -species $species -pre $pre -output $output/variants/snpsIndels/haplotect -mutect_dir $output/variants/snpsIndels/mutect -config $config $patientFile -align_dir $output/alignments/ -delete_temp`;
 
         $haplotect_run = 1;
         `/bin/touch $output/progress/$pre\_$uID\_HAPLOTECT.done`;
