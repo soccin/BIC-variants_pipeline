@@ -286,7 +286,7 @@ if($species =~ /^b37$|human/i){
     $HAPMAP = "$Bin/data/b37/hapmap_3.3.b37.vcf";
     $OMNI_1000G = "$Bin/data/b37/1000G_omni2.5.b37.vcf";
     $PHASE1_SNPS_1000G = "$Bin/data/b37/1000G_phase1.snps.high_confidence.b37.vcf";
-    $COSMIC = "$Bin/data/b37/CosmicCodingMuts_v74_b37_20151120.vcf";
+    $COSMIC = "$Bin/data/b37/CosmicCodingMuts_v67_b37_20131024__NDS.vcf";
     $CHR_M = 'MT';
     $ABRA_TARGETS = "$Bin/targets/abra/abra_target_regions_b37.bed";
 }
@@ -298,7 +298,7 @@ elsif($species =~ /hybrid|b37_mm10/i){
     $HAPMAP = "$Bin/data/b37/hapmap_3.3.b37.vcf";
     $OMNI_1000G = "$Bin/data/b37/1000G_omni2.5.b37.vcf";
     $PHASE1_SNPS_1000G = "$Bin/data/b37/1000G_phase1.snps.high_confidence.b37.vcf";
-    $COSMIC = "$Bin/data/b37/CosmicCodingMuts_v74_b37_20151120.vcf";
+    $COSMIC = "$Bin/data/b37/CosmicCodingMuts_v67_b37_20131024__NDS.vcf";
     $CHR_M = 'MT';
     $ABRA_TARGETS = "$Bin/targets/abra/abra_target_regions_b37.bed";
 }
