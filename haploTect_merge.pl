@@ -15,6 +15,8 @@ my $curDir = `pwd`;
 chomp $curDir;
 my $commandline = join " ", "\n", $0, @ARGV;
 
+my $force_run;
+
 # Print command line.
 print "$commandline\n\n";
 
@@ -83,13 +85,32 @@ if($output !~ /^\//){
     $output = "$curDir/$output";
 }
 
+my @bamList;
 if($patient) {
     if(!-e $patient){
         die "$patient DOES NOT EXIST";
     }
     if(!$bam_dir){
         die "If patient file is given, you must supply alignment directory for fillout.";
+    } else {
+        if(!-e $bam_dir){
+            die "$bam_dir DOES NOT EXIST";
+        }
+        open(PATIENT, "$patient") || die "Can't open patient file $patient $!";
+        my $header = <PATIENT>;
+        my @header = split(/\s+/,$header);
+
+        my ($sID_index) = grep {$header[$_] =~ /Sample_ID/} 0..$#header;
+        while(<PATIENT>) {
+            chomp;
+            my @patient=split(/\s+/,$_);
+            my $bamFile = `find $bam_dir -name "Proj_*_indelRealigned_recal_$patient[$sID_index].bam"`;
+            chomp($bamFile);
+
+            push(@bamList, "--bam $patient[$sID_index]:$bamFile");
+        }
     }
+
 }
 
 if($bam_dir){
@@ -122,7 +143,6 @@ close $pair;
 
 ## To make sure there are the same number of mutect files as there are pairs
 my $pairedCount = 0;
-
 foreach my $line (@pair_lines) {
     my($normal,$tumor) = split(/\s+/, $line);
     next if ($tumor  =~ /^NA$/i || $normal  =~ /^NA$/i );
@@ -312,33 +332,55 @@ for my $vcf (@mutect_vcfs){
     symlink($mutect_vcf, "$output/" . basename($mutect_vcf));
 }
 
-
-##
-##
-## Get Indels from Haplotype Caller
-##
-## vcf2maf - Change HC output to maf format
-if($pairing){
-    print "$PYTHON/python $Bin/maf/vcf2maf0.py -i $hc_vcf -c haplotypecaller -o $hc_vcf\_HC.maf0 -p $pairing\n\n";
-    `$PYTHON/python $Bin/maf/vcf2maf0.py -i $hc_vcf -c haplotypecaller -o $hc_vcf\_HC.maf0 -p $pairing`;
-}
-else{
-    print "$PYTHON/python $Bin/maf/vcf2maf0.py -i $hc_vcf -c haplotypecaller -o $hc_vcf\_HC.maf0\n\n";
-    `$PYTHON/python $Bin/maf/vcf2maf0.py -i $hc_vcf -c haplotypecaller -o $hc_vcf\_HC.maf0`;
+my $progress = "$output/progress";
+if (! -d "$progress"){
+    mkdir("$progress", 0755) or die "Making progress directory did not work. $!";
 }
 
-## Quality Filtering for haplotype caller 
-print "$PYTHON/python $Bin/maf/pA_qSomHC.py < $hc_vcf\_HC.maf0 > $hc_vcf\_HC.maf1\n\n";
-`$PYTHON/python $Bin/maf/pA_qSomHC.py < $hc_vcf\_HC.maf0 > $hc_vcf\_HC.maf1`;
 
-## Convert to TCGA MAF format
-print "$PYTHON/python $Bin/maf/oldMAF2tcgaMAF.py $species $hc_vcf\_HC.maf1 $hc_vcf\_HC.maf2\n\n";
-`$PYTHON/python $Bin/maf/oldMAF2tcgaMAF.py $species $hc_vcf\_HC.maf1 $hc_vcf\_HC.maf2`;
+# Beginning of commands
 
-## Select for Indels Only
-print "$PYTHON/python $Bin/maf/indelOnly.py < $hc_vcf\_HC.maf2 > $hc_vcf\_qSomHC_InDels_TCGA_MAF.txt\n\n";
-`$PYTHON/python $Bin/maf/indelOnly.py < $hc_vcf\_HC.maf2 > $hc_vcf\_qSomHC_InDels_TCGA_MAF.txt`;
+if($force_run || ! -e "$progress/" . basename("$hc_vcf") . "_vcf2maf0.done"){
+    $force_run = 1;
+    ##
+    ##
+    ## Get Indels from Haplotype Caller
+    ##
+    ## vcf2maf - Change HC output to maf format
+    if($pairing){
+        print "$PYTHON/python $Bin/maf/vcf2maf0.py -i $hc_vcf -c haplotypecaller -o $hc_vcf\_HC.maf0 -p $pairing\n\n";
+        `$PYTHON/python $Bin/maf/vcf2maf0.py -i $hc_vcf -c haplotypecaller -o $hc_vcf\_HC.maf0 -p $pairing`;
+    }
+    else{
+        print "$PYTHON/python $Bin/maf/vcf2maf0.py -i $hc_vcf -c haplotypecaller -o $hc_vcf\_HC.maf0\n\n";
+        `$PYTHON/python $Bin/maf/vcf2maf0.py -i $hc_vcf -c haplotypecaller -o $hc_vcf\_HC.maf0`;
+    }
+    &checkResult($?, $progress,  basename("$hc_vcf") . "_vcf2maf0");
+}
 
+if($force_run || ! -e "$progress/" . basename("$hc_vcf") . "_pAqSomHC.done"){
+    $force_run = 1;
+    ## Quality Filtering for haplotype caller 
+    print "$PYTHON/python $Bin/maf/pA_qSomHC.py < $hc_vcf\_HC.maf0 > $hc_vcf\_HC.maf1\n\n";
+    `$PYTHON/python $Bin/maf/pA_qSomHC.py < $hc_vcf\_HC.maf0 > $hc_vcf\_HC.maf1`;
+    &checkResult($?, $progress,  basename("$hc_vcf") . "_pAqSomHC");
+}
+
+if($force_run || ! -e "$progress/" . basename("$hc_vcf") . "_oldMaf2tcgaMaf.done"){
+    $force_run = 1;
+    ## Convert to TCGA MAF format
+    print "$PYTHON/python $Bin/maf/oldMAF2tcgaMAF.py $species $hc_vcf\_HC.maf1 $hc_vcf\_HC.maf2\n\n";
+    `$PYTHON/python $Bin/maf/oldMAF2tcgaMAF.py $species $hc_vcf\_HC.maf1 $hc_vcf\_HC.maf2`;
+    &checkResult($?, $progress,  basename("$hc_vcf") . "_oldMaf2tcgaMaf");
+}
+
+if($force_run || ! -e "$progress/" . basename("$hc_vcf") . "_indelOnly.done"){
+    $force_run = 1;
+    ## Select for Indels Only
+    print "$PYTHON/python $Bin/maf/indelOnly.py < $hc_vcf\_HC.maf2 > $hc_vcf\_qSomHC_InDels_TCGA_MAF.txt\n\n";
+    `$PYTHON/python $Bin/maf/indelOnly.py < $hc_vcf\_HC.maf2 > $hc_vcf\_qSomHC_InDels_TCGA_MAF.txt`;
+    &checkResult($?, $progress,  basename("$hc_vcf") . "_indelOnly");
+}
 
 
 ##
@@ -356,38 +398,57 @@ foreach my $line (@pair_lines) {
     my $linked_txt = $linked_vcf;
     $linked_txt =~ s/vcf$/txt/g;
 
-    ## Change vcf to maf, using the extra .txt file
-    print "$PYTHON/python $Bin/maf/vcf2maf0.py -i $linked_vcf -aF $linked_txt -c mutect -o $linked_vcf\_maf0.txt -p $pairing -n $normal -t $tumor\n\n";
-    `$PYTHON/python $Bin/maf/vcf2maf0.py -i $linked_vcf -aF $linked_txt -c mutect -o $linked_vcf\_maf0.txt -p $pairing -n $normal -t $tumor`;
+    if($force_run || ! -e "$progress/" . basename("$vcf") . "_vcf2maf0.done"){
+        $force_run = 1;
+        ## Change vcf to maf, using the extra .txt file
+        print "$PYTHON/python $Bin/maf/vcf2maf0.py -i $linked_vcf -aF $linked_txt -c mutect -o $linked_vcf\_maf0.txt -p $pairing -n $normal -t $tumor\n\n";
+        `$PYTHON/python $Bin/maf/vcf2maf0.py -i $linked_vcf -aF $linked_txt -c mutect -o $linked_vcf\_maf0.txt -p $pairing -n $normal -t $tumor`;
+        &checkResult($?, $progress,  basename("$vcf") . "_vcf2maf0"); 
+    }
+
+    if($force_run || ! -e "$progress/" . basename("$vcf") . "_DMP_rescue.done"){
+        $force_run = 1;
+        ## rescue 
+        print "$PYTHON/python $Bin/rescue/DMP_rescue.py  < $linked_vcf\_maf0.txt > $linked_vcf\_maf1.txt 2> $linked_vcf\_maf_rescue.log\n\n";
+        `$PYTHON/python $Bin/rescue/DMP_rescue.py  < $linked_vcf\_maf0.txt > $linked_vcf\_maf1.txt 2> $linked_vcf\_maf_rescue.log `;
+        &checkResult($?, $progress,  basename("$vcf") . "_DMP_rescue");
+    }
+
+    if($force_run || ! -e "$progress/" . basename("$vcf") . "_oldMaf2tcgaMaf.done"){
+        $force_run = 1;
+        ## Change to tcga maf
+        print "$PYTHON/python $Bin/maf/oldMAF2tcgaMAF.py $species $linked_vcf\_maf1.txt $linked_vcf\_maf2.txt\n\n";
+        `$PYTHON/python $Bin/maf/oldMAF2tcgaMAF.py $species $linked_vcf\_maf1.txt $linked_vcf\_maf2.txt`;
+        &checkResult($?, $progress,  basename("$vcf") . "_oldMaf2tcgaMaf");   
     
-    ## rescue 
-    print "$PYTHON/python $Bin/rescue/DMP_rescue.py  < $linked_vcf\_maf0.txt > $linked_vcf\_maf1.txt 2> $linked_vcf\_maf_rescue.log\n\n";
-    `$PYTHON/python $Bin/rescue/DMP_rescue.py  < $linked_vcf\_maf0.txt > $linked_vcf\_maf1.txt 2> $linked_vcf\_maf_rescue.log `;
-    
-    ## Change to tcga maf
-    print "$PYTHON/python $Bin/maf/oldMAF2tcgaMAF.py $species $linked_vcf\_maf1.txt $linked_vcf\_maf2.txt\n\n";
-    `$PYTHON/python $Bin/maf/oldMAF2tcgaMAF.py $species $linked_vcf\_maf1.txt $linked_vcf\_maf2.txt`;
-    
-    ## Select for passing variants
-    print "awk -F\"\\t\" '\$40==\"FILTER\"||\$40==\"PASS\"{print \$0}' $linked_vcf\_maf2.txt > $linked_vcf\_DMPFilter_TCGA_MAF.txt\n\n";
-    `awk -F"\t" '\$40=="FILTER"||\$40=="PASS"{print \$0}' $linked_vcf\_maf2.txt > $linked_vcf\_DMPFilter_TCGA_MAF.txt`;
-    
+
+        ## Select for passing variants
+        print "awk -F\"\\t\" '\$40==\"FILTER\"||\$40==\"PASS\"{print \$0}' $linked_vcf\_maf2.txt > $linked_vcf\_DMPFilter_TCGA_MAF.txt\n\n";
+        `awk -F"\t" '\$40=="FILTER"||\$40=="PASS"{print \$0}' $linked_vcf\_maf2.txt > $linked_vcf\_DMPFilter_TCGA_MAF.txt`;
+        &checkResult($?, $progress,  basename("$vcf") . "_oldMaf2tcgaMaf");
+    } 
 }
 
 ##
 ##
 ## Merge and Annotate?
 ##
-## Get the first 39 fields of HC 
-print "cut -f-39 $hc_vcf\_qSomHC_InDels_TCGA_MAF.txt > $output/merge_maf0.txt\n\n";
-`cut -f-39 $hc_vcf\_qSomHC_InDels_TCGA_MAF.txt > $output/$pre\_merge_maf0.txt`;
 
-## For each mutect result, get all results except for the header
-for my $vcf (@mutect_vcfs){
-    my $linked_vcf = "$output/$vcf";
-    print "tail -n +2 $linked_vcf\_DMPFilter_TCGA_MAF.txt >> $output/$pre\_merge_maf0.txt\n\n";
-    `tail -n +2 $linked_vcf\_DMPFilter_TCGA_MAF.txt >> $output/$pre\_merge_maf0.txt`;
-}
+if($force_run || ! -e "$progress/$pre\_merge_maf.done"){
+    $force_run = 1;
+    ## Get the first 39 fields of HC 
+    print "cut -f-39 $hc_vcf\_qSomHC_InDels_TCGA_MAF.txt > $output/merge_maf0.txt\n\n";
+    `cut -f-39 $hc_vcf\_qSomHC_InDels_TCGA_MAF.txt > $output/$pre\_merge_maf0.txt`;
+    &checkResult($?, $progress, "$pre\_merge_maf");
+
+    ## For each mutect result, get all results except for the header
+    for my $vcf (@mutect_vcfs){
+        my $linked_vcf = "$output/$vcf";
+        print "tail -n +2 $linked_vcf\_DMPFilter_TCGA_MAF.txt >> $output/$pre\_merge_maf0.txt\n\n";
+        `tail -n +2 $linked_vcf\_DMPFilter_TCGA_MAF.txt >> $output/$pre\_merge_maf0.txt`;
+        &checkResult($?, $progress, "$pre\_merge_maf");
+    }
+} 
 
 if($species !~ /hg19|b37|mm10|mouse|human/i) { ###   |mm10|mouse/i) { uncomment later!
     print "Must be human or mouse(mm10 )species to continue.\n";
@@ -395,71 +456,63 @@ if($species !~ /hg19|b37|mm10|mouse|human/i) { ###   |mm10|mouse/i) { uncomment 
 }
 
 print "\n#######\n#######\nStarting VEP. \n";
-# these are names needed for the "retain-cols" option in VEP
-my $VEP_COLUMN_NAMES = "Center,Verification_Status,Validation_Status,Mutation_Status,Sequencing_Phase,Sequence_Source,Validation_Method,Score,BAM_file,Sequencer,Tumor_Sample_UUID,Matched_Norm_Sample_UUID,Caller";
+if($force_run || ! -e "$progress/$pre\_run_vep.done"){
+    $force_run = 1;
+    # these are names needed for the "retain-cols" option in VEP
+    my $VEP_COLUMN_NAMES = "Center,Verification_Status,Validation_Status,Mutation_Status,Sequencing_Phase,Sequence_Source,Validation_Method,Score,BAM_file,Sequencer,Tumor_Sample_UUID,Matched_Norm_Sample_UUID,Caller";
 
-## Create tmp and ref directory. Delete these later*
-if( ! -d "$output/tmp/" ){
-    print "$output/tmp/ does not exist. Will create it now\n";
-    mkdir("$output/tmp", 0755) or die "Making tmp didn't work $!";
-}
-if( ! -d "$output/ref/" ){
-    print "$output/ref/ does not exist. Will create it now\n";
-    mkdir("$output/ref", 0755) or die "Making tmp didn't work $!";
-}
-
-my $ref_base = basename($REF_FASTA);
-
-# softlink reference
-symlink($REF_FASTA, "$output/ref/$ref_base");
-symlink("$REF_FASTA.fai", "$output/ref/$ref_base.fai");
-
-## vep-forks is at 4 because that is how many CPUs we ask for
-print "\n$PERL/perl $VCF2MAF/maf2maf.pl --tmp-dir $output/tmp --ref-fasta $output/ref/$ref_base --ncbi-build $ncbi --vep-forks 4 --vep-path $VEP --vep-data $VEP --retain-cols $VEP_COLUMN_NAMES --input-maf $output/$pre\_merge_maf0.txt --output-maf $output/$pre\_merge_maf0.VEP\n\n";
-
-`$PERL/perl $VCF2MAF/maf2maf.pl --tmp-dir $output/tmp --ref-fasta $output/ref/$ref_base --ncbi-build $ncbi --vep-forks 4 --vep-path $VEP --vep-data $VEP --retain-cols $VEP_COLUMN_NAMES --input-maf $output/$pre\_merge_maf0.txt --output-maf $output/$pre\_merge_maf0.VEP > $output/$pre\_merge_maf0.log 2>&1`;
-
-#This removes any records that don't have a gene name at the front
-#`grep -v ^Unknown $output/$pre\_merge_maf0.VEP > $output/$pre\_merge_maf0.VEP`;
-`cut -f-34 $output/$pre\_merge_maf0.VEP > $output/$pre\_haplotect_TCGA_MAF.txt`;
-
-## creating MAF for cbio portal submission
-print "$PYTHON/python $Bin/maf/pA_reSortCols.py -i $output/$pre\_merge_maf0.VEP -f $Bin/maf/finalCols_PORTAL.txt -o $output/$pre\_haplotect_TCGA_PORTAL_MAF.txt\n\n";
-`$PYTHON/python $Bin/maf/pA_reSortCols.py -i $output/$pre\_merge_maf0.VEP -f $Bin/maf/finalCols_PORTAL.txt -o $output/$pre\_haplotect_TCGA_PORTAL_MAF.txt`;
-
-
-if($patient && $bam_dir){
-    print "Starting maf fillout\n";
-    # open patient file, get each sample name:
-    # then find file with that name in the alignement directory
-    # make sure it there is only 1 bam per sample
-    # add that to a array
-    open(PATIENT, "$patient") || die "Can't open patient file $patient $!";
-    my $header = <PATIENT>;
-    my @header = split(/\s+/,$header);
-
-    my ($sID_index) = grep {$header[$_] =~ /Sample_ID/} 0..$#header;
-    #print "Sample index: $sID_index\n";
-    my @bamList;
-
-    while(<PATIENT>) {
-        chomp;
-        my @patient=split(/\s+/,$_);
-        #print "Sample: $patient[$sID_index] \n";
-        my $bamFile = `find $bam_dir -name "Proj_*_indelRealigned_recal_$patient[$sID_index].bam"`;
-        chomp($bamFile);
-        #print "Bam file: $bamFile \n";
-
-        push(@bamList, "--bam $patient[$sID_index]:$bamFile");
+    ## Create tmp and ref directory. Delete these later*
+    if( ! -d "$output/tmp/" ){
+        print "$output/tmp/ does not exist. Will create it now\n";
+        mkdir("$output/tmp", 0755) or die "Making tmp didn't work $!";
+    }
+    if( ! -d "$output/ref/" ){
+        print "$output/ref/ does not exist. Will create it now\n";
+        mkdir("$output/ref", 0755) or die "Making tmp didn't work $!";
     }
 
-    my $bam_inputs = join(" ", @bamList);
+    my $ref_base = basename($REF_FASTA);
 
-    print "$Bin/maf/fillout/GetBaseCountsMultiSample/GetBaseCountsMultiSample --fasta $REF_FASTA $bam_inputs --output $output/$pre/_haplotect_TCGA_basecounts.txt --maf $output/$pre\_haplotect_TCGA_PORTAL_MAF.txt --filter_improper_pair 0\n\n";
-    `$Bin/maf/fillout/GetBaseCountsMultiSample/GetBaseCountsMultiSample --fasta $REF_FASTA $bam_inputs --output $output/$pre\_haplotect_TCGA_basecounts.txt --maf $output/$pre\_haplotect_TCGA_PORTAL_MAF.txt --filter_improper_pair 0`;
+    # softlink reference
+    symlink($REF_FASTA, "$output/ref/$ref_base");
+    symlink("$REF_FASTA.fai", "$output/ref/$ref_base.fai");
 
-    print "$PYTHON/python $Bin/maf/fillout/dmp2portalMAF -s $species -m $output/$pre\_haplotect_TCGA_PORTAL_MAF.txt -p $pairing -P $patient -c haplotect -b $output/$pre\_haplotect_TCGA_basecounts.txt -o $output/$pre\_haplotect_TCGA_PORTAL_MAF_fillout.txt\n\n";
-    `$PYTHON/python $Bin/maf/fillout/dmp2portalMAF -s $species -m $output/$pre\_haplotect_TCGA_PORTAL_MAF.txt -p $pairing -P $patient -c haplotect -b $output/$pre\_haplotect_TCGA_basecounts.txt -o $output/$pre\_haplotect_TCGA_PORTAL_MAF_fillout.txt`;
+    ## vep-forks is at 4 because that is how many CPUs we ask for
+    print "\n$PERL/perl $VCF2MAF/maf2maf.pl --tmp-dir $output/tmp --ref-fasta $output/ref/$ref_base --ncbi-build $ncbi --vep-forks 4 --vep-path $VEP --vep-data $VEP --retain-cols $VEP_COLUMN_NAMES --input-maf $output/$pre\_merge_maf0.txt --output-maf $output/$pre\_merge_maf0.VEP\n\n";
+
+    `$PERL/perl $VCF2MAF/maf2maf.pl --tmp-dir $output/tmp --ref-fasta $output/ref/$ref_base --ncbi-build $ncbi --vep-forks 4 --vep-path $VEP --vep-data $VEP --retain-cols $VEP_COLUMN_NAMES --input-maf $output/$pre\_merge_maf0.txt --output-maf $output/$pre\_merge_maf0.VEP > $output/$pre\_merge_maf0.log 2>&1`;
+    &checkResult($?, $progress, "$pre\_run_vep");
+}
+
+if($force_run || ! -e "$progress/$pre\_tcgaMaf_portalMaf.done"){
+    $force_run = 1;
+    #This removes any records that don't have a gene name at the front
+    #`grep -v ^Unknown $output/$pre\_merge_maf0.VEP > $output/$pre\_merge_maf0.VEP`;
+    #&checkResult($?, $progress,  basename("$vcf") . "_tcgaMaf_portalMaf");
+    `cut -f-34 $output/$pre\_merge_maf0.VEP > $output/$pre\_haplotect_TCGA_MAF.txt`;
+    &checkResult($?, $progress, "$pre\_tcgaMaf_portalMaf");
+
+    ## creating MAF for cbio portal submission
+    print "$PYTHON/python $Bin/maf/pA_reSortCols.py -i $output/$pre\_merge_maf0.VEP -f $Bin/maf/finalCols_PORTAL.txt -o $output/$pre\_haplotect_TCGA_PORTAL_MAF.txt\n\n";
+    `$PYTHON/python $Bin/maf/pA_reSortCols.py -i $output/$pre\_merge_maf0.VEP -f $Bin/maf/finalCols_PORTAL.txt -o $output/$pre\_haplotect_TCGA_PORTAL_MAF.txt`;
+    &checkResult($?, $progress, "$pre\_tcgaMaf_portalMaf");
+}
+
+if($patient && $bam_dir){
+    if($force_run || ! -e "$progress/$pre\_maf_fillout.done"){
+        $force_run = 1;
+        print "Starting maf fillout\n";
+        ## @bamList was populated above
+        my $bam_inputs = join(" ", @bamList);
+
+        print "$Bin/maf/fillout/GetBaseCountsMultiSample/GetBaseCountsMultiSample --fasta $REF_FASTA $bam_inputs --output $output/$pre/_haplotect_TCGA_basecounts.txt --maf $output/$pre\_haplotect_TCGA_PORTAL_MAF.txt --filter_improper_pair 0\n\n";
+        `$Bin/maf/fillout/GetBaseCountsMultiSample/GetBaseCountsMultiSample --fasta $REF_FASTA $bam_inputs --output $output/$pre\_haplotect_TCGA_basecounts.txt --maf $output/$pre\_haplotect_TCGA_PORTAL_MAF.txt --filter_improper_pair 0`;
+        &checkResult($?, $progress, "$pre\_maf_fillout");
+
+        print "$PYTHON/python $Bin/maf/fillout/dmp2portalMAF -s $species -m $output/$pre\_haplotect_TCGA_PORTAL_MAF.txt -p $pairing -P $patient -c haplotect -b $output/$pre\_haplotect_TCGA_basecounts.txt -o $output/$pre\_haplotect_TCGA_PORTAL_MAF_fillout.txt\n\n";
+        `$PYTHON/python $Bin/maf/fillout/dmp2portalMAF -s $species -m $output/$pre\_haplotect_TCGA_PORTAL_MAF.txt -p $pairing -P $patient -c haplotect -b $output/$pre\_haplotect_TCGA_basecounts.txt -o $output/$pre\_haplotect_TCGA_PORTAL_MAF_fillout.txt`;
+        &checkResult($?, $progress, "$pre\_maf_fillout");
+    }
 }
 
 
@@ -472,29 +525,61 @@ if($patient && $bam_dir){
 ###
 
 ## run tri nulceotide script
-my $extraStuff = '';
-if ($species =~ /hg19|human|b37/i){
-    $extraStuff =  " --target $Bin/targets/IMPACT410_$species/IMPACT410_$species\_targets_plus5bp.bed --targetname impact410";
-}
-print "$PERL/perl $Bin/maf/bedtools_annotations.pl --in_maf $output/$pre\_merge_maf0.VEP --species $species --output $output --config $config --fastq $extraStuff \n\n";
-`$PERL/perl $Bin/maf/bedtools_annotations.pl --in_maf $output/$pre\_merge_maf0.VEP --species $species --output $output --config $config --fastq $extraStuff`;
 
+if($force_run || ! -e "$progress/$pre\_bedtools_anno.done"){
+    $force_run = 1;
+    my $extraStuff = '';
+    if ($species =~ /hg19|human|b37/i){
+        $extraStuff =  " --target $Bin/targets/IMPACT410_$species/IMPACT410_$species\_targets_plus5bp.bed --targetname impact410";
+    }
+    print "$PERL/perl $Bin/maf/bedtools_annotations.pl --in_maf $output/$pre\_merge_maf0.VEP --species $species --output $output --config $config --fastq $extraStuff \n\n";
+    `$PERL/perl $Bin/maf/bedtools_annotations.pl --in_maf $output/$pre\_merge_maf0.VEP --species $species --output $output --config $config --fastq $extraStuff`;
+    &checkResult($?, $progress, "$pre\_bedtools_anno");
+}
 
 # exac annotate 
 if($species =~ /hg19|b37|human/i){
- 
-    print "perl $Bin/maf/exact_annotate.pl --in_maf $output/$pre\_merge_maf0.VEP --species $species --output $output --config $config --data $Bin/data\n\n";
-    `$PERL/perl $Bin/maf/exact_annotate.pl --in_maf $output/$pre\_merge_maf0.VEP --species $species --output $output --config $config --data $Bin/data`;
+    if($force_run || ! -e "$progress/$pre\_exac_anno.done"){
+        $force_run = 1; 
+        print "perl $Bin/maf/exact_annotate.pl --in_maf $output/$pre\_merge_maf0.VEP --species $species --output $output --config $config --data $Bin/data\n\n";
+        `$PERL/perl $Bin/maf/exact_annotate.pl --in_maf $output/$pre\_merge_maf0.VEP --species $species --output $output --config $config --data $Bin/data`;
+        &checkResult($?, $progress, "$pre\_exac_anno");
+    }
+
 ##
 ## Merging of extra columns ** I haven't created a way to merge the columns while creating them, so I still
 ## have to use Nick's mkTaylorMAF.py, which I am going to rename to mergeExtraCols.py
 ##
-    print "$PYTHON/python $Bin/maf/mergeExtraCols.py $output/triNucleotide.seq $output/maf_targets.impact410 $output/exact.vcf $output/$pre\_merge_maf0.VEP > $output/$pre\_haplotect_VEP_MAF.txt\n\n";
-    `$PYTHON/python $Bin/maf/mergeExtraCols.py $output/triNucleotide.seq $output/maf_targets.impact410 $output/exact.vcf $output/$pre\_merge_maf0.VEP > $output/$pre\_haplotect_VEP_MAF.txt`;
+    if($force_run || ! -e "$progress/$pre\_triNuc_anno.done"){
+        $force_run = 1;
+        print "$PYTHON/python $Bin/maf/mergeExtraCols.py $output/triNucleotide.seq $output/maf_targets.impact410 $output/exact.vcf $output/$pre\_merge_maf0.VEP > $output/$pre\_haplotect_VEP_MAF.txt\n\n";
+        `$PYTHON/python $Bin/maf/mergeExtraCols.py $output/triNucleotide.seq $output/maf_targets.impact410 $output/exact.vcf $output/$pre\_merge_maf0.VEP > $output/$pre\_haplotect_VEP_MAF.txt`;
+        &checkResult($?, $progress, "$pre\_triNuc_anno");
+    }
+
 } else {
-    `/bin/touch $output/blank`;
-    print "$PYTHON/python $Bin/maf/mergeExtraCols.py $output/triNucleotide.seq $output/blank $output/blank $output/$pre\_merge_maf0.VEP > $output/$pre\_haplotect_VEP_MAF.txt\n\n";
-    `$PYTHON/python $Bin/maf/mergeExtraCols.py $output/triNucleotide.seq $output/blank $output/blank $output/$pre\_merge_maf0.VEP > $output/$pre\_haplotect_VEP_MAF.txt`;
+    if($force_run || ! -e "$progress/$pre\_triNuc_anno.done"){
+        $force_run = 1;
+        `/bin/touch $output/blank`;
+        print "$PYTHON/python $Bin/maf/mergeExtraCols.py $output/triNucleotide.seq $output/blank $output/blank $output/$pre\_merge_maf0.VEP > $output/$pre\_haplotect_VEP_MAF.txt\n\n";
+        `$PYTHON/python $Bin/maf/mergeExtraCols.py $output/triNucleotide.seq $output/blank $output/blank $output/$pre\_merge_maf0.VEP > $output/$pre\_haplotect_VEP_MAF.txt`;
+        &checkResult($?, $progress, "$pre\_triNuc_anno");
+    }
+}
+
+
+sub checkResult{
+    my ($status, $progress, $filebase) = @_;
+
+    if($status == 0)
+    {
+        `/bin/touch $progress/$filebase.done`;
+    } else{
+        `/bin/rm -f $progress/$filebase.done`;
+        print "\nThere was an error with script $filebase!\n";
+        exit 1
+    }
+
 }
 
 ##
@@ -513,7 +598,7 @@ if($delete_temp){
         print "Removing: $fname \n";
         unlink($fname);
     }
-    `rm -r $output/xtra $output/bed $output/ref $output/tmp`;
+    `rm -r $output/xtra $output/bed $output/ref $output/tmp $progress`;
 
 }
 
