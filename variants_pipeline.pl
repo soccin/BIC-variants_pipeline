@@ -65,7 +65,7 @@ use Cluster;
 ### NOTE: DO NOT SUBMIT THIS WRAPPER SCRIPT TO THE CLUSTER BECAUSE ONCOTATOR STEP WILL FAIL
 ###       DUE TO NODES NOT HAVING NETWORK ACCESS
 
-my ($map, $group, $pair, $patient, $config, $help, $nosnps, $removedups, $species, $ug, $scheduler, $abra, $targets, $mdOnly, $noMD, $DB_SNP, $noClip);
+my ($map, $group, $pair, $patient, $config, $help, $nosnps, $removedups, $species, $ug, $scheduler, $abra, $targets, $mdOnly, $noMD, $DB_SNP, $noClip, $request);
 
 my $pre = 'TEMP';
 my $output = "results";
@@ -104,7 +104,8 @@ GetOptions ('map=s' => \$map,
 	    'noClip' => \$noClip,
 	    'bqTrim=s' => \$bqTrim,
  	    'db_snp|dbsnp=s' => \$DB_SNP,
-	    'species=s' => \$species) or exit(1);
+	    'species=s' => \$species,
+            'request=s' => \$request) or exit(1);
 
 if(!$map || !$species || !$config || !$scheduler || !$targets || $help){
     print <<HELP;
@@ -115,6 +116,7 @@ if(!$map || !$species || !$config || !$scheduler || !$targets || $help){
 	* SPECIES: b37 (default: human), hg19, mm9, mm10 (default: mouse), hybrid (hg19+mm10), mm10_custom, species_custom and dm3 currently supported (REQUIRED)
 	* TARGETS: name of targets assay; will search for targets/baits ilists and targets padded file in $Bin/targets/TARGETS unless given full path to targets directory (REQUIRED)
 	* CONFIG: file listing paths to programs needed for pipeline; full path to config file needed (REQUIRED)
+        * REQUEST: file containing request information such as PI, investigator, etc. (REQUIRED)
 	* SCHEDULER: currently support for SGE and LSF (REQUIRED)
 	* PAIR: file listing tumor/normal pairing of samples for mutect/maf conversion; if not specified, considered unpaired
         * PATIENT: if a patient file is given, patient wide fillout will be added to maf file
@@ -302,6 +304,9 @@ sub reconstructCL {
     }
     if($config){
 	$rCL .= " -config $config";
+    }
+    if($request){
+        $rCL .= " -request $request";
     }
     if($species){
 	$rCL .= " -species $species";
@@ -1275,12 +1280,15 @@ sub mergeStats {
         `/bin/touch $output/progress/$pre\_$uID\_MERGE_CQS_LOGS.done`;
      }
 
+    my $svnURL = "svn+ssh://$uID\@cbio.mskcc.org/srv/svn/svn-private/bic/variants_pipeline/trunk";
+    my $svnRev = `svn info $svnURL | grep Revision | cut -d " " -f 2`;
+    chomp $svnRev;
     my $qcpdfj = join(",", @qcpdf_jids);
    if(!-e "$output/progress/$pre\_$uID\_QCPDF.done" || $ran_merge){
 	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_QCPDF", job_hold => "$qcpdfj", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_QCPDF.log");
 	my $standardParams = Schedule::queuing(%stdParams);
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/qc/qcPDF.pl -path $output/metrics -pre $pre -config $config -log $output/progress/$pre\_$uID\_QCPDF_ERRORS.log`;
-	`/bin/touch $output/progress/$pre\_$uID\_QCPDF.done`;
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/qc/qcPDF.pl -path $output/metrics -pre $pre -config $config -request $request -log $output/progress/$pre\_$uID\_QCPDF_ERRORS.log -v $svnRev`;
+        `/bin/touch $output/progress/$pre\_$uID\_QCPDF.done`;
     }
 }
 

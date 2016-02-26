@@ -1,3 +1,4 @@
+library(corrplot)
 library(ggplot2)
 library(gplots)
 library(scales)
@@ -31,7 +32,8 @@ plot.fpc.sum <- function(fpc.sum){
               hclustfun="hclust",
               labRow=rownames(fpc.sum),
               labCol=rownames(fpc.sum),
-              key=TRUE,
+              #key=TRUE,
+              keysize=0.75,
               trace="none",
               density.info=c("none"),
               margins=c(12,12),
@@ -40,18 +42,36 @@ plot.fpc.sum <- function(fpc.sum){
               sepcolor="black",
               colsep=c(1:nrow(fpc.sum)),
               rowsep=c(1:nrow(fpc.sum)),
-              cexRow = 1.0,
-              cexCol = 1.0,
-              sepwidth=c(0.01, 0.01)
+              #cexRow = 0.7,
+              #cexCol = 0.7,
+              cexRow = 1.0 - (0.01*(nrow(fpc.sum)-25)),
+              cexCol = 1.0 - (0.01*(nrow(fpc.sum)-25)),
+              sepwidth=c(0.005, 0.005)
               )
 }
 
-plot.major.contamination <- function(dat,sort.by='badToGood'){
+plot.cdna.contamination <- function(cdna.contamination){
+    if(is.null(cdna.contamination)){ return(NULL) }
+    corrplot(cdna.contamination,
+             method="circle",
+             col=c("white","red"),
+             cl.pos="n",
+             title="cDNA Contamination",
+             pch.col="black", 
+             tl.col="black",
+             tl.srt=90,
+             tl.cex=0.9,
+             mar=c(0,5,5,5),
+             is.corr=FALSE)
+}
+
+plot.major.contamination <- function(dat,sort.by='name'){
     if(is.null(dat)){ return(NULL) }
+    colnames(dat) = c("Sample","PerHeterozygousPos") ## colnames are different between exome and dmp pipelines
     if(sort.by == 'badToGood'){
        dat$Sample <- factor(dat$Sample, levels=dat$Sample[order(dat$PerHeterozygousPos)])
     } else if(sort.by == 'name'){
-       dat$Sample <- factor(dat$Sample, levels=dat$Sample[order(dat$Sample)])
+        dat$Sample <- factor(dat$Sample, levels=dat$Sample[order(dat$Sample)])
     }
 
     ggplot(dat, aes(x = Sample, y = PerHeterozygousPos)) +
@@ -64,12 +84,11 @@ plot.major.contamination <- function(dat,sort.by='badToGood'){
         xlab("") +
         ylab("Fraction of position that are hetrozygous") +
         labs(title="Major Contamination Check") +
-        geom_hline(aes(yintercept=0.55), color = "red", size=0.75) +
-        coord_flip()
-
+        geom_hline(aes(yintercept=0.55), color = "red", size=0.75) #+
+        #coord_flip()
 }
 
-plot.minor.contamination <- function(dat,sort.by='badToGood'){
+plot.minor.contamination <- function(dat,sort.by='name'){
     if(is.null(dat)){ return(NULL) }
     if(sort.by == 'badToGood'){
         dat$Sample <- factor(dat$Sample, levels=dat$Sample[order(dat$AvgMinorHomFreq)])
@@ -91,11 +110,11 @@ plot.minor.contamination <- function(dat,sort.by='badToGood'){
       labs(title="Minor Contamination Check") +
       geom_hline(aes(yintercept=0.02), color = "red", size=0.5) +
       geom_hline(aes(yintercept=0.01), color = "yellow", size=0.5) +
-      scale_color_hue(name="Samples") +
-      coord_flip()
+      scale_color_hue(name="Samples") #+
+      #coord_flip()
 }
 
-plot.coverage <- function(dat,sort.by = 'badToGood'){
+plot.coverage <- function(dat,sort.by='name'){
     if(is.null(dat)){ return(NULL) }
     if(sort.by == "badToGood"){
         dat$Samples = factor(dat$Samples, levels=dat$Samples[order(-dat$Cov)])
@@ -113,11 +132,11 @@ plot.coverage <- function(dat,sort.by = 'badToGood'){
        xlab("") +
        ylab("Mean Coverage") +
        geom_hline(aes(yintercept=200),color="yellow", size=0.75) +
-       geom_hline(aes(yintercept=50), color="red", size=0.75) +
-       coord_flip()
+       geom_hline(aes(yintercept=50), color="red", size=0.75) #+
+       #coord_flip()
 }
 
-plot.duplication <- function(duplication,sort.by = 'badToGood'){
+plot.duplication <- function(duplication,sort.by='name'){
     if(is.null(duplication)){ return(NULL) }
     if(sort.by == 'badToGood'){
         duplication$Samples <- factor(duplication$Samples, levels=duplication$Samples[order(duplication$DupRate)])
@@ -135,11 +154,11 @@ plot.duplication <- function(duplication,sort.by = 'badToGood'){
         xlab("") +
         ylab("Duplication Rate") +
         scale_y_continuous(labels=percent) +
-        geom_hline(aes(yintercept=0.5),color="yellow", size=1.0) +
-        coord_flip()
+        geom_hline(aes(yintercept=0.5),color="yellow", size=1.0) #+
+        #coord_flip()
 }
 
-plot.library.size <- function(librarySize,sort.by = 'badToGood'){
+plot.library.size <- function(librarySize,sort.by='name'){
     if(is.null(librarySize)) { return(NULL) }
     if(sort.by == 'badToGood'){
         librarySize$Samples <- factor(librarySize$Samples, levels=librarySize$Samples[order(-librarySize$Comp)])
@@ -155,11 +174,11 @@ plot.library.size <- function(librarySize,sort.by = 'badToGood'){
         ) +
         labs(title="Estimated Library Size") +
         xlab("") +
-        ylab("xMillion") +
-        coord_flip()
+        ylab("xMillion") #+
+        #coord_flip()
 }
 
-plot.capture.specificity <- function(captureSpecificity,sort.by = 'badToGood'){
+plot.capture.specificity <- function(captureSpecificity,sort.by='name'){
     if(is.null(captureSpecificity)){ return(NULL) }
     cs.m = melt(captureSpecificity, id.vars="Sample")
 
@@ -179,11 +198,11 @@ plot.capture.specificity <- function(captureSpecificity,sort.by = 'badToGood'){
        scale_fill_brewer(palette="Set2",labels=c("On Bait Bases","Near Bait Bases","Off Bait Bases")) +
        labs(title="Capture Specificity") +
        xlab("") +
-       ylab("Total Bases (millions)") +
-       coord_flip()
+       ylab("Total Bases (millions)") #+
+       #coord_flip()
 }
 
-plot.capture.specificity.percentage <- function(captureSpecificity,sort.by = 'badToGood'){
+plot.capture.specificity.percentage <- function(captureSpecificity,sort.by='name'){
     if(is.null(captureSpecificity)){ return(NULL) }
     cs = captureSpecificity
     x=cs[,c("OnBait","NearBait","OffBait")]
@@ -208,11 +227,11 @@ plot.capture.specificity.percentage <- function(captureSpecificity,sort.by = 'ba
         labs(title="Capture Specificity") +
         xlab("") +
         ylab("Percent bases") +
-        scale_y_continuous(labels=percent) +
-        coord_flip()
+        scale_y_continuous(labels=percent) #+
+        #coord_flip()
 }
 
-plot.alignment <- function(alignment,sort.by = 'badToGood'){
+plot.alignment <- function(alignment,sort.by='name'){
     if(is.null(alignment)){ return(NULL) }
     density.m = melt(alignment)
     density.m$value <- density.m$value/1000000
@@ -233,11 +252,11 @@ plot.alignment <- function(alignment,sort.by = 'badToGood'){
         scale_fill_manual(name="Type", values = c3, labels = c("Both Reads Aligned", "One Read Aligned", "Neither Read Aligned")) +
         labs(title="Cluster Density & Alignment Rate") +
         xlab("") +
-        ylab("xMillion") +
-        coord_flip()
+        ylab("xMillion") #+
+        #coord_flip()
 }
 
-plot.alignment.percentage <- function(alignment,sort.by = 'badToGood'){
+plot.alignment.percentage <- function(alignment,sort.by='name'){
     density = alignment
     if(is.null(density)){ return(NULL) }
     x=density[,c("BothAlign","OneAlign","NeitherAlign")]
@@ -267,8 +286,8 @@ plot.alignment.percentage <- function(alignment,sort.by = 'badToGood'){
         labs(title="Cluster Density & Alignment Rate") +
         xlab("") +
         ylab("") +
-        scale_y_continuous(label=percent, limits = c(y,1), oob =rescale_none) +
-        coord_flip()
+        scale_y_continuous(label=percent, limits = c(y,1), oob =rescale_none) #+
+        #coord_flip()
 }
 
 plot.insert.size.distribution <- function(is.metrics){
@@ -277,18 +296,22 @@ plot.insert.size.distribution <- function(is.metrics){
     insert.m <- melt(is.metrics, id.vars="insert_size")
     insert.m$insert_size <- as.integer(as.character(insert.m$insert_size))
     levels(insert.m$variable) <- insert_label
+
+    legend.position = "right"
+    if(length(insert_label)>=20){ legend.position = "none" }
+ 
     ggplot(insert.m,
       aes(x = insert_size, y = value, color = variable)) +
       geom_line(size=0.75) +
-      theme(legend.position="right",
-            legend.text = element_text(size=9),
-            legend.title = element_blank()
-            ) +
+      theme(legend.position=legend.position) + #"right",
+            #legend.text = element_text(size=9),
+            #legend.title = element_blank()
+            #) +
       labs(title="Insert Size Distribution") +
       xlab("Insert size") +
       ylab("") +
-      scale_color_manual(name="Samples", values = rep(c48, 34)) +
-      guides(colour = guide_legend(override.aes = list(size=5), ncol=ceiling(ncol(is.metrics)/20)))
+      scale_color_manual(name="Samples", values = rep(c48, 34)) #+
+      #guides(colour = guide_legend(override.aes = list(size=5), ncol=ceiling(ncol(is.metrics)/20)))
 }
 
 plot.insert.peaks <- function(is.metrics){
@@ -304,11 +327,11 @@ plot.insert.peaks <- function(is.metrics){
               axis.text.y = element_text(size=12,color="black")) +
         xlab("") +
         ylab("Insert Size") +
-        labs(title="Peak Insert Size Values") +
-        coord_flip()
+        labs(title="Peak Insert Size Values") #+
+        #coord_flip()
 }
 
-plot.trimmed.reads <- function(reads,sort.by='badToGood'){
+plot.trimmed.reads <- function(reads,sort.by='name'){
     reads.m <- melt(reads)
     reads.m$value <- reads.m$value/100
 
@@ -329,23 +352,23 @@ plot.trimmed.reads <- function(reads,sort.by='badToGood'){
       labs(title="Percentage of Reads Trimmed") +
       xlab("") +
       ylab("") +
-      scale_y_continuous(labels=percent) +
-      coord_flip()
+      scale_y_continuous(labels=percent) #+
+      #coord_flip()
 }
 
 plot.base.qualities <- function(base.qualities){
     ggplot(base.qualities, aes(x = cycle, y = value, color = variable)) +
         geom_line(size=0.5) +
-        theme(legend.position="right",
-              legend.title=element_blank(),
-              axis.text.x = element_text(angle=0)
-             ) +
+        theme(legend.position="none") + #"right",
+              #legend.title=element_blank(),
+              #axis.text.x = element_text(angle=0)
+             #) +
         facet_wrap(~type, ncol = 1) +
         scale_color_manual(name="Samples", values = rep(c48, 34)) +
         labs(title="Pre- & Post-Recalibration Quality Scores") +
         xlab("Quality Score") +
-        ylab("") +
-        guides(colour = guide_legend(override.aes = list(size=2),ncol=ceiling(ncol(base.qualities)/20)))
+        ylab("") #+
+        #guides(colour = guide_legend(override.aes = list(size=2),ncol=ceiling(ncol(base.qualities)/20)))
 }
 
 plot.pool.norm.genotype <- function(pool.norm.genotype){
@@ -366,12 +389,16 @@ plot.pool.norm.genotype <- function(pool.norm.genotype){
 plot.gc.bias <- function(gc.bias){
     if(is.null(gc.bias)){ return(NULL) }
     xt.m <- melt(gc.bias, id.vars="X")
+
+    legend.position = "right"
+    if(ncol(gc.bias)>=20){ legend.position = "none" }
+
     ggplot(xt.m, aes(x = X, y = value, color = variable)) +
        geom_line(size=0.5) +
-       theme(legend.position="right",
-              legend.title=element_blank(),
-              axis.text.x = element_text(angle=0)
-             ) +
+       theme(legend.position=legend.position) + #"right",
+              #legend.title=element_blank(),
+              #axis.text.x = element_text(angle=0)
+             #) +
        labs(title="Normalized Coverage vs GC-Content") +
        xlab("GC-Content") +
        ylab("Normalized Coverage") +
