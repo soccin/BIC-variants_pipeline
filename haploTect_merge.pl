@@ -451,6 +451,7 @@ if($force_run || ! -e "$progress/$pre\_merge_maf.done"){
 } 
 
 if($species !~ /hg19|b37|mm10|mouse|human/i) { ###   |mm10|mouse/i) { uncomment later!
+    `cut -f-34 $output/$pre\_merge_maf0.txt > $vcf\_$somatic\_TCGA_MAF.txt`;
     print "Must be human or mouse(mm10 )species to continue.\n";
     exit 0;
 }

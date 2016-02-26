@@ -290,6 +290,8 @@ if($force_run || !-e "$progress/" . basename("$vcf") . "_oldmaf2tcgamaf.done"){
     &checkResult($?, $progress, basename("$vcf") . "_oldmaf2tcgamaf");
 }
 if($species !~ /hg19|b37|mm10|mouse|human/i) { ###   |mm10|mouse/i) { uncomment later!
+    `cut -f-34 $vcf\_$somatic\_maf1.txt > $vcf\_$somatic\_TCGA_MAF.txt`;
+
     print "End of species ambiguous portion of the script.\n";
     exit 0;
 }
@@ -371,9 +373,14 @@ if($patient && $bam_dir){
         my $bam_inputs = join(" ", @bamList);
 
         print "$Bin/maf/fillout/GetBaseCountsMultiSample/GetBaseCountsMultiSample --fasta $REF_FASTA $bam_inputs --output $vcf\_$somatic\_TCGA_basecounts.txt --maf $vcf\_$somatic\_TCGA_PORTAL_MAF.txt --filter_improper_pair 0\n\n";
-        `$Bin/maf/fillout/GetBaseCountsMultiSample/GetBaseCountsMultiSample --fasta $REF_FASTA $bam_inputs --output $vcf\_$somatic\_TCGA_basecounts.txt --maf $vcf\_$somatic\_TCGA_PORTAL_MAF.txt --filter_improper_pair 0`;
+        `$Bin/maf/fillout/GetBaseCountsMultiSample/GetBaseCountsMultiSample --fasta $REF_FASTA $bam_inputs --output $vcf\_$somatic\_TCGA_basecounts.txt --maf $vcf\_$somatic\_TCGA_PORTAL_MAF.txt --filter_improper_pair 0 > $vcf\_$somatic\_basecounts.log 2>&1`;
         &checkResult($?, $progress, basename("$vcf") . "_getBaseCounts");
-  
+
+        if(! -e "$vcf\_$somatic\_TCGA_basecounts.txt"){
+            print "Something went wrong with " .  basename("$vcf") . " _getBaseCounts\n";
+            die 1;
+        } 
+
         $getBaseCountsRAN=1; 
     }
 

@@ -532,7 +532,7 @@ if(!-e "$output/progress/$pre\_$uID\_HC.done" || $ran_pr_glob){
 
 if(!-e "$output/progress/$pre\_$uID\_MAF_HC.done" || $ran_hc){
     sleep(2);
-    &generateMaf("$output/variants/snpsIndels/haplotypecaller/$pre\_HaplotypeCaller.vcf", 'haplotypecaller', "$hcj");
+    &generateMaf("$output/variants/snpsIndels/haplotypecaller/$pre\_HaplotypeCaller.vcf", 'haplotypecaller', "$hcj,$ssfj");
     `/bin/touch $output/progress/$pre\_$uID\_MAF_HC.done`;
 }
 

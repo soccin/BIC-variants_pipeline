@@ -79,11 +79,11 @@ with open(exacFile) as fp:
 extra_cols=list()
 if seqDb:
     extra_cols.append("TriNuc")
-if len(impact410):
+if len(impact410) or not "blank" in impact410File:
     extra_cols.append("IMPACT_410")
 if len(extra_cols) or exacDb:
     extra_cols.extend(["t_var_freq","n_var_freq"])
-    if exacDb: ## Removing ExAC_AF because Cyriac has this field already
+    if exacDb or not "blank" in exacFile: ## Removing ExAC_AF because Cyriac has this field already
         extra_cols.extend(["ExAC_AC","ExAC_AN"])
 else:
     print >> sys.stderr, "There are no annotations to add. Exiting."
@@ -119,7 +119,7 @@ with open(origMAFFile) as fp:
                 r["TriNuc"]=seqDb[pos]
             else:
                 r["TriNuc"]=""
-        if len(impact410):
+        if len(impact410) or not "blank" in impact410File:
             r["IMPACT_410"]="T" if pos in impact410 else "F"
 
         if r["t_depth"]=="":
@@ -128,7 +128,7 @@ with open(origMAFFile) as fp:
         r["t_var_freq"]=float(r["t_alt_count"])/float(r["t_depth"])
 
         if r["n_alt_count"]=="":
-            r["n_var_freq"]=""
+            r["n_var_freq"]="-"
         else:
             if r["n_depth"]=="":
                 r["n_depth"]=str(int(r["n_alt_count"])+int(r["n_ref_count"]))
@@ -137,7 +137,7 @@ with open(origMAFFile) as fp:
             else:
                 r["n_var_freq"]=0.0
 
-        if len(exacDb):
+        if len(exacDb) or not "blank" in exacFile:
             if pos in exacDb:
                 r["ExAC_AC"]=exacDb[pos]["AC"]
                 #r["ExAC_AF"]=exacDb[pos]["AF"]

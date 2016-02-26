@@ -6,6 +6,7 @@ use FindBin qw($Bin);
 use lib "$Bin/lib";
 use Schedule;
 use Cluster;
+use File::Basename;
 
 my ($patient, $pair, $group, $bamgroup, $config, $nosnps, $targets, $ug, $scheduler, $priority_project, $priority_group, $abra, $help, $step1);
 
@@ -87,6 +88,8 @@ my $SCALPEL = '';
 my $VIRMID = '';
 my $JAVA = '';
 my $FACETS = '';
+my $BCFTOOLS= '';
+my $TABIX = '';
 my $PYTHON = '';
 my $PERL = '';
 my $B37_FASTA = '';
@@ -108,6 +111,18 @@ while(<CONFIG>){
 	    die "CAN'T FIND GenomeAnalysisTK.jar IN $conf[1] $!";
 	}
 	$ABRA = $conf[1];
+    }
+    elsif($conf[0] =~ /tabix/i){
+        if(!-e "$conf[1]/bgzip"){
+            die "CAN'T FIND tabix IN $conf[1] $!";
+        }
+        $TABIX = $conf[1];
+    }
+    elsif($conf[0] =~ /bcftools/i){
+        if(!-e "$conf[1]/bcftools"){
+            die "CAN'T FIND bcftools IN $conf[1] $!";
+        }
+        $BCFTOOLS = $conf[1];
     }
     elsif($conf[0] =~ /facets/i){
         if(!-e "$conf[1]/facets"){
@@ -723,11 +738,9 @@ if(!-e "$output/progress/$pre\_$uID\_AR_INDEL_HC.done" || $ran_vr_indel_hc){
     $ran_ar_indel_hc = 1;   
 }
 
-if(!-e "$output/progress/$pre\_$uID\_HC_MAF.done" || $ran_ar_indel_hc){
-    sleep(2);
-    &generateMaf("$output/variants/snpsIndels/haplotypecaller/$pre\_HaplotypeCaller.vcf", 'haplotypecaller', "$arihcj");
-    `/bin/touch $output/progress/$pre\_$uID\_HC_MAF.done`;
-}
+# This runs regardless because it has a .done check in the function
+sleep(2);
+&generateMaf("$output/variants/snpsIndels/haplotypecaller/$pre\_HaplotypeCaller.vcf", 'haplotypecaller', "$arihcj,$ssfj", $ran_ar_indel_hc);
 
 if($ug){
     `/bin/mkdir -m 775 -p $output/variants/snpsIndels/unifiedgenotyper`;
@@ -1033,20 +1046,19 @@ if($pair){
         my $facetsSETUP_jid = '';
         my $facets_setup = 0;
         if($hasPair && (! -e "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_facets_SETUP.done" || $ssfj )) {
-            my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$data[0]\_facets_SETUP",  cpu => "4", mem => "20", job_hold => "$ssfj", cluster_out => "$output/progress/$pre\_$uID\_$data[0]\_facets_SETUP.log");
+            my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$data[0]\_$data[1]\_facets_SETUP_T",  cpu => "4", mem => "5", job_hold => "$ssfj", cluster_out => "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_facets_SETUP_T.log");
             my $standardParams = Schedule::queuing(%stdParams);
             my %addParams = (runtime => "30");
             my $additionalParams = Schedule::additionalParams(%addParams);
-            `$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{job_hold} $standardParams->{cluster_out} $additionalParams $Bin/facets/bin/GetBaseCounts --thread 4 --filter_improper_pair 0 --sort_output --fasta $REF_SEQ --vcf $DB_SNP --maq $MAPQ --baq $BASEQ --cov $MINCOV --bam $output/alignments/$pre\_indelRealigned_recal\_$data[0]\.bam --out $output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets/tmp/$pre\_indelRealigned_recal\_$data[0].dat`;
+            `$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{job_hold} $standardParams->{cluster_out} $additionalParams $Bin/facets/bin/GetBaseCounts --thread 4 --filter_improper_pair 0 --sort_output --fasta $REF_SEQ --vcf $DB_SNP --maq $MAPQ --baq $BASEQ --cov $MINCOV --bam $output/alignments/$pre\_indelRealigned_recal\_$data[1]\.bam --out $output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets/tmp/$pre\_indelRealigned_recal\_$data[1].dat`;
 	    
-            %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$data[1]\_facets_SETUP",  cpu => "4", mem => "20", job_hold => "$ssfj", cluster_out => "$output/progress/$pre\_$uID\_$data[1]\_facets_SETUP.log");
+            %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$data[0]\_$data[1]\_facets_SETUP_N",  cpu => "4", mem => "5", job_hold => "$ssfj", cluster_out => "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_facets_SETUP_N.log");
             my $standardParams2 = Schedule::queuing(%stdParams);
             %addParams = (runtime => "30");
             my $additionalParams2 = Schedule::additionalParams(%addParams);
-            `$standardParams2->{submit} $standardParams2->{job_name} $standardParams2->{cpu} $standardParams2->{mem} $standardParams2->{job_hold} $standardParams2->{cluster_out} $additionalParams2 $Bin/facets/bin/GetBaseCounts --thread 4 --filter_improper_pair 0 --sort_output --fasta $REF_SEQ --vcf $DB_SNP --maq $MAPQ --baq $BASEQ --cov $MINCOV --bam $output/alignments/$pre\_indelRealigned_recal\_$data[1]\.bam --out $output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets/tmp/$pre\_indelRealigned_recal\_$data[1].dat`;
-	    
-	    
-            %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$data[0]\_$data[1]\_merge_counts_facets_SETUP",  cpu => "4", mem => "18", job_hold => "$pre\_$uID\_$data[0]\_facets_SETUP,$pre\_$uID\_$data[1]\_facets_SETUP", cluster_out => "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_facets_SETUP.log");
+            `$standardParams2->{submit} $standardParams2->{job_name} $standardParams2->{cpu} $standardParams2->{mem} $standardParams2->{job_hold} $standardParams2->{cluster_out} $additionalParams2 $Bin/facets/bin/GetBaseCounts --thread 4 --filter_improper_pair 0 --sort_output --fasta $REF_SEQ --vcf $DB_SNP --maq $MAPQ --baq $BASEQ --cov $MINCOV --bam $output/alignments/$pre\_indelRealigned_recal\_$data[0]\.bam --out $output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets/tmp/$pre\_indelRealigned_recal\_$data[0].dat`;
+
+            %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$data[0]\_$data[1]\_merge_counts_facets_SETUP",  cpu => "4", mem => "18", job_hold => "$pre\_$uID\_$data[0]\_$data[1]\_facets_SETUP_N,$pre\_$uID\_$data[0]\_$data[1]\_facets_SETUP_T", cluster_out => "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_facets_SETUP.log");
             my $standardParams3 = Schedule::queuing(%stdParams);
             %addParams = (runtime => "30");
             my $additionalParams3 = Schedule::additionalParams(%addParams); 
@@ -1175,18 +1187,18 @@ my $standardParams = Schedule::queuing(%stdParams);
 `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams /usr/bin/rsync -azvP --exclude 'intFiles' --exclude 'progress' $curDir $rsync`;
 `/bin/touch $output/progress/$pre\_$uID\_RSYNC_2.done`;
 
-
 sub generateMaf{
-    my ($vcf, $type, $hold, $normal_sample, $tumor_sample) = @_;
+    my ($vcf, $type, $hold, $ran_hc, $normal_sample, $tumor_sample) = @_;
 
     my $n_sample = '';
     my $t_sample = '';
     if($normal_sample && $tumor_sample){
-	$n_sample = "-normal_sample $normal_sample";
-	$t_sample = "-tumor_sample $tumor_sample";
+        $n_sample = "-normal_sample $normal_sample";
+        $t_sample = "-tumor_sample $tumor_sample";
     }
 
-    my $jna = $vcf;
+    my $vcf_dir = dirname($vcf);
+    my $jna = basename($vcf);
     $jna =~ s/\//_/g;
 
     my $patientFile = "";
@@ -1194,23 +1206,71 @@ sub generateMaf{
         $patientFile = "-patient $patient";
     }
 
-    if($pair){
-	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$jna\_MAF_PAIRED", job_hold => "$hold", cpu => "2", mem => "2", cluster_out => "$output/progress/$pre\_$uID\_$jna\_MAF_PAIRED.log");
-	my $standardParams = Schedule::queuing(%stdParams);
-	### `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/generateMAF.pl -vcf $vcf -pairing $pair -species $species -config $config -caller $type $n_sample $t_sample $patientFile -align_dir $output/alignments -delete_temp`;
-	
-	if($type =~ /unifiedgenotyper|ug|haplotypecaller|hc/i){
-	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$jna\_MAF_UNPAIRED", job_hold => "$hold", cpu => "2", mem => "2", cluster_out => "$output/progress/$pre\_$uID\_$jna\_MAF_UNPAIRED.log");
-	    my $standardParams = Schedule::queuing(%stdParams);
-	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/generateMAF.pl -vcf $vcf -species $species -config $config -caller $type $patientFile -align_dir $output/alignments -delete_temp`;
-	}
+    if(! -e "$vcf.gz" || $ran_hc){
+        my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$jna\_bgzip", job_hold => "$hold", cpu => "1", mem => "5", cluster_out => "$output/progress/$pre\_$uID\_$jna\_bgzip.log");
+        my $standardParams = Schedule::queuing(%stdParams);
+        `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams "$TABIX/bgzip -cf $vcf > $vcf.gz"`;
+
+        %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$jna\_bgzip_index", job_hold => "$pre\_$uID\_$jna\_bgzip", cpu => "1", mem => "5", cluster_out => "$output/progress/$pre\_$uID\_$jna\_bgzip_index.log");
+        $standardParams = Schedule::queuing(%stdParams);
+        `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $BCFTOOLS/bcftools index $vcf.gz`;
     }
-    else{
-	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$jna\_MAF_UNPAIRED", job_hold => "$hold", cpu => "2", mem => "2", cluster_out => "$output/progress/$pre\_$uID\_$jna\_MAF_UNPAIRED.log");
-	my $standardParams = Schedule::queuing(%stdParams);
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/generateMAF.pl -vcf $vcf -species $species -config $config -caller $type $patientFile -align_dir $output/alignments -delete_temp`;
+    my @vcf_files;
+
+    # split and send each split thing to generate maf separately
+    foreach my $c (1..22, 'X', 'Y', "$CHR_M"){
+        if(!-e "$output/progress/$pre\_$uID\_$jna\_CHR$c\_MAF_UNPAIRED.done" || $ran_hc){
+            `/bin/mkdir -m 775 -p $vcf_dir/chrom_$c`;
+            my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$jna\_split_CHR_$c", job_hold => "$pre\_$uID\_$jna\_bgzip_index", cpu => "1", mem => "5", cluster_out => "$output/progress/$pre\_$uID\_$jna\_split_CHR$c.log");
+            my $standardParams = Schedule::queuing(%stdParams);
+            `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $BCFTOOLS/bcftools filter -r $c $vcf.gz -O v -o $vcf_dir/chrom_$c/$jna\_CHR$c.vcf`;
+
+            %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$jna\_CHR$c\_MAF_UNPAIRED", job_hold => "$pre\_$uID\_$jna\_split_CHR_$c", cpu => "4", mem => "10", cluster_out => "$output/progress/$pre\_$uID\_$jna\_CHR$c\_MAF_UNPAIRED.log");
+            $standardParams = Schedule::queuing(%stdParams);
+            `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/generateMAF.pl -vcf $vcf_dir/chrom_$c/$jna\_CHR$c.vcf -species $species -config $config -caller $type $patientFile -align_dir $output/alignments -delete_temp`;
+            `/bin/touch $output/progress/$pre\_$uID\_$jna\_CHR$c\_MAF_UNPAIRED.done`;
+            push @all_jids, "$pre\_$uID\_$jna\_CHR$c\_MAF_UNPAIRED";
+        }
+        push @vcf_files, "$vcf_dir/chrom_$c/$jna\_CHR$c.vcf";
     }
 
-    push @all_jids, "$pre\_$uID\_$jna\_MAF_UNPAIRED";
+    my $jid_holds = join(",", @all_jids);
+    my @merge_files = @vcf_files;
+    s/vcf$/vcf_UNPAIRED_TCGA_MAF.txt/g for @merge_files;
+    my $merge_files = join(" -i ", @merge_files);
+    my @merge_jids;
+
+    # MAKE A JOB HERE THAT WILL MERGE ALL THE MAF FILES FOR TCGA_MAF, TCGA_PORTAL_MAF, TCGA_PORTAL_MAF_fillout, and VEP_MAF
+    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$jna\_merge_TCGA_MAF", job_hold => "$jid_holds", cpu => "1", mem => "5", cluster_out => "$output/progress/$pre\_$uID\_$jna\_merge_TCGA_MAF.log");
+    my $standardParams = Schedule::queuing(%stdParams);
+    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/maf/mergeMaf.pl -i $merge_files -o $vcf_dir/$jna\_UNPAIRED_TCGA_MAF.txt`;
+    push @merge_jids, "$pre\_$uID\_$jna\_merge_TCGA_MAF";
+
+    $merge_files =~ s/UNPAIRED_TCGA_MAF.txt/UNPAIRED_TCGA_PORTAL_MAF.txt/g;
+    %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$jna\_merge_TCGA_PORTAL_MAF", job_hold => "$jid_holds", cpu => "1", mem => "5", cluster_out => "$output/progress/$pre\_$uID\_$jna\_merge_TCGA_PORTAL_MAF.log");
+    $standardParams = Schedule::queuing(%stdParams);
+    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/maf/mergeMaf.pl -i $merge_files -o $vcf_dir/$jna\_UNPAIRED_TCGA_PORTAL_MAF.txt`;
+    push @merge_jids, "$pre\_$uID\_$jna\_merge_TCGA_PORTAL_MAF";
+
+    $merge_files =~ s/UNPAIRED_TCGA_PORTAL_MAF.txt/UNPAIRED_VEP_MAF.txt/g;
+    %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$jna\_merge_VEP_MAF", job_hold => "$jid_holds", cpu => "1", mem => "5", cluster_out => "$output/progress/$pre\_$uID\_$jna\_merge_VEP_MAF.log");
+    $standardParams = Schedule::queuing(%stdParams);
+    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/maf/mergeMaf.pl -i $merge_files -o $vcf_dir/$jna\_UNPAIRED_VEP_MAF.txt`;
+    push @merge_jids, "$pre\_$uID\_$jna\_merge_VEP_MAF";
+
+    if($patient){
+        s/vcf_UNPAIRED_TCGA_MAF.txt$/vcf_UNPAIRED_TCGA_PORTAL_MAF_fillout.txt/g for @merge_files;
+        $merge_files = join(" -i ", @merge_files);
+        %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$jna\_merge_TCGA_PORTAL_MAF_fillout", job_hold => "$jid_holds", cpu => "1", mem => "5", cluster_out => "$output/progress/$pre\_$uID\_$jna\_merge_TCGA_PORTAL_MAF_fillout.log");
+        $standardParams = Schedule::queuing(%stdParams);
+        `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/maf/mergeMaf.pl -i $merge_files -o $vcf_dir/$jna\_UNPAIRED_TCGA_PORTAL_MAF_fillout.txt`;
+        push @merge_jids, "$pre\_$uID\_$jna\_merge_TCGA_PORTAL_MAF_fillout";
+    }
+
+    #Now to clean up!
+    my $merge_holds = join(",", @merge_jids);
+    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$jna\_cleanup", job_hold => "$merge_holds", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_$jna\_cleanup.log");
+    $standardParams = Schedule::queuing(%stdParams);
+    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams rm -rf $vcf_dir/chrom_* $vcf.gz $vcf.gz.csi`;
 
 }
