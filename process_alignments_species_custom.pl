@@ -216,7 +216,7 @@ while(<BGR>){
     my @bgr = split(/,/, $bgro[1]);
     foreach my $bg (@bgr){
 	if(!-e $bg){
-	    #die "file $bg does not exist";
+	    die "file $bg does not exist";
 	}
     }
 }

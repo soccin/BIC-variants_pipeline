@@ -976,7 +976,7 @@ sub processBams {
 		if(!-e "$output/intFiles/$samp/$lib/$run/$samp\_$lib\_$run\.bam"){
 		    my @currentTime = &getTime();
 		    print LOG "$currentTime[2]:$currentTime[1]:$currentTime[0], $currentTime[3]\/$currentTime[4]\/$currentTime[5]\tCan't locate $output/intFiles/$samp/$lib/$run/$samp\_$lib\_$run\.bam ...EXITING VARIANTS PIPELINE FOR PROJECT $pre";
-		    #die;
+		    die;
 		}
 		push @lBams, "I=$output/intFiles/$samp/$lib/$run/$samp\_$lib\_$run\.bam";
 	    }
@@ -1303,7 +1303,7 @@ sub generateGroupFile {
 	    foreach my $lib (keys %{$samp_libs_run{$sample}}){
 		if(!-e "$bamsggf{$sample}{$lib}"){
 		    print LOG "$currentTime[2]:$currentTime[1]:$currentTime[0], $currentTime[3]\/$currentTime[4]\/$currentTime[5]\tCAN'T LOCATE $bamsggf{$sample}{$lib}...EXITING VARIANTS PIPELINE FOR PROJECT $pre";
-		    #die;
+		    die;
 		}
 		###push @groupings, "$output/intFiles/$sample/$lib/$sample\_$lib\_MD.bam";
 		push @groupings, "$bamsggf{$sample}{$lib}";
