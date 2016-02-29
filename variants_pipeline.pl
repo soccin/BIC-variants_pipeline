@@ -1280,8 +1280,8 @@ sub mergeStats {
         `/bin/touch $output/progress/$pre\_$uID\_MERGE_CQS_LOGS.done`;
      }
 
-    my $svnURL = "svn+ssh://$uID\@cbio.mskcc.org/srv/svn/svn-private/bic/variants_pipeline/trunk";
-    my $svnRev = `svn info $svnURL | grep Revision | cut -d " " -f 2`;
+    #my $svnURL = "svn+ssh://$uID\@cbio.mskcc.org/srv/svn/svn-private/bic/variants_pipeline/trunk";
+    my $svnRev = `svn info $Bin | grep Revision | cut -d " " -f 2`;
     chomp $svnRev;
     my $qcpdfj = join(",", @qcpdf_jids);
    if(!-e "$output/progress/$pre\_$uID\_QCPDF.done" || $ran_merge){
