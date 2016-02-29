@@ -546,11 +546,14 @@ if($pair){
     `/bin/mkdir -m 775 -p $output/variants/snpsIndels/virmid`;
     `/bin/mkdir -m 775 -p $output/variants/snpsIndels/scalpel`;
     `/bin/mkdir -m 775 -p $output/variants/snpsIndels/strelka`;
+    `/bin/mkdir -m 775 -p $output/variants/snpsIndels/haplotect`;
 
     open(PAIR, "$pair") or die "Can't open $pair file";
     my %submitted_lns = ();
     my @mu_jids = ();
     my $ran_mutect_glob = 0;
+    my $hasPair = 0;
+    my $haplotect_run=0;
        while(<PAIR>){
 	chomp;
 	
@@ -559,6 +562,8 @@ if($pair){
 	if($data[0] =~ /^NA$/i || $data[1] =~ /^NA$/i){
 	    next;
 	}
+
+        $hasPair = 1;
 
 	my $ran_mutect = 0;
 	my $mutectj = '';
@@ -711,6 +716,24 @@ if($pair){
 	    ###`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PYTHON/python $Bin/maf/vcf2maf0.py -i $output/variants/snpsIndels/strelka/$data[0]\_$data[1]\_strelka/results/passed.somatic.indels.vcf -c strelka -o $output/variants/snpsIndels/strelka/$data[0]\_$data[1]\_strelka/results/$pre\_$data[0]\_$data[1]\_STRELKA_passed.somatic.indels_MAF.txt -n $data[0] -t $data[1]`;
 	    ###`/bin/touch $output/progress/$pre\_$uID\_$data[0]\_$data[1]\_STRELKA_RUN_MAF.done`;
 	    ###	}
+
+
+        if($hasPair && (!-e "$output/progress/$pre\_$uID\_HAPLOTECT.done" || $ran_mutect_glob || $ran_hc)){
+            sleep(2);
+            my $patientFile = "";
+            if($patient){
+                $patientFile = "-patient $patient";
+            }
+            my $muj = join(",", @mu_jids);
+            my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_HAPLOTECT", job_hold => "$hcj,$muj", cpu => "4", mem => "8", cluster_out => "$output/progress/$pre\_$uID\_HAPLOTECT.log");
+            my $standardParams = Schedule::queuing(%stdParams);
+            `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/haploTect_merge.pl -pair $pair -hc_vcf $output/variants/snpsIndels/haplotypecaller/$pre\_HaplotypeCaller.vcf -species $species -pre $pre -output $output/variants/snpsIndels/haplotect -mutect_dir $output/variants/snpsIndels/mutect -config $config $patientFile -align_dir $output/alignments/ -delete_temp`;
+
+            push @all_jids, "$pre\_$uID\_HAPLOTECT";
+            $haplotect_run = 1;
+            `/bin/touch $output/progress/$pre\_$uID\_HAPLOTECT.done`;
+            #$facets_haplotect_jid .= ",$pre\_$uID\_HAPLOTECT";
+        }
     }
     close PAIR;
 }

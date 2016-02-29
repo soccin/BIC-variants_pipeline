@@ -291,8 +291,11 @@ if($force_run || !-e "$progress/" . basename("$vcf") . "_oldmaf2tcgamaf.done"){
 }
 if($species !~ /hg19|b37|mm10|mouse|human/i) { ###   |mm10|mouse/i) { uncomment later!
     `cut -f-34 $vcf\_$somatic\_maf1.txt > $vcf\_$somatic\_TCGA_MAF.txt`;
-
     print "End of species ambiguous portion of the script.\n";
+
+    if($delete_temp){
+        &cleanUp;
+    }
     exit 0;
 }
 
@@ -450,6 +453,12 @@ sub checkResult{
 }
 
 if($delete_temp){
+#    `/bin/rm $vcf\_PAIRED.maf $vcf\_$somatic\_maf0.log $vcf\_$somatic\_maf0.txt $vcf\_$somatic\_maf1.txt $vcf\_$somatic\_maf1.log $vcf\_$somatic\_maf1.VEP $vcf\_UNPAIRED.maf $vcf\_$somatic\_UNFILTERED.txt $vcf\_$somatic\_UNFILTERED.txt $vcf\_$somatic\_rescued.txt $vcf\_$somatic\_maf0_rescue.log $output/exact.vcf $output/*.seq $output/maf_targets.* $output/blank $output/*basecounts.txt`;
+#    `/bin/rm -rf $output/tmp_$somatic $output/ref_$somatic $output/xtra_$somatic $output/bed_$somatic $output/progress_$somatic`;
+    &cleanUp;
+}
+
+sub cleanUp{
     `/bin/rm $vcf\_PAIRED.maf $vcf\_$somatic\_maf0.log $vcf\_$somatic\_maf0.txt $vcf\_$somatic\_maf1.txt $vcf\_$somatic\_maf1.log $vcf\_$somatic\_maf1.VEP $vcf\_UNPAIRED.maf $vcf\_$somatic\_UNFILTERED.txt $vcf\_$somatic\_UNFILTERED.txt $vcf\_$somatic\_rescued.txt $vcf\_$somatic\_maf0_rescue.log $output/exact.vcf $output/*.seq $output/maf_targets.* $output/blank $output/*basecounts.txt`;
     `/bin/rm -rf $output/tmp_$somatic $output/ref_$somatic $output/xtra_$somatic $output/bed_$somatic $output/progress_$somatic`;
 }

@@ -55,7 +55,7 @@ HELP
 
 ## Check species
 if($species !~ /hg19|b37|mm10/i){
-    print "Haplotect only works 100% with hg19/b37/mm10 for right now, otherwise we will print out the MAF before annotation and exit";
+    print "Haplotect only works 100% with hg19/b37/mm10 for right now, otherwise we will print out the MAF before annotation and exit\n\n";
 }
 
 ## Checking HC VCF
@@ -451,8 +451,13 @@ if($force_run || ! -e "$progress/$pre\_merge_maf.done"){
 } 
 
 if($species !~ /hg19|b37|mm10|mouse|human/i) { ###   |mm10|mouse/i) { uncomment later!
-    `cut -f-34 $output/$pre\_merge_maf0.txt > $vcf\_$somatic\_TCGA_MAF.txt`;
+    sleep(2);
+    print "cut -f-34 $output/$pre\_merge_maf0.txt > $output/$pre\_haplotect_TCGA_MAF.txt\n\n";
+    `cut -f-34 $output/$pre\_merge_maf0.txt > $output/$pre\_haplotect_TCGA_MAF.txt`;
     print "Must be human or mouse(mm10 )species to continue.\n";
+    if($delete_temp){
+        &cleanUp;
+    }
     exit 0;
 }
 
@@ -587,6 +592,24 @@ sub checkResult{
 ## Delete Temp Files
 ##
 if($delete_temp){
+    &cleanUp;
+    #my @files = glob( $output . '/*.maf[12]');
+    #for my $fname (@files) {
+    #    print "Removing: $fname \n";
+    #    unlink($fname);
+    #}
+    #@files = glob ("$output/exact.vcf $output/maf_targets.* $output/triNucleotide.seq $output/*mutect_calls* $output/blank $output/*Haplotype* $output/*maf2.txt* $output/ref $output/tmp $output/*basecounts.txt $output/$pre\_merge_maf0.VEP");
+
+
+    #for my $fname (@files) {
+    #    print "Removing: $fname \n";
+    #    unlink($fname);
+    #}
+    #`rm -r $output/xtra $output/bed $output/ref $output/tmp $progress`;
+
+}
+
+sub cleanUp{
     my @files = glob( $output . '/*.maf[12]');
     for my $fname (@files) {
         print "Removing: $fname \n";
@@ -600,7 +623,6 @@ if($delete_temp){
         unlink($fname);
     }
     `rm -r $output/xtra $output/bed $output/ref $output/tmp $progress`;
-
 }
 
 sub indices {
