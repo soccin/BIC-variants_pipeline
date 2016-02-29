@@ -8,7 +8,7 @@ use lib "$Bin/lib";
 use Schedule;
 use Cluster;
 
-my ($pair, $group, $bamgroup, $config, $nosnps, $targets, $ug, $scheduler, $priority_project, $priority_group, $abra, $help, $step1, $DB_SNP);
+my ($pair, $patient, $group, $bamgroup, $config, $nosnps, $targets, $ug, $scheduler, $priority_project, $priority_group, $abra, $help, $step1, $DB_SNP);
 
 my $pre = 'TEMP';
 my $output = "results";
@@ -20,6 +20,7 @@ my $rsync = "/ifs/solres/$uID";
 
 GetOptions ('pre=s' => \$pre,
 	    'pair=s' => \$pair,
+            'patient=s'=> \$patient,
 	    'group=s' => \$group,
 	    'config=s' => \$config,
 	    'targets=s' => \$targets,
@@ -215,7 +216,7 @@ while(<BGR>){
     my @bgr = split(/,/, $bgro[1]);
     foreach my $bg (@bgr){
 	if(!-e $bg){
-	    die "file $bg does not exist";
+	    #die "file $bg does not exist";
 	}
     }
 }
