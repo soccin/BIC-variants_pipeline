@@ -1783,7 +1783,7 @@ int main(int argc, const char * argv[])
         cd.GenerateCombinedTilingInterval(input_tiling_interval_file, output_dir + "/combined_tiling_interval.list", 60, 59, false);
         cd.GenerateCombinedTilingInterval(input_tiling_interval_annotated_file, output_dir + "/combined_tiling_interval.list.annotated", 60, 59, true);
         cd.GenerateCombinedTilingInterval(input_fp_interval_file, output_dir + "/combined_fp_tiling_interval.list", 60, 58, false);
-        cd.GenerateCombinedFpTilingGenotype(input_fp_genotype_file, output_dir + "combined_fp_tiling_genotypes.txt");
+        cd.GenerateCombinedFpTilingGenotype(input_fp_genotype_file, output_dir + "/combined_fp_tiling_genotypes.txt");
     }
     if(custom_only)
     {
