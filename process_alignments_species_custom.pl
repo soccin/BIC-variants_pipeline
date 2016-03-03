@@ -206,6 +206,7 @@ while(<CONFIG>){
 close CONFIG;
 
 
+my $ABRA_TARGETS = '';
 
 ### make sure all markdup bam files are there before proceeding
 open(BGR, "$bamgroup") || die "CAN'T OPEN GROUPING FILE OF MARKDUP BAMS $bamgroup $!";
@@ -241,7 +242,6 @@ my $multipleTargets = '';
 ###    }
 ###    $multipleTargets = "-L $target_bed --interval_set_rule INTERSECTION";
 ###}
-
 
 my $count = 0;
 my %inputFiles = ();
@@ -304,11 +304,11 @@ while(<IN>){
 	my $ran_abra = 0;
 	my $abraj = '';
 	if(!-e "$output/progress/$pre\_$uID\_$gpair[0]\_ABRA.done" || $step1){
-	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$gpair[0]\_ABRA", cpu => "12", mem => "60", cluster_out => "$output/progress/$pre\_$uID\_$gpair[0]\_ABRA.log");
+	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$gpair[0]\_ABRA", cpu => "12", mem => "90", cluster_out => "$output/progress/$pre\_$uID\_$gpair[0]\_ABRA.log");
 	    my $standardParams = Schedule::queuing(%stdParams);	    
-	    my %addParams = (scheduler => "$scheduler", runtime => "500", priority_project=> "$priority_project", priority_group=> "$priority_group", rerun => "1", iounits => "3");
+	    my %addParams = (scheduler => "$scheduler", runtime => "500", priority_project=> "$priority_project", priority_group=> "$priority_group", rerun => "1", iounits => "4");
 	    my $additionalParams = Schedule::additionalParams(%addParams);
-	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/abra_wrapper.pl -inBams $aiBams -outBams $aoBams -refSeq $REF_SEQ -bwaRef $BWA_INDEX -targets $Bin/targets/abra_hg19.bed -working $output/intFiles/abra_$gpair[0] -config $config -log $output/progress/$pre\_$uID\_$gpair[0]\_ABRA_WRAPPER.log`;
+	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/abra_wrapper.pl -inBams $aiBams -outBams $aoBams -refSeq $REF_SEQ -bwaRef $BWA_INDEX -targets $ABRA_TARGETS -working $output/intFiles/abra_$gpair[0] -config $config -log $output/progress/$pre\_$uID\_$gpair[0]\_ABRA_WRAPPER.log`;
 
 	    $abraj = "$pre\_$uID\_$gpair[0]\_ABRA";
 	    `/bin/touch $output/progress/$pre\_$uID\_$gpair[0]\_ABRA.done`;

@@ -244,15 +244,18 @@ close CONFIG;
 my $REF_SEQ = "$MM10_FASTA";
 my $BWA_INDEX = "$MM10_BWA_INDEX";
 my $DB_SNP = "$Bin/data/mm10/mm10_snp142.vcf";
+my $ABRA_TARGETS = '';
 
 if($species =~ /mm10_custom/i){
     $REF_SEQ = "$MM10_CUSTOM_FASTA";
     $BWA_INDEX = "$MM10_CUSTOM_BWA_INDEX";
+    $ABRA_TARGETS = '';
 }
 elsif($species =~ /mm9/i){
     $REF_SEQ = "$MM9_FASTA";
     $BWA_INDEX = "$MM9_BWA_INDEX";
     $DB_SNP = "";
+    $ABRA_TARGETS = '';
 }
 
 ### make sure all markdup bam files are there before proceeding
@@ -352,11 +355,11 @@ while(<IN>){
 	my $ran_abra = 0;
 	my $abraj = '';
 	if(!-e "$output/progress/$pre\_$uID\_$gpair[0]\_ABRA.done" || $step1){
-	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$gpair[0]\_ABRA", cpu => "12", mem => "60", cluster_out => "$output/progress/$pre\_$uID\_$gpair[0]\_ABRA.log");
+	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$gpair[0]\_ABRA", cpu => "12", mem => "90", cluster_out => "$output/progress/$pre\_$uID\_$gpair[0]\_ABRA.log");
 	    my $standardParams = Schedule::queuing(%stdParams);	    
-	    my %addParams = (scheduler => "$scheduler", runtime => "500", priority_project=> "$priority_project", priority_group=> "$priority_group", rerun => "1", iounits => "3");
+	    my %addParams = (scheduler => "$scheduler", runtime => "500", priority_project=> "$priority_project", priority_group=> "$priority_group", rerun => "1", iounits => "4");
 	    my $additionalParams = Schedule::additionalParams(%addParams);
-	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/abra_wrapper.pl -inBams $aiBams -outBams $aoBams -refSeq $REF_SEQ -bwaRef $BWA_INDEX -targets $Bin/targets/abra_hg19.bed -working $output/intFiles/abra_$gpair[0] -config $config -log $output/progress/$pre\_$uID\_$gpair[0]\_ABRA_WRAPPER.log`;
+	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/abra_wrapper.pl -inBams $aiBams -outBams $aoBams -refSeq $REF_SEQ -bwaRef $BWA_INDEX -targets $ABRA_TARGETS -working $output/intFiles/abra_$gpair[0] -config $config -log $output/progress/$pre\_$uID\_$gpair[0]\_ABRA_WRAPPER.log`;
 
 	    $abraj = "$pre\_$uID\_$gpair[0]\_ABRA";
 	    `/bin/touch $output/progress/$pre\_$uID\_$gpair[0]\_ABRA.done`;
