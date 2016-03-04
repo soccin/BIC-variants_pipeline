@@ -188,6 +188,7 @@ my $PERL = '';
 my $PYTHON = '';
 my $GATK = '';
 
+&verifyRequest($request);
 &verifyConfig($config);
 processInputs();
 
@@ -644,6 +645,49 @@ sub verifyConfig{
    }
     close CONFIG;
 }
+
+sub verifyRequest{
+    my $reqfile = shift;
+
+    my($pi,$piname,$inv,$invname,$pid,$runnum,$assay,$pipelines);  
+
+    open(REQUEST, "$reqfile") || die "Can't open config file $reqfile $!";
+    while(<REQUEST>){
+        chomp;
+
+        my @req = split(/:\s/, $_);
+        if($req[0] =~ /^PI$/i){
+            $pi = $req[1];
+        }
+        elsif($req[0] =~ /^PI_Name$/i){
+            $piname = $req[1];
+        }
+        elsif($req[0] =~ /^Investigator$/i){
+            $inv = $req[1];
+        }
+        elsif($req[0] =~ /^Investigator_Name$/i){
+            $invname = $req[1];
+        }
+        elsif($req[0] =~ /^ProjectID$/i){
+            $pid = $req[1];
+        }
+        elsif($req[0] =~ /^RunNumber$/i){
+            $runnum = $req[1];
+        }
+        elsif($req[0] =~ /^Assay$/i){
+            $assay = $req[1];
+        }
+        elsif($req[0] =~ /^Pipelines$/i){
+            $pipelines = $req[1];
+        }
+    }
+    close REQUEST;
+
+    if(!$pi || !$piname || !$inv || !$invname || !$pid || !$runnum || !$assay || !$pipelines) {
+        die "\nERROR: Info missing from request file.\n\nREQUIRED fields are:\n  PI\n  PI_Name\n  Investigator\n  Investigator_Name\n  ProjectID\n  RunNumber\n  Assay\n  Pipelines\n\n";
+    } 
+}
+
 
 sub processInputs {
     if($pre =~ /^\d+/){
