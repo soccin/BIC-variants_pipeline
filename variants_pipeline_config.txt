@@ -1,4 +1,4 @@
-ABRA			/opt/common/CentOS_6/abra/abra-0.91
+ABRA			/opt/common/CentOS_6/abra/abra-0.96
 BCFTOOLS		/opt/common/CentOS_6/bcftools/bcftools-1.2/bin
 BEDTOOLS		/opt/common/CentOS_6/bedtools/bedtools-2.22.0/bin
 BWA			/opt/common/CentOS_6/bwa/bwa-0.7.12
