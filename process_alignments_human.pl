@@ -1217,7 +1217,7 @@ sub generateMaf{
         $standardParams = Schedule::queuing(%stdParams);
         `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $BCFTOOLS/bcftools index $vcf.gz`;
 
-        $bgz_jid = "$pre\_$uID\_$jna\_bgzip";
+        $bgz_jid = "$pre\_$uID\_$jna\_bgzip,$pre\_$uID\_$jna\_bgzip_index";
     }
     my @vcf_files;
     my @chr_maf_jids;
