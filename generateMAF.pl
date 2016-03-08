@@ -323,7 +323,7 @@ if($force_run || !-e "$progress/" . basename("$vcf") . "_VEP.done"){
     print "\n$PERL/perl $VCF2MAF/maf2maf.pl --tmp-dir $output/tmp_$somatic --ref-fasta $output/ref_$somatic/$ref_base --ncbi-build $NCBI_BUILD --species $VEP_SPECIES --vep-forks 4 --vep-path $VEP --vep-data $VEP --retain-cols $VEP_COLUMN_NAMES --input-maf $vcf\_$somatic\_maf1.txt --output-maf $vcf\_$somatic\_maf1.VEP\n\n";
 
     `$PERL/perl $VCF2MAF/maf2maf.pl --tmp-dir $output/tmp_$somatic --ref-fasta $output/ref_$somatic/$ref_base --ncbi-build $NCBI_BUILD --species $VEP_SPECIES --vep-forks 4 --vep-path $VEP --vep-data $VEP --retain-cols $VEP_COLUMN_NAMES --input-maf $vcf\_$somatic\_maf1.txt --output-maf $vcf\_$somatic\_maf1.VEP > $vcf\_$somatic\_maf1.log 2>&1`;
-     &checkResult($?, $progress, basename("$vcf") . "_VEP");
+     &checkResult($?, $progress, basename("$vcf") . "_VEP", "$vcf\_$somatic\_maf1.VEP");
 }
 
 if($force_run || !-e "$progress/" . basename("$vcf") . "_TCGA_MAF.done"){
@@ -345,8 +345,6 @@ if($force_run || !-e "$progress/" . basename("$vcf") . "_pA_resortCols.done"){
 }
 
 if($patient && $bam_dir){
-    #if($pairing){
-    my $getBaseCountsRAN;
     if($force_run || !-e "$progress/" . basename("$vcf") . "_getBaseCounts.done"){
         print "Starting maf fillout\n";
         # open patient file, get each sample name:
@@ -377,18 +375,11 @@ if($patient && $bam_dir){
 
         print "$Bin/maf/fillout/GetBaseCountsMultiSample/GetBaseCountsMultiSample --fasta $REF_FASTA $bam_inputs --output $vcf\_$somatic\_TCGA_basecounts.txt --maf $vcf\_$somatic\_TCGA_PORTAL_MAF.txt --filter_improper_pair 0\n\n";
         `$Bin/maf/fillout/GetBaseCountsMultiSample/GetBaseCountsMultiSample --fasta $REF_FASTA $bam_inputs --output $vcf\_$somatic\_TCGA_basecounts.txt --maf $vcf\_$somatic\_TCGA_PORTAL_MAF.txt --filter_improper_pair 0 > $vcf\_$somatic\_basecounts.log 2>&1`;
-        &checkResult($?, $progress, basename("$vcf") . "_getBaseCounts");
+        &checkResult($?, $progress, basename("$vcf") . "_getBaseCounts", "$vcf\_$somatic\_TCGA_basecounts.txt");
 
-        if(! -e "$vcf\_$somatic\_TCGA_basecounts.txt"){
-            print "Something went wrong with " .  basename("$vcf") . " _getBaseCounts\n";
-            die 1;
         } 
 
-        $getBaseCountsRAN=1; 
-    }
-
-    if($getBaseCountsRAN || !-e "$progress/" . basename("$vcf") . "_dmp2portal.done"){
-
+    if( !-e "$progress/" . basename("$vcf") . "_dmp2portal.done"){
         if($pairing){
             print "$PYTHON/python $Bin/maf/fillout/dmp2portalMAF -s $species -m $vcf\_$somatic\_TCGA_PORTAL_MAF.txt -p $pairing -P $patient -c $caller -b $vcf\_$somatic\_TCGA_basecounts.txt -o $vcf\_$somatic\_TCGA_PORTAL_MAF_fillout.txt\n";    
             `$PYTHON/python $Bin/maf/fillout/dmp2portalMAF -s $species -m $vcf\_$somatic\_TCGA_PORTAL_MAF.txt -p $pairing -P $patient -c $caller -b $vcf\_$somatic\_TCGA_basecounts.txt -o $vcf\_$somatic\_TCGA_PORTAL_MAF_fillout.txt`;
@@ -436,19 +427,24 @@ if($species =~ /hg19|human|b37/){
         `/bin/touch $output/blank`;
         print "$PYTHON/python $Bin/maf/mergeExtraCols.py $output/triNucleotide.seq $output/blank $output/blank $vcf\_$somatic\_maf1.VEP > $vcf\_$somatic\_VEP_MAF.txt\n";
         `$PYTHON/python $Bin/maf/mergeExtraCols.py $output/triNucleotide.seq $output/blank $output/blank $vcf\_$somatic\_maf1.VEP > $vcf\_$somatic\_VEP_MAF.txt`;
-        &checkResult($?, $progress, basename("$vcf") . "_mergeExtraCols");
+        &checkResult($?, $progress, basename("$vcf") . "_mergeExtraCols", "$vcf\_$somatic\_VEP_MAF.txt");
     }
 }
 
 sub checkResult{
-    my ($status, $progress, $filebase) = @_;
+    my ($status, $progress, $filebase, $out_check) = @_;
 
-    if($status == 0) 
-    { 
+    if($out_check){
+        if($status == 0 && -e "$out_check" ) 
+        { 
+            `/bin/touch $progress/$filebase.done`;
+        }
+    } elsif ($status == 0){
         `/bin/touch $progress/$filebase.done`;
     } else{
-        exit "\nThere was an error with script $filebase!\n";
+        exit "\nThere was an error with script, or the output file was not created $filebase!\n";
     }
+    
 
 }
 

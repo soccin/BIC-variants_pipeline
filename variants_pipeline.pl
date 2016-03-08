@@ -651,7 +651,7 @@ sub verifyRequest{
 
     my($pi,$piname,$inv,$invname,$pid,$runnum,$assay,$pipelines);  
 
-    open(REQUEST, "$reqfile") || die "Can't open config file $reqfile $!";
+    open(REQUEST, "$reqfile") || die "Can't open request file $reqfile $!";
     while(<REQUEST>){
         chomp;
 
