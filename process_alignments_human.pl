@@ -326,7 +326,7 @@ elsif($species =~ /^hg19$/i){
     $OMNI_1000G = "$Bin/data/hg19/1000G_omni2.5.hg19.vcf";
     $PHASE1_SNPS_1000G = "$Bin/data/hg19/1000G_phase1.snps.high_confidence.hg19.vcf";
     $COSMIC = "$Bin/data/hg19/CosmicCodingMuts_v67_20131024.vcf";
-    $CHR_PRE = "chr";
+    $CHR_PRE = 'chr';
     $CHR_M = 'M';
     $ABRA_TARGETS = "$Bin/targets/abra/abra_target_regions_hg19.bed";
 }
@@ -346,6 +346,8 @@ elsif($species =~ /hg19_mm10/i){
 elsif($species !~ /b37|hg19|hybrid|b37_mm10|hg19_mm10/){
     die "ONLY SUPPORT FOR b37, hg19 or hybrd assemblies $!";
 }
+
+print "CHR_PRE: $CHR_PRE\n";
 
 ### make sure all markdup bam files are there before proceeding
 open(BGR, "$bamgroup") || die "CAN'T OPEN GROUPING FILE OF MARKDUP BAMS $bamgroup $!";
@@ -1227,7 +1229,7 @@ sub generateMaf{
             `/bin/mkdir -m 775 -p $vcf_dir/chrom_$c`;
             my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$jna\_split_CHR_$c", job_hold => $bgz_jid, cpu => "1", mem => "5", cluster_out => "$output/progress/$pre\_$uID\_$jna\_split_CHR$c.log");
             my $standardParams = Schedule::queuing(%stdParams);
-            `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $BCFTOOLS/bcftools filter -r $c $vcf.gz -O v -o $vcf_dir/chrom_$c/$jna\_CHR$c.vcf`;
+            `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $BCFTOOLS/bcftools filter -r $CHR_PRE$c $vcf.gz -O v -o $vcf_dir/chrom_$c/$jna\_CHR$c.vcf`;
 
             %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$jna\_CHR$c\_MAF_UNPAIRED", job_hold => "$pre\_$uID\_$jna\_split_CHR_$c", cpu => "4", mem => "10", cluster_out => "$output/progress/$pre\_$uID\_$jna\_CHR$c\_MAF_UNPAIRED.log");
             $standardParams = Schedule::queuing(%stdParams);
@@ -1250,21 +1252,18 @@ sub generateMaf{
         # MAKE A JOB HERE THAT WILL MERGE ALL THE MAF FILES FOR TCGA_MAF, TCGA_PORTAL_MAF, TCGA_PORTAL_MAF_fillout, and VEP_MAF
         my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$jna\_merge_TCGA_MAF", job_hold => "$jid_holds", cpu => "1", mem => "5", cluster_out => "$output/progress/$pre\_$uID\_$jna\_merge_TCGA_MAF.log");
         my $standardParams = Schedule::queuing(%stdParams);
-        print "$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/maf/mergeMaf.pl -i $merge_files -o $vcf_dir/$jna\_UNPAIRED_TCGA_MAF.txt\n";
         `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/maf/mergeMaf.pl -i $merge_files -o $vcf_dir/$jna\_UNPAIRED_TCGA_MAF.txt`;
         push @merge_jids, "$pre\_$uID\_$jna\_merge_TCGA_MAF";
 
         $merge_files =~ s/UNPAIRED_TCGA_MAF.txt/UNPAIRED_TCGA_PORTAL_MAF.txt/g;
         %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$jna\_merge_TCGA_PORTAL_MAF", job_hold => "$jid_holds", cpu => "1", mem => "5", cluster_out => "$output/progress/$pre\_$uID\_$jna\_merge_TCGA_PORTAL_MAF.log");
         $standardParams = Schedule::queuing(%stdParams);
-        print "$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/maf/mergeMaf.pl -i $merge_files -o $vcf_dir/$jna\_UNPAIRED_TCGA_PORTAL_MAF.txt\n";
         `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/maf/mergeMaf.pl -i $merge_files -o $vcf_dir/$jna\_UNPAIRED_TCGA_PORTAL_MAF.txt`;
         push @merge_jids, "$pre\_$uID\_$jna\_merge_TCGA_PORTAL_MAF";
 
         $merge_files =~ s/UNPAIRED_TCGA_PORTAL_MAF.txt/UNPAIRED_VEP_MAF.txt/g;
         %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$jna\_merge_VEP_MAF", job_hold => "$jid_holds", cpu => "1", mem => "5", cluster_out => "$output/progress/$pre\_$uID\_$jna\_merge_VEP_MAF.log");
         $standardParams = Schedule::queuing(%stdParams);
-        print "$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/maf/mergeMaf.pl -i $merge_files -o $vcf_dir/$jna\_UNPAIRED_VEP_MAF.txt\n";
         `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/maf/mergeMaf.pl -i $merge_files -o $vcf_dir/$jna\_UNPAIRED_VEP_MAF.txt`;
         push @merge_jids, "$pre\_$uID\_$jna\_merge_VEP_MAF";
 
@@ -1283,5 +1282,6 @@ sub generateMaf{
         my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$jna\_cleanup", job_hold => "$merge_holds", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_$jna\_cleanup.log");
         $standardParams = Schedule::queuing(%stdParams);
         `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams rm -rf $vcf_dir/chrom_* $vcf.gz $vcf.gz.csi`;
+        push @all_jids, "$pre\_$uID\_$jna\_cleanup";
     }
 }
