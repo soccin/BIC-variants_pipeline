@@ -279,7 +279,7 @@ generateGroupFile();
 callSNPS();
 
 my @qcpdf_jids = ();
-push @qcpdf_jids, "$pre\_$uID\_MERGE_MQ";
+push @qcpdf_jids, "$pre\_$uID\_MERGE_MQ", "$pre\_$uID\_CDNA_CONTAM";
 mergeStats();
 
 
