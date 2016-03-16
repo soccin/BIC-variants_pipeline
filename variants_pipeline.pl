@@ -65,7 +65,7 @@ use Cluster;
 ### NOTE: DO NOT SUBMIT THIS WRAPPER SCRIPT TO THE CLUSTER BECAUSE ONCOTATOR STEP WILL FAIL
 ###       DUE TO NODES NOT HAVING NETWORK ACCESS
 
-my ($map, $group, $pair, $patient, $config, $help, $nosnps, $removedups, $species, $ug, $scheduler, $abra, $targets, $mdOnly, $noMD, $DB_SNP, $noClip, $request);
+my ($map, $group, $pair, $patient, $config, $help, $nosnps, $removedups, $species, $ug, $scheduler, $abra, $targets, $mdOnly, $noMD, $DB_SNP, $noClip, $request, $allSomatic, $scalpel, $somaticsniper, $strelka, $varscan, $virmid);
 
 my $pre = 'TEMP';
 my $output = "results";
@@ -105,6 +105,12 @@ GetOptions ('map=s' => \$map,
 	    'bqTrim=s' => \$bqTrim,
  	    'db_snp|dbsnp=s' => \$DB_SNP,
 	    'species=s' => \$species,
+	    'allsomatic|allSomatic|all_somatic' => \$allSomatic,
+	    'scalpel' => \$scalpel,
+	    'somaticsniper' => \$somaticsniper,
+	    'strelka' => \$strelka,
+	    'varscan' => \$varscan,
+	    'virmid' => \$virmid,
             'request=s' => \$request) or exit(1);
 
 if(!$map || !$species || !$config || !$scheduler || !$targets || $help){
@@ -136,6 +142,7 @@ if(!$map || !$species || !$config || !$scheduler || !$targets || $help){
 	* BASEQTRIM: base quality to trim in reads (default: 3)
 	* DB_SNP: VCF file containing known sites of genetic variation (REQUIRED for species_custom; either here or in config)
 	* haplotypecaller is default; -ug || -unifiedgenotyper to also make unifiedgenotyper variant calls	
+	* ALLSOMATIC: run all somatic callers; mutect/haplotypecaller always run; otherwise -scalpel, -somaticsniper, -strelka, -varscan, -virmid to run them individually	
 HELP
 exit;
 }
@@ -187,6 +194,14 @@ my $JAVA = '';
 my $PERL = '';
 my $PYTHON = '';
 my $GATK = '';
+
+if($allSomatic){
+    $scalpel = 1;
+    $somaticsniper = 1;
+    $strelka = 1;
+    $varscan = 1;
+    $virmid = 1;
+}
 
 &verifyRequest($request);
 &verifyConfig($config);
@@ -371,6 +386,30 @@ sub reconstructCL {
 	$rCL .= " -db_snp $DB_SNP";
     }
 
+    if($allSomatic){
+	$rCL .= " -allSomatic";
+    }
+
+    if($scalpel){
+	$rCL .= " -scalpel";
+    }
+
+    if($somaticsniper){
+	$rCL .= " -somaticsniper";
+    }
+
+    if($strelka){
+	$rCL .= " -strelka";
+    }
+
+    if($varscan){
+	$rCL .= " -varscan";
+    }
+
+    if($virmid){
+	$rCL .= " -virmid";
+    }
+
     my $numArgs = $#ARGV + 1;
     foreach my $argnum (0 .. $#ARGV) {
 	$rCL .= " $ARGV[$argnum]";
@@ -424,44 +463,44 @@ sub verifyConfig{
 		die "CAN'T FIND bedtools IN $conf[1] $!";
 	    }
 	}
-	elsif($conf[0] =~ /oncotator/i){
-	    if(!-e "$conf[1]/oncotateMaf.sh"){
-		die "CAN'T FIND oncotateMaf.sh IN $conf[1] $!";
-	    }
-	}
 	elsif($conf[0] =~ /samtools/i){
 	    if(!-e "$conf[1]/samtools"){
 		die "CAN'T FIND samtools IN $conf[1] $!";
 	    }
 	}
-	elsif($conf[0] =~ /snpeff/i){
-	    if(!-e "$conf[1]/snpEff.jar"){
-		die "CAN'T FIND snpEff.jar IN $conf[1] $!";
-	    }
-	}
 	elsif($conf[0] =~ /somaticsniper/i){
 	    if(!-e "$conf[1]/bam-somaticsniper"){
-		die "CAN'T FIND bam-somaticsniper IN $conf[1] $!";
+		if($somaticsniper){
+		    die "CAN'T FIND bam-somaticsniper IN $conf[1] $!";
+		}
 	    }
 	}
 	elsif($conf[0] =~ /varscan/i){
 	    if(!-e "$conf[1]/VarScan.jar"){
-		die "CAN'T FIND VarScan.jar IN $conf[1] $!";
+		if($varscan){
+		    die "CAN'T FIND VarScan.jar IN $conf[1] $!";
+		}
 	    }
 	}
 	elsif($conf[0] =~ /strelka/i){
 	    if(!-e "$conf[1]/bin/configureStrelkaWorkflow.pl"){
-		die "CAN'T FIND bin/configureStrelkaWorkflow.pl IN $conf[1] $!";
+		if($strelka){
+		    die "CAN'T FIND bin/configureStrelkaWorkflow.pl IN $conf[1] $!";
+		}
 	    }
 	}
 	elsif($conf[0] =~ /scalpel/i){
 	    if(!-e "$conf[1]/scalpel"){
-		die "CAN'T FIND scalpel IN $conf[1] $!";
+		if($scalpel){
+		    die "CAN'T FIND scalpel IN $conf[1] $!";
+		}
 	    }
 	}
 	elsif($conf[0] =~ /virmid/i){
 	    if(!-e "$conf[1]/Virmid.jar"){
-		die "CAN'T FIND Virmid.jar IN $conf[1] $!";
+		if($virmid){
+		    die "CAN'T FIND Virmid.jar IN $conf[1] $!";
+		}
 	    }
 	}
 	elsif($conf[0] =~ /perl/i){
@@ -1398,6 +1437,27 @@ sub callSNPS {
 	$run_step1 = '-step1';
     }
 
+    my $somaticCallers = '';
+    if($allSomatic){
+	$somaticCallers .= " -allSomatic";
+    }
+    if($scalpel){
+	$somaticCallers .= " -scalpel";
+    }
+    if($somaticsniper){
+	$somaticCallers .= " -somaticsniper";
+    }
+    if( $strelka){
+	$somaticCallers .= " -strelka";
+    }
+    if( $varscan){
+	$somaticCallers .= " -varscan";
+    }
+    if($virmid){
+	$somaticCallers .= " -virmid";
+    }
+	
+
     my @currentTime = &getTime();
     print LOG "$currentTime[2]:$currentTime[1]:$currentTime[0], $currentTime[3]\/$currentTime[4]\/$currentTime[5]\tSNP CALLING RUNNING\n";
     ###my %addParams = (scheduler => "$scheduler", runtime => "50", priority_project=> "$priority_project", priority_group=> "$priority_group", rerun => "1", iounits => "1");
@@ -1407,17 +1467,17 @@ sub callSNPS {
     
     if($species =~ /b37|hg19|hybrid/i){
 	###`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/process_alignments_human.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra $run_step1 $patientFile -species $species`;
-	`$Bin/process_alignments_human.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra $run_step1 $patientFile -species $species -rsync $rsync > $output/progress/process_alignments_human.log 2>&1`;
+	`$Bin/process_alignments_human.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra $run_step1 $patientFile -species $species -rsync $rsync $somaticCallers > $output/progress/process_alignments_human.log 2>&1`;
     }
     elsif($species =~ /mm9|^mm10$|mm10_custom/i){
 	###`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/process_alignments_mouse.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group -species $species $run_abra $run_step1`;
-	`$Bin/process_alignments_mouse.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra $run_step1 -species $species -rsync $rsync > $output/progress/process_alignments_mouse.log 2>&1`;
+	`$Bin/process_alignments_mouse.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra $run_step1 -species $species -rsync $rsync $somaticCallers > $output/progress/process_alignments_mouse.log 2>&1`;
     }
     elsif($species =~ /species_custom/i){
 	###`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/process_alignments_species_custom.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra $run_step1`;
-	`$Bin/process_alignments_species_custom.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra $run_step1 -rsync $rsync > $output/progress/process_alignments_species_custom.log 2>&1`;
+	`$Bin/process_alignments_species_custom.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra $run_step1 -rsync $rsync $somaticCallers > $output/progress/process_alignments_species_custom.log 2>&1`;
     }
     elsif($species =~ /dm3/i){
-	###`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/process_alignments_dm3.pl -pre $pre -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra $run_step1 -species $species -rsync $rsync > $output/progress/process_alignments_drosophila.log 2>&1`;
+	###`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/process_alignments_dm3.pl -pre $pre -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra $run_step1 -species $species -rsync $rsync $somaticCallers > $output/progress/process_alignments_drosophila.log 2>&1`;
     }
 }
