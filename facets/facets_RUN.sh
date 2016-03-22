@@ -1,10 +1,11 @@
 #! /bin/bash
 
-FACETS=$1
-DIR=$2
-TAG=$3
-FILE=$4
-GENOME=$5
+FACETS_SUITE=$1
+FACETS_LIB=$2
+DIR=$3
+TAG=$4
+FILE=$5
+GENOME=$6
 PC=300
 C=100
 
@@ -17,7 +18,7 @@ do
 
     rm $DIR/*
 
-    $FACETS/facets doFacets -D $DIR -t $TAG -f $FILE -g $GENOME -G T -pc $PC -c $C
+    $FACETS_SUITE/facets doFacets -D $DIR -t $TAG -f $FILE -g $GENOME -G T -pc $PC -c $C -r $FACETS_LIB
      
     if [ -e $DIR"/"$TAG"_hisens.CNCF.png" ]
     then

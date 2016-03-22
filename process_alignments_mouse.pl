@@ -85,7 +85,8 @@ my $ABRA = '';
 my $BCFTOOLS = '';
 my $GATK = '';
 my $PICARD = '';
-my $FACETS = '';
+my $FACETS_LIB = '';
+my $FACETS_SUITE = '';
 my $MUTECT = '';
 my $SAMTOOLS = '';
 my $SOMATIC_SNIPER = '';
@@ -140,11 +141,17 @@ while(<CONFIG>){
 	}
 	$MUTECT = $conf[1];
     }
-    elsif($conf[0] =~ /facets/i){
+    elsif($conf[0] =~ /facets_suite/i){
         if(!-e "$conf[1]/facets"){
-            die "CAN'T FIND facets IN $conf[1] $!";
+            die "CAN'T FIND facets_suite IN $conf[1] $!";
         }
-        $FACETS = $conf[1];
+        $FACETS_SUITE = $conf[1];
+    }
+    elsif($conf[0] =~ /facets_lib/i){
+        if(!-e "$conf[1]/facets"){
+            die "CAN'T FIND facets_lib IN $conf[1] $!";
+        }
+        $FACETS_LIB = $conf[1];
     }
     elsif($conf[0] =~ /picard/i){
 	if(!-e "$conf[1]/picard.jar"){
@@ -849,7 +856,7 @@ if($pair){
             my $standardParams = Schedule::queuing(%stdParams);
             my %addParams = (runtime => "10");
             my $additionalParams = Schedule::additionalParams(%addParams);
-            `$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{job_hold} $standardParams->{cluster_out} $additionalParams $Bin/facets/facets_RUN.sh $FACETS $output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets $data[0]\_$data[1] $output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets/tmp/$pre\_countsMerged_$data[0]\_$data[1].dat $species 300 100`;
+            `$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{job_hold} $standardParams->{cluster_out} $additionalParams $Bin/facets/facets_RUN.sh $FACETS_SUITE $FACETS_LIB $output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets $data[0]\_$data[1] $output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets/tmp/$pre\_countsMerged_$data[0]\_$data[1].dat $species 300 100`;
             push @facets_jid, "$pre\_$uID\_$data[0]\_$data[1]\_facets_RUN" ;
             $facets_run = 1;
             `/bin/touch $output/progress/$pre\_$uID\_$data[0]\_$data[1]\_facets_RUN.done`;
@@ -905,7 +912,7 @@ if($pair){
 
         my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_join_maf", job_hold => "$facets_haplotect_jid", cpu => "4", mem => "8", cluster_out => "$output/progress/$pre\_$uID\_join_maf.log");
         my $standardParams = Schedule::queuing(%stdParams);
-        `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $FACETS/facets mafAnno -m $output/variants/snpsIndels/haplotect/$pre\_haplotect_VEP_MAF.txt -f $output/variants/copyNumber/facets/facets_mapping.txt -o $output/variants/$pre\_CMO_MAF.txt`;
+        `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $FACETS_SUITE/facets mafAnno -m $output/variants/snpsIndels/haplotect/$pre\_haplotect_VEP_MAF.txt -f $output/variants/copyNumber/facets/facets_mapping.txt -o $output/variants/$pre\_CMO_MAF.txt`;
         `/bin/touch $output/progress/$pre\_$uID\_join_maf.done`;
         push @all_jids, "$pre\_$uID\_join_maf";
     }
