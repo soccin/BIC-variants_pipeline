@@ -557,17 +557,17 @@ if($pair){
     my $ran_mutect_glob = 0;
     my $hasPair = 0;
     my $haplotect_run=0;
-       while(<PAIR>){
+    while(<PAIR>){
 	chomp;
 	
 	my @data = split(/\s+/, $_);
-
+	
 	if($data[0] =~ /^NA$/i || $data[1] =~ /^NA$/i){
 	    next;
 	}
-
+	
         $hasPair = 1;
-
+	
 	`/bin/mkdir -m 775 -p $output/variants/snpsIndels/mutect`;
 	my $ran_mutect = 0;
 	my $mutectj = '';
@@ -731,27 +731,26 @@ if($pair){
 	    ###if(!-e "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_VARSCAN_SOMATIC_MAF.done" || $ran_varscan_somatic){
 	    ###`/common/sge/bin/lx24-amd64/qsub -N $pre\_$uID\_$data[0]\_$data[1]\_VARSCAN_SOMATIC_MAF -hold_jid $pre\_$uID\_$data[0]\_$data[1]\_VARSCAN_SOMATIC -pe alloc 1 -l virtual_free=2G -q lau.q,lcg.q,nce.q $Bin/qCMD $Bin/maf/vcf2maf0.py -i $output/variants/varscan/$pre\_$data[0]\_$data[1]\_varscan_somatic\.snp.vcf -c varscan -o $output/variants/varscan/$pre\_$data[0]\_$data[1]\_varscan_somatic\.snp_MAF.txt -n $data[0] -t $data[1]`;
 	}
-
-
-
-        if($hasPair && (!-e "$output/progress/$pre\_$uID\_HAPLOTECT.done" || $ran_mutect_glob || $ran_hc)){
-            sleep(2);
-            my $patientFile = "";
-            if($patient){
-                $patientFile = "-patient $patient";
-            }
-            my $muj = join(",", @mu_jids);
-            my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_HAPLOTECT", job_hold => "$hcj,$muj", cpu => "4", mem => "8", cluster_out => "$output/progress/$pre\_$uID\_HAPLOTECT.log");
-            my $standardParams = Schedule::queuing(%stdParams);
-            `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/haploTect_merge.pl -pair $pair -hc_vcf $output/variants/snpsIndels/haplotypecaller/$pre\_HaplotypeCaller.vcf -species $species -pre $pre -output $output/variants/snpsIndels/haplotect -mutect_dir $output/variants/snpsIndels/mutect -config $config $patientFile -align_dir $output/alignments/ -delete_temp`;
-
-            push @all_jids, "$pre\_$uID\_HAPLOTECT";
-            $haplotect_run = 1;
-            `/bin/touch $output/progress/$pre\_$uID\_HAPLOTECT.done`;
-            #$facets_haplotect_jid .= ",$pre\_$uID\_HAPLOTECT";
-        }
     }
     close PAIR;
+    
+    
+    if($hasPair && (!-e "$output/progress/$pre\_$uID\_HAPLOTECT.done" || $ran_mutect_glob || $ran_hc)){
+	sleep(2);
+	my $patientFile = "";
+	if($patient){
+	    $patientFile = "-patient $patient";
+	}
+	my $muj = join(",", @mu_jids);
+	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_HAPLOTECT", job_hold => "$hcj,$muj", cpu => "4", mem => "8", cluster_out => "$output/progress/$pre\_$uID\_HAPLOTECT.log");
+	my $standardParams = Schedule::queuing(%stdParams);
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/haploTect_merge.pl -pair $pair -hc_vcf $output/variants/snpsIndels/haplotypecaller/$pre\_HaplotypeCaller.vcf -species $species -pre $pre -output $output/variants/snpsIndels/haplotect -mutect_dir $output/variants/snpsIndels/mutect -config $config $patientFile -align_dir $output/alignments/ -delete_temp`;
+	
+	push @all_jids, "$pre\_$uID\_HAPLOTECT";
+	$haplotect_run = 1;
+	`/bin/touch $output/progress/$pre\_$uID\_HAPLOTECT.done`;
+	#$facets_haplotect_jid .= ",$pre\_$uID\_HAPLOTECT";
+    }
 }
 
 my $allj2 = join(",", @all_jids);
