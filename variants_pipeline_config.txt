@@ -6,7 +6,7 @@ CUTADAPT		/opt/common/CentOS_6/cutadapt/cutadapt-1.6/bin
 DELLY			/opt/common/CentOS_6/delly/delly_v0.6.1
 dRANGER			/opt/common/CentOS_6/dranger/dRanger_annotate_v2.0
 FACETS_SUITE				/opt/common/CentOS_6/facets-suite/facets-suite-0.9.7
-FACETS_LIB				/opt/common/CentOS_6/facets_lib/0.3.7
+FACETS_LIB				/opt/common/CentOS_6/facets_lib/facets-0.3.22
 GATK			/opt/common/CentOS_6/gatk/GenomeAnalysisTK-3.4-0-g7e26428
 JAVA			/opt/common/CentOS_6/java/jdk1.7.0_75/bin
 MCR			/opt/common/CentOS_6/matlab/v81
