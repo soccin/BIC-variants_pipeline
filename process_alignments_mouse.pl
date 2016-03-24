@@ -950,23 +950,27 @@ sub generateMaf{
     }
 
     my $bgz_jid = '';
+    my $bgzipped = 0;
 
-    if(! -e "$vcf.gz" || $ran_hc){
-        my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$jna\_bgzip", job_hold => "$hold", cpu => "1", mem => "5", cluster_out => "$output/progress/$pre\_$uID\_$jna\_bgzip.log");
-        my $standardParams = Schedule::queuing(%stdParams);
-        `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams "$TABIX/bgzip -cf $vcf > $vcf.gz"`;
-
-        %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$jna\_bgzip_index", job_hold => "$pre\_$uID\_$jna\_bgzip", cpu => "1", mem => "5", cluster_out => "$output/progress/$pre\_$uID\_$jna\_bgzip_index.log");
-        $standardParams = Schedule::queuing(%stdParams);
-        `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $BCFTOOLS/bcftools index $vcf.gz`;
-
-        $bgz_jid = "$pre\_$uID\_$jna\_bgzip,$pre\_$uID\_$jna\_bgzip_index";
-    }
     my @vcf_files;
     my @chr_maf_jids;
     # split and send each split thing to generate maf separately
     foreach my $c (1..19, 'X', 'Y', "$CHR_M"){
-        if(!-e "$output/progress/$pre\_$uID\_$jna\_CHR$c\_MAF_UNPAIRED.done" || $ran_hc){
+        my $numLines = `grep -c "^$CHR_PREFIX$c" $vcf`;
+        if( $numLines > 0 && ( !-e "$output/progress/$pre\_$uID\_$jna\_CHR$c\_MAF_UNPAIRED.done" || $ran_hc )){
+
+            if((! -e "$vcf.gz" || $ran_hc) && !$bgzipped){
+                $bgzipped = 1;
+                my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$jna\_bgzip", job_hold => "$hold", cpu => "1", mem => "5", cluster_out => "$output/progress/$pre\_$uID\_$jna\_bgzip.log");
+                my $standardParams = Schedule::queuing(%stdParams);
+                `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams "$TABIX/bgzip -cf $vcf > $vcf.gz"`;
+
+                 %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$jna\_bgzip_index", job_hold => "$pre\_$uID\_$jna\_bgzip", cpu => "1", mem => "5", cluster_out => "$output/progress/$pre\_$uID\_$jna\_bgzip_index.log");
+                 $standardParams = Schedule::queuing(%stdParams);
+                 `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $BCFTOOLS/bcftools index $vcf.gz`;
+
+                 $bgz_jid = "$pre\_$uID\_$jna\_bgzip,$pre\_$uID\_$jna\_bgzip_index";
+            }
             `/bin/mkdir -m 775 -p $vcf_dir/chrom_$c`;
             my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$jna\_split_CHR_$c", job_hold => $bgz_jid, cpu => "1", mem => "5", cluster_out => "$output/progress/$pre\_$uID\_$jna\_split_CHR$c.log");
             my $standardParams = Schedule::queuing(%stdParams);
@@ -978,8 +982,9 @@ sub generateMaf{
             `/bin/touch $output/progress/$pre\_$uID\_$jna\_CHR$c\_MAF_UNPAIRED.done`;
             push @all_jids, "$pre\_$uID\_$jna\_CHR$c\_MAF_UNPAIRED";
             push @chr_maf_jids, "$pre\_$uID\_$jna\_CHR$c\_MAF_UNPAIRED";
+            push @vcf_files, "$vcf_dir/chrom_$c/$jna\_CHR$c.vcf";
         }
-        push @vcf_files, "$vcf_dir/chrom_$c/$jna\_CHR$c.vcf";
+        #push @vcf_files, "$vcf_dir/chrom_$c/$jna\_CHR$c.vcf";
         #push @chr_maf_jids, "$pre\_$uID\_$jna\_CHR$c\_MAF_UNPAIRED";
     }
     

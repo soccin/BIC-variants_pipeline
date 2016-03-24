@@ -21,8 +21,8 @@ SOMATICSNIPER		/opt/common/CentOS_6/somaticsniper/somatic-sniper-1.0.4
 STRELKA			/opt/common/CentOS_6/strelka/strelka_1.0.11
 TABIX			/opt/common/CentOS_6/samtools/samtools-1.2/htslib-1.2.1
 VARSCAN			/opt/common/CentOS_6/varscan/v2.3.7
-VCF2MAF			/opt/common/CentOS_6/vcf2maf/v1.6.3
-VEP                     /opt/common/CentOS_6/vep/v82
+VCF2MAF			/opt/common/CentOS_6/vcf2maf/v1.6.6
+VEP                     /opt/common/CentOS_6/vep/v83
 VIRMID			/opt/common/CentOS_6/virmid/Virmid-1.1.1
 B37_BWA_INDEX		/ifs/depot/assemblies/H.sapiens/b37/index/bwa/0.7.12/b37.fasta
 B37_FASTA		/ifs/depot/assemblies/H.sapiens/b37/b37.fasta		
