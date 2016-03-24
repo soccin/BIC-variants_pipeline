@@ -3,7 +3,8 @@
 import sys
 import csv
 from itertools import izip
-#from util import *
+import argparse
+import os
 
 def cvtChrom(x):
     if x.isdigit():
@@ -32,62 +33,92 @@ def vcf2mafEvent(chrom,pos,ref,alt):
         refN="-"
         altN=altN[1:]
     return (chrom,startPos,endPos,refN,altN)
-
-
-
-if len(sys.argv)!=5:
-    print >>sys.stderr, "Usage: mergeExtraCols.py TriNucFile IMPACT410 ExAC OrigMAF"
-
-seqDataFile=sys.argv[1]
-impact410File=sys.argv[2]
-exacFile=sys.argv[3]
-origMAFFile=sys.argv[-1]
-
-seqDb=dict()
-with open(seqDataFile) as fp:
-    for line in fp:
-        (tag, seq)=line.strip().split()
-        if len(seq)==3:
+    
+def populateSeqFileDB(seqF):
+    seqDb=dict()
+    with open(seqF) as fp:
+        for line in fp:
+            (tag, seq)=line.strip().split()
+            #if len(seq)==3:
             (chrom,region)=tag.split(":")
             (start,end)=[int(x) for x in region.split("-")]
             pos=end-1
             seqDb["%s:%d-%d" % (chrom,pos,pos)]=seq.upper()
+    return seqDb
 
-impact410=set()
-with open(impact410File) as fp:
-    for line in fp:
-        impact410.add(line.strip())
+def populateTargedDB(fname):
+    tsites=set()
+    with open(fname) as fp:
+        for line in fp:
+            tsites.add(line.strip())
+    return tsites
 
+#seqDataFil=list()
+#targetedFiles=list()
+#exacFile=""
+#origMAFFile=""
+
+parser = argparse.ArgumentParser(description="Merge Extra Columns onto MAF")
+parser.add_argument('--triNuc',nargs="*",help="TriNucleotide File")
+parser.add_argument('--targeted',nargs="*",help="Targeted Regions file (IMPACT410)")
+parser.add_argument('--exac',help="ExAC File")
+parser.add_argument('--maf',help="Maf to add columns to")
+args = parser.parse_args()
+
+if not args.maf:
+    print "You are missing the maf file. "
+    parser.print_help()
+    exit(1)
+
+seqDataFile=args.triNuc
+targetedFiles=args.targeted
+exacFile=args.exac
+origMAFFile=args.maf
+
+## Gather triNuc info
+triNucFilenames = list()
+seqDbList = list()
+if seqDataFile:
+    for seqF in seqDataFile:
+        triNucFilenames.append(os.path.basename(seqF).split(".")[0])
+        seqDbList.append(populateSeqFileDB(seqF).copy())
+
+## Gather targeted info
+targetedList = list()
+targetedFilenames = list()
+if targetedFiles:
+    for targetF in targetedFiles:
+        targetedFilenames.append(os.path.basename(targetF).split(".")[1])
+        targetedList.append(populateTargedDB(targetF).copy())
+
+## Populate exacDb
 exacDb=dict()
-with open(exacFile) as fp:
-    line=fp.readline()
-    while line.startswith("##"):
+if exacFile:
+    with open(exacFile) as fp:
         line=fp.readline()
-    header=line[1:].strip().split()
-    cin=csv.DictReader(fp,fieldnames=header,delimiter="\t")
-    for r in cin:
-        if r["INFO"]!=".":
-            info=dict()
-            parseInfo=[x.split("=") for x in r["INFO"].split(";")]
-            for ((key,val),cType) in izip(parseInfo,(int,int,float)):
-                info[key]=cType(val)
+        while line.startswith("##"):
+            line=fp.readline()
+        header=line[1:].strip().split()
+        cin=csv.DictReader(fp,fieldnames=header,delimiter="\t")
+        for r in cin:
+            if r["INFO"]!=".":
+                info=dict()
+                parseInfo=[x.split("=") for x in r["INFO"].split(";")]
+                for ((key,val),cType) in izip(parseInfo,(int,int,float)):
+                    info[key]=cType(val)
 
-            (chrom,start,end,ref,alt)=vcf2mafEvent(r["CHROM"],r["POS"],r["REF"],r["ALT"])
+                (chrom,start,end,ref,alt)=vcf2mafEvent(r["CHROM"],r["POS"],r["REF"],r["ALT"])
 
-            exacDb["chr%s:%s-%s" % (chrom,start,end)]=info
+                exacDb["chr%s:%s-%s" % (chrom,start,end)]=info
 
+## create extra cols depending on what was given as input, yo!
 extra_cols=list()
-if seqDb:
-    extra_cols.append("TriNuc")
-if len(impact410) or not "blank" in impact410File:
-    extra_cols.append("IMPACT_410")
-if len(extra_cols) or exacDb:
-    extra_cols.extend(["t_var_freq","n_var_freq"])
-    if exacDb or not "blank" in exacFile: ## Removing ExAC_AF because Cyriac has this field already
-        extra_cols.extend(["ExAC_AC","ExAC_AN"])
-else:
-    print >> sys.stderr, "There are no annotations to add. Exiting."
-    sys.exit()
+extra_cols.extend(triNucFilenames)
+extra_cols.extend(targetedFilenames)
+extra_cols.extend(["t_var_freq","n_var_freq"])
+
+if exacFile:
+    extra_cols.extend(["ExAC_AC","ExAC_AN"])
 
 events=dict()
 with open(origMAFFile) as fp:
@@ -114,13 +145,18 @@ with open(origMAFFile) as fp:
         r["POS"]=pos
         r["TAG"]=tag
         r["LABEL"]=label
-        if seqDb:
-            if pos in seqDb:
-                r["TriNuc"]=seqDb[pos]
-            else:
-                r["TriNuc"]=""
-        if len(impact410) or not "blank" in impact410File:
-            r["IMPACT_410"]="T" if pos in impact410 else "F"
+
+        if seqDbList:
+            for k in range(0,len(triNucFilenames)):
+                currentSeqDb = seqDbList[k]
+                if pos in currentSeqDb:
+                    r[triNucFilenames[k]]=currentSeqDb[pos]
+                else:
+                    r[triNucFilenames[k]]=""
+                    
+        if targetedFilenames:
+            for j in range(0,len(targetedFilenames)):
+                r[targetedFilenames[j]]="T" if pos in targetedList[j] else "F"
 
         if r["t_depth"]=="":
             print >>sys.stderr, label
@@ -137,7 +173,7 @@ with open(origMAFFile) as fp:
             else:
                 r["n_var_freq"]=0.0
 
-        if len(exacDb) or not "blank" in exacFile:
+        if exacFile:
             if pos in exacDb:
                 r["ExAC_AC"]=exacDb[pos]["AC"]
                 #r["ExAC_AF"]=exacDb[pos]["AF"]

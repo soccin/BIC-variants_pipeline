@@ -104,7 +104,7 @@ if($patient) {
         while(<PATIENT>) {
             chomp;
             my @patient=split(/\s+/,$_);
-            my $bamFile = `find $bam_dir -name "Proj_*_indelRealigned_recal_$patient[$sID_index].bam"`;
+            my $bamFile = `find -L $bam_dir -name "Proj_*_indelRealigned_recal_$patient[$sID_index].bam"`;
             chomp($bamFile);
 
             push(@bamList, "--bam $patient[$sID_index]:$bamFile");
@@ -536,7 +536,7 @@ if($force_run || ! -e "$progress/$pre\_bedtools_anno.done"){
     $force_run = 1;
     my $extraStuff = '';
     if ($species =~ /hg19|human|b37/i){
-        $extraStuff =  " --target $Bin/targets/IMPACT410_$species/IMPACT410_$species\_targets_plus5bp.bed --targetname impact410";
+        $extraStuff =  " --target $Bin/targets/IMPACT410_$species/IMPACT410_$species\_targets_plus5bp.bed --targetname IMPACT_410";
     }
     print "$PERL/perl $Bin/maf/bedtools_annotations.pl --in_maf $output/$pre\_merge_maf0.VEP --species $species --output $output --config $config --fastq $extraStuff \n\n";
     `$PERL/perl $Bin/maf/bedtools_annotations.pl --in_maf $output/$pre\_merge_maf0.VEP --species $species --output $output --config $config --fastq $extraStuff`;
@@ -556,20 +556,20 @@ if($species =~ /hg19|b37|human/i){
 ## Merging of extra columns ** I haven't created a way to merge the columns while creating them, so I still
 ## have to use Nick's mkTaylorMAF.py, which I am going to rename to mergeExtraCols.py
 ##
-    if($force_run || ! -e "$progress/$pre\_triNuc_anno.done"){
+    if($force_run || ! -e "$progress/$pre\_merge_cols.done"){
         $force_run = 1;
-        print "$PYTHON/python $Bin/maf/mergeExtraCols.py $output/triNucleotide.seq $output/maf_targets.impact410 $output/exact.vcf $output/$pre\_merge_maf0.VEP > $output/$pre\_haplotect_VEP_MAF.txt\n\n";
-        `$PYTHON/python $Bin/maf/mergeExtraCols.py $output/triNucleotide.seq $output/maf_targets.impact410 $output/exact.vcf $output/$pre\_merge_maf0.VEP > $output/$pre\_haplotect_VEP_MAF.txt`;
-        &checkResult($?, $progress, "$pre\_triNuc_anno");
+        print "$PYTHON/python $Bin/maf/mergeExtraCols.py --triNuc $output/TriNuc.txt --targeted $output/maf_targets.IMPACT_410 --exac $output/exact.vcf --maf $output/$pre\_merge_maf0.VEP > $output/$pre\_haplotect_VEP_MAF.txt\n\n";
+        `$PYTHON/python $Bin/maf/mergeExtraCols.py --triNuc $output/TriNuc.txt --targeted $output/maf_targets.IMPACT_410 --exac $output/exact.vcf --maf $output/$pre\_merge_maf0.VEP > $output/$pre\_haplotect_VEP_MAF.txt`;
+        &checkResult($?, $progress, "$pre\_merge_cols");
     }
 
 } else {
-    if($force_run || ! -e "$progress/$pre\_triNuc_anno.done"){
+    if($force_run || ! -e "$progress/$pre\_merge_cols.done"){
         $force_run = 1;
         `/bin/touch $output/blank`;
-        print "$PYTHON/python $Bin/maf/mergeExtraCols.py $output/triNucleotide.seq $output/blank $output/blank $output/$pre\_merge_maf0.VEP > $output/$pre\_haplotect_VEP_MAF.txt\n\n";
-        `$PYTHON/python $Bin/maf/mergeExtraCols.py $output/triNucleotide.seq $output/blank $output/blank $output/$pre\_merge_maf0.VEP > $output/$pre\_haplotect_VEP_MAF.txt`;
-        &checkResult($?, $progress, "$pre\_triNuc_anno");
+        print "$PYTHON/python $Bin/maf/mergeExtraCols.py --triNuc $output/TriNuc.txt --maf $output/$pre\_merge_maf0.VEP > $output/$pre\_haplotect_VEP_MAF.txt\n\n";
+        `$PYTHON/python $Bin/maf/mergeExtraCols.py --triNuc $output/TriNuc.txt --maf $output/$pre\_merge_maf0.VEP > $output/$pre\_haplotect_VEP_MAF.txt`;
+        &checkResult($?, $progress, "$pre\_merge_cols");
     }
 }
 
@@ -593,20 +593,6 @@ sub checkResult{
 ##
 if($delete_temp){
     &cleanUp;
-    #my @files = glob( $output . '/*.maf[12]');
-    #for my $fname (@files) {
-    #    print "Removing: $fname \n";
-    #    unlink($fname);
-    #}
-    #@files = glob ("$output/exact.vcf $output/maf_targets.* $output/triNucleotide.seq $output/*mutect_calls* $output/blank $output/*Haplotype* $output/*maf2.txt* $output/ref $output/tmp $output/*basecounts.txt $output/$pre\_merge_maf0.VEP");
-
-
-    #for my $fname (@files) {
-    #    print "Removing: $fname \n";
-    #    unlink($fname);
-    #}
-    #`rm -r $output/xtra $output/bed $output/ref $output/tmp $progress`;
-
 }
 
 sub cleanUp{
@@ -615,7 +601,7 @@ sub cleanUp{
         print "Removing: $fname \n";
         unlink($fname);
     }
-    @files = glob ("$output/exact.vcf $output/maf_targets.* $output/triNucleotide.seq $output/*mutect_calls* $output/blank $output/*Haplotype* $output/*maf2.txt* $output/ref $output/tmp $output/*basecounts.txt $output/$pre\_merge_maf0.VEP");
+    @files = glob ("$output/exact.vcf $output/maf_targets.* $output/TriNuc.txt $output/*mutect_calls* $output/blank $output/*Haplotype* $output/*maf2.txt* $output/ref $output/tmp $output/*basecounts.txt $output/$pre\_merge_maf0.VEP");
 
 
     for my $fname (@files) {

@@ -364,7 +364,7 @@ if($patient && $bam_dir){
             chomp;
             my @patient=split(/\s+/,$_);
             #print "Sample: $patient[$sID_index] \n";
-            my $bamFile = `find $bam_dir -name "Proj_*_indelRealigned_recal_$patient[$sID_index].bam"`;
+            my $bamFile = `find -L $bam_dir -name "Proj_*_indelRealigned_recal_$patient[$sID_index].bam"`;
             chomp($bamFile);
             #print "Bam file: $bamFile \n";
         
@@ -396,8 +396,8 @@ if($patient && $bam_dir){
 if($species =~ /hg19|human|b37/){
     if($force_run || !-e "$progress/" . basename("$vcf") . "_bedtools_anno.done"){
         $force_run = 1;
-        print "$PERL/perl $Bin/maf/bedtools_annotations.pl --in_maf $vcf\_$somatic\_maf1.VEP --species $species --output $output --config $config --fastq --target $Bin/targets/IMPACT410_$species/IMPACT410_$species\_targets_plus5bp.bed --targetname impact410 --somatic $somatic\n";
-        `$PERL/perl $Bin/maf/bedtools_annotations.pl --in_maf $vcf\_$somatic\_maf1.VEP --species $species --output $output --config $config --fastq --target $Bin/targets/IMPACT410_$species/IMPACT410_$species\_targets_plus5bp.bed --targetname impact410 --somatic $somatic`;
+        print "$PERL/perl $Bin/maf/bedtools_annotations.pl --in_maf $vcf\_$somatic\_maf1.VEP --species $species --output $output --config $config --fastq --target $Bin/targets/IMPACT410_$species/IMPACT410_$species\_targets_plus5bp.bed --targetname IMPACT_410 --somatic $somatic\n";
+        `$PERL/perl $Bin/maf/bedtools_annotations.pl --in_maf $vcf\_$somatic\_maf1.VEP --species $species --output $output --config $config --fastq --target $Bin/targets/IMPACT410_$species/IMPACT410_$species\_targets_plus5bp.bed --targetname IMPACT_410 --somatic $somatic`;
         &checkResult($?, $progress, basename("$vcf") . "_bedtools_anno");
     }
 
@@ -410,8 +410,8 @@ if($species =~ /hg19|human|b37/){
 
     if($force_run || !-e "$progress/" . basename("$vcf") . "_mergeExtraCols.done"){
         $force_run = 1;
-        print "$PYTHON/python $Bin/maf/mergeExtraCols.py $output/triNucleotide.seq $output/maf_targets.impact410 $output/exact.vcf $vcf\_$somatic\_maf1.VEP\n";
-       `$PYTHON/python $Bin/maf/mergeExtraCols.py $output/triNucleotide.seq $output/maf_targets.impact410 $output/exact.vcf $vcf\_$somatic\_maf1.VEP > $vcf\_$somatic\_VEP_MAF.txt`;
+        print "$PYTHON/python $Bin/maf/mergeExtraCols.py --triNuc $output/TriNuc.txt --targeted $output/maf_targets.IMPACT410 --exac $output/exact.vcf --maf $vcf\_$somatic\_maf1.VEP\n";
+       `$PYTHON/python $Bin/maf/mergeExtraCols.py --triNuc $output/TriNuc.txt --targeted $output/maf_targets.IMPACT_410 --exac $output/exact.vcf --maf $vcf\_$somatic\_maf1.VEP > $vcf\_$somatic\_VEP_MAF.txt`;
         &checkResult($?, $progress, basename("$vcf") . "_mergeExtraCols");
     }
 }else{ ## MOUSE
@@ -425,8 +425,8 @@ if($species =~ /hg19|human|b37/){
     if($force_run || !-e "$progress/" . basename("$vcf") . "_mergeExtraCols.done"){
         $force_run = 1;
         `/bin/touch $output/blank`;
-        print "$PYTHON/python $Bin/maf/mergeExtraCols.py $output/triNucleotide.seq $output/blank $output/blank $vcf\_$somatic\_maf1.VEP > $vcf\_$somatic\_VEP_MAF.txt\n";
-        `$PYTHON/python $Bin/maf/mergeExtraCols.py $output/triNucleotide.seq $output/blank $output/blank $vcf\_$somatic\_maf1.VEP > $vcf\_$somatic\_VEP_MAF.txt`;
+        print "$PYTHON/python $Bin/maf/mergeExtraCols.py --triNuc $output/TriNuc.txt --maf $vcf\_$somatic\_maf1.VEP > $vcf\_$somatic\_VEP_MAF.txt\n";
+        `$PYTHON/python $Bin/maf/mergeExtraCols.py --triNuc $output/TriNuc.txt --maf $vcf\_$somatic\_maf1.VEP > $vcf\_$somatic\_VEP_MAF.txt`;
         &checkResult($?, $progress, basename("$vcf") . "_mergeExtraCols", "$vcf\_$somatic\_VEP_MAF.txt");
     }
 }
@@ -455,6 +455,6 @@ if($delete_temp){
 }
 
 sub cleanUp{
-    `/bin/rm $vcf\_PAIRED.maf $vcf\_$somatic\_maf0.log $vcf\_$somatic\_maf0.txt $vcf\_$somatic\_maf1.txt $vcf\_$somatic\_maf1.log $vcf\_$somatic\_maf1.VEP $vcf\_UNPAIRED.maf $vcf\_$somatic\_UNFILTERED.txt $vcf\_$somatic\_UNFILTERED.txt $vcf\_$somatic\_rescued.txt $vcf\_$somatic\_maf0_rescue.log $output/exact.vcf $output/*.seq $output/maf_targets.* $output/blank $output/*basecounts.txt`;
+    `/bin/rm $vcf\_PAIRED.maf $vcf\_$somatic\_maf0.log $vcf\_$somatic\_maf0.txt $vcf\_$somatic\_maf1.txt $vcf\_$somatic\_maf1.log $vcf\_$somatic\_maf1.VEP $vcf\_UNPAIRED.maf $vcf\_$somatic\_UNFILTERED.txt $vcf\_$somatic\_UNFILTERED.txt $vcf\_$somatic\_rescued.txt $vcf\_$somatic\_maf0_rescue.log $output/exact.vcf $output/TriNuc.txt $output/maf_targets.* $output/blank $output/*basecounts.txt`;
     `/bin/rm -rf $output/tmp_$somatic $output/ref_$somatic $output/xtra_$somatic $output/bed_$somatic $output/progress_$somatic`;
 }

@@ -141,6 +141,7 @@ else{
 # first no matter what make the maf a simple bed
 open(my $in_fh, "<", $input);
 open(my $out_fh, ">", "$output/bed$somatic/simple_maf.bed");
+open(my $out2_fh, ">", "$output/bed$somatic/simple_maf_no_indel.bed");
 my @lines = <$in_fh>;
 foreach my $line (@lines){
     #print "$line\n";
@@ -148,6 +149,10 @@ foreach my $line (@lines){
     my @splitLine = split("\t", $line);
     my $zeroBase = $splitLine[5] - 1 ;
     print $out_fh "$splitLine[4]\t$zeroBase\t$splitLine[6]\n";
+    
+    if($splitLine[6] - $zeroBase == 1){
+        print $out2_fh "$splitLine[4]\t$zeroBase\t$splitLine[6]\n";
+    }
 }
 close $in_fh;
 close $out_fh;
@@ -157,9 +162,9 @@ close $out_fh;
 if($fastq){
 # take the hg19 Dict, and parse it into a genome file that bedtools takes in
     `grep "^\@SQ" $output/ref$somatic/$refDictBase | cut -f 2-3 | sed -e 's/SN://g' -e 's/LN://g' > $output/bed$somatic/bedtools_genome.txt`; 
-    `$BEDTOOLS/bedtools slop -g $output/bed$somatic/bedtools_genome.txt -b 1 -i $output/bed$somatic/simple_maf.bed | $BEDTOOLS/bedtools getfasta -tab -fi $output/ref$somatic/$ref_base -fo $output/bed$somatic/triNucleotide.seq -bed -`;
+    `$BEDTOOLS/bedtools slop -g $output/bed$somatic/bedtools_genome.txt -b 1 -i $output/bed$somatic/simple_maf_no_indel.bed | $BEDTOOLS/bedtools getfasta -tab -fi $output/ref$somatic/$ref_base -fo $output/bed$somatic/TriNuc.txt -bed -`;
 
-    `mv $output/bed$somatic/triNucleotide.seq $output/triNucleotide.seq`;
+    `mv $output/bed$somatic/TriNuc.txt $output/TriNuc.txt`;
 }
 
 if($target){
