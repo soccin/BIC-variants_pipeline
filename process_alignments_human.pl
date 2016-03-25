@@ -322,7 +322,7 @@ if($species =~ /^b37$|human/i){
 elsif($species =~ /hybrid|b37_mm10/i){
     $REF_SEQ = "$B37_MM10_HYBRID_FASTA";
     $BWA_INDEX = "$B37_MM10_HYBRID_BWA_INDEX";
-    $DB_SNP = "$Bin/data/b37/dbsnp_138.b37.vcf";
+    $DB_SNP = "$Bin/data/b37/dbsnp_138.b37.excluding_sites_after_129.vcf";
     $MILLS_1000G = "$Bin/data/b37/Mills_and_1000G_gold_standard.indels.b37.vcf";
     $HAPMAP = "$Bin/data/b37/hapmap_3.3.b37.vcf";
     $OMNI_1000G = "$Bin/data/b37/1000G_omni2.5.b37.vcf";
@@ -334,7 +334,7 @@ elsif($species =~ /hybrid|b37_mm10/i){
 elsif($species =~ /^hg19$/i){
     $REF_SEQ = "$HG19_FASTA";
     $BWA_INDEX = "$HG19_BWA_INDEX";
-    $DB_SNP = "$Bin/data/hg19/dbsnp_138.hg19.vcf";
+    $DB_SNP = "$Bin/data/hg19/dbsnp_138.hg19.excluding_sites_after_129.vcf";
     $MILLS_1000G = "$Bin/data/hg19/Mills_and_1000G_gold_standard.indels.hg19.vcf";
     $HAPMAP = "$Bin/data/hg19/hapmap_3.3.hg19.vcf";
     $OMNI_1000G = "$Bin/data/hg19/1000G_omni2.5.hg19.vcf";
@@ -347,7 +347,7 @@ elsif($species =~ /^hg19$/i){
 elsif($species =~ /hg19_mm10/i){
     $REF_SEQ = "$HG19_MM10_HYBRID_FASTA";
     $BWA_INDEX = "$HG19_MM10_HYBRID_BWA_INDEX";
-    $DB_SNP = "$Bin/data/hg19/dbsnp_138.hg19.vcf";
+    $DB_SNP = "$Bin/data/hg19/dbsnp_138.hg19.excluding_sites_after_129.vcf";
     $MILLS_1000G = "$Bin/data/hg19/Mills_and_1000G_gold_standard.indels.hg19.vcf";
     $HAPMAP = "$Bin/data/hg19/hapmap_3.3.hg19.vcf";
     $OMNI_1000G = "$Bin/data/hg19/1000G_omni2.5.hg19.vcf";
@@ -360,8 +360,6 @@ elsif($species =~ /hg19_mm10/i){
 elsif($species !~ /b37|hg19|hybrid|b37_mm10|hg19_mm10/){
     die "ONLY SUPPORT FOR b37, hg19 or hybrd assemblies $!";
 }
-
-print "CHR_PRE: $CHR_PRE\n";
 
 ### make sure all markdup bam files are there before proceeding
 open(BGR, "$bamgroup") || die "CAN'T OPEN GROUPING FILE OF MARKDUP BAMS $bamgroup $!";
