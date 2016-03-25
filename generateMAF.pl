@@ -184,6 +184,13 @@ elsif($species =~ /mouse|^mm10$/i){
 my $output = dirname($vcf);
 
 my $progress = "$output/progress_$somatic";
+
+my $numLines = `grep -c -v "^#" $vcf`;
+if($numLines == 0){
+    `touch $vcf\_UNPAIRED_TCGA_MAF.txt $vcf\_UNPAIRED_TCGA_PORTAL_MAF.txt $vcf\_UNPAIRED_TCGA_PORTAL_MAF_fillout.txt $vcf\_UNPAIRED_VEP_MAF.txt `;
+    exit 0;
+}
+
 if (! -d "$progress"){
     mkdir("$progress", 0755) or die "Making progress directory did not work. $!";
 }

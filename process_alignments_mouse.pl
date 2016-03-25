@@ -956,8 +956,7 @@ sub generateMaf{
     my @chr_maf_jids;
     # split and send each split thing to generate maf separately
     foreach my $c (1..19, 'X', 'Y', "$CHR_M"){
-        my $numLines = `grep -c "^$CHR_PREFIX$c" $vcf`;
-        if( $numLines > 0 && ( !-e "$output/progress/$pre\_$uID\_$jna\_CHR$c\_MAF_UNPAIRED.done" || $ran_hc )){
+        if( !-e "$output/progress/$pre\_$uID\_$jna\_CHR$c\_MAF_UNPAIRED.done" || $ran_hc ){
 
             if((! -e "$vcf.gz" || $ran_hc) && !$bgzipped){
                 $bgzipped = 1;

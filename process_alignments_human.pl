@@ -1233,8 +1233,7 @@ sub generateMaf{
     my @chr_maf_jids;
     # split and send each split thing to generate maf separately
     foreach my $c (1..22, 'X', 'Y', "$CHR_M"){
-        my $numLines = `grep -c "^$CHR_PRE$c" $vcf`;
-        if($numLines > 0 && (!-e "$output/progress/$pre\_$uID\_$jna\_CHR$c\_MAF_UNPAIRED.done" || $ran_hc)){
+        if(!-e "$output/progress/$pre\_$uID\_$jna\_CHR$c\_MAF_UNPAIRED.done" || $ran_hc){
             if((! -e "$vcf.gz" || $ran_hc) && !$bgzipped){
                 $bgzipped = 1;
                 my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$jna\_bgzip", job_hold => "$hold", cpu => "1", mem => "5", cluster_out => "$output/progress/$pre\_$uID\_$jna\_bgzip.log");

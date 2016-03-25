@@ -4,6 +4,8 @@
 use strict;
 use warnings;
 use Getopt::Long;
+use File::Basename;
+
 my @files;
 my $output = "";
 
@@ -24,8 +26,14 @@ foreach (@files){
     my ($file) = $_;
     #print "FILE: $file\n";
     if (-z $file) {
-        die "[ERROR] File $file is empty. If there were truely no variants, the file should still contain the header.";
+        my $d = dirname($file);
+        ## This is pipeline specific!!!!
+        if( -e "$d/progress"){
+            die "[ERROR] File $file is empty. If there were truely no variants, the file should still contain the header.";
+        }
+        next;
     }
+
     my $header_found = 0;
     open(my $FH, "$file") || die "Can't open file $file $!";
     while(<$FH>){
