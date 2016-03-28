@@ -274,7 +274,7 @@ close CONFIG;
 my $REF_SEQ = "$MM10_FASTA";
 my $BWA_INDEX = "$MM10_BWA_INDEX";
 my $DB_SNP = "$Bin/data/mm10/mm10_snp142.vcf";
-my $ABRA_TARGETS = '';
+$ABRA_TARGETS = "$Bin/targets/abra/abra_target_regions_mm10.bed";
 my $CHR_M = 'M'; #as of right now default to M. Once we add NCBI assemblies, we can chang it below.
 my $CHR_PREFIX = "chr"; #as of right now default to 'chr'. Once we add NCBI assemblies, we can chang it below.
 
