@@ -32,13 +32,12 @@ def getEventSig(maf):
 
 def fillSampleMAFFields(maf,si,ei,eventDb,pairs,caller,species):
     maf.Tumor_Sample_Barcode=si
-    if si in pairs:
-        matchedNormal=pairs[si]
+    if not pairs.startswith("REF"):
+        matchedNormal=pairs
         maf.n_ref_count=eventDb[ei][matchedNormal]["RD"]
         maf.n_alt_count=eventDb[ei][matchedNormal]["AD"]
 
     else:
-        # add REF.hg19 or whatever if the sample isn't in "pairs"
         matchedNormal="REF." + species
         maf.n_ref_count="NA"
         maf.n_ref_count="NA"
