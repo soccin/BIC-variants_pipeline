@@ -87,21 +87,39 @@ def makeMatrix(args):
                 samp = file[file.find('intFiles')+9:].split("/")[0]
                 fName = file.split("/")[-1]
                 #rNum = fName[:fName.find(".fastq")].split("_")[-2]
-                try:
-                    rNum = re.search('_R[1|2]_',fName).group(0).replace('_','')
-                except:
-                    print>>sys.stderr,"ERROR: Can not distinguish R1 from R2 in file name: ",fName
+                ## in the new version, both run 1 and run 2 are in the same file. One after the other.
+
                 if not samp in matrix:
                     matrix[samp] = {'R1':{'processed':0.0,'trimmed':0.0}, \
                                     'R2':{'processed':0.0,'trimmed':0.0} \
                                    }
                 with open(file,'r') as fl:
                     for line in fl:
-                        if 'Processed reads:' in line:
-                            matrix[samp][rNum]['processed'] += float(line.strip().split()[-1])
-                        elif 'Trimmed reads:' in line: 
-                            matrix[samp][rNum]['trimmed'] += float(line.strip().split()[-2])
-                            break                            
+                        if 'Total read pairs processed:' in line:
+                            matrix[samp]['R1']['processed'] += float(line.replace(',','').strip().split()[-1])
+                            matrix[samp]['R2']['processed'] += float(line.replace(',','').strip().split()[-1])
+                            
+                            ## Now get read1's trimmed, read2's trimmed
+                            line = fl.next()
+                            if "Read 1 with adapter:" not in line:
+                                print>>sys.stderr, "ERROR: Unexpected output format, could not find Read 1's Total basepairs processed."
+                                sys.exit(-1)
+                            matrix[samp]['R1']['trimmed'] += float(line.replace(',','').strip().split()[-2])
+                            
+                            line = fl.next()
+                            if 'Read 2 with adapter:' not in line:
+                                print>>sys.stderr, "ERROR: Read 2 trimmed value not found."
+                            matrix[samp]['R2']['trimmed'] += float(line.replace(',','').strip().split()[-2])
+                            break
+
+                        if 'Total reads processed:' in line:
+                            # Single end
+                            matrix[samp]['R1']['processed'] += float(line.replace(',','').strip().split()[-1])
+                            line = fl.next()
+                            if 'Reads with adapters:' not in line:
+                                print>>sys.stderr, "ERROR: Unexpected output format, could not find Read 1's Total basepairs processed."
+                                sys.exit(-1)
+                            matrix[samp]['R1']['trimmed'] += float(line.replace(',','').strip().split()[-2])
 
         printMatrix(matrix,outFile)            
 
@@ -111,3 +129,4 @@ def makeMatrix(args):
 
 if __name__ == '__main__':
     makeMatrix(sys.argv[1:])
+
