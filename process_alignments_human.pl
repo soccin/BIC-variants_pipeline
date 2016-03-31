@@ -1192,8 +1192,10 @@ if($pair){
     
     if($hasPair && (!-e "$output/progress/$pre\_$uID\_CDNA_CONTAM.done" || $ran_strvar)){
 	sleep(2);
+
+        my $hold_value = $ran_strvar ? "$pre\_$uID\_DELLY" : "";
 	
-	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_CDNA_CONTAM", job_hold => "$pre\_$uID\_DELLY", cpu => "1", mem => "4", cluster_out => "$output/progress/$pre\_$uID\_CDNA_CONTAM.log");
+	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_CDNA_CONTAM", job_hold => "$hold_value", cpu => "1", mem => "4", cluster_out => "$output/progress/$pre\_$uID\_CDNA_CONTAM.log");
 	my $standardParams = Schedule::queuing(%stdParams);
 	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PYTHON/python $Bin/qc/check_cDNA_contamination.py -s $output/variants/structVar/delly/$pre\_AllAnnotatedSVs.txt -o $output/metrics/$pre\_cDNA_contamination.txt`;
 	`/bin/touch $output/progress/$pre\_$uID\_CDNA_CONTAM.done`;
