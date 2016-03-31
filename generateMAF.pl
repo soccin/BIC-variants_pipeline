@@ -371,7 +371,7 @@ if($patient && $bam_dir){
             chomp;
             my @patient=split(/\s+/,$_);
             #print "Sample: $patient[$sID_index] \n";
-            my $bamFile = `find -L $bam_dir -name "Proj_*_indelRealigned_recal_$patient[$sID_index].bam"`;
+            my $bamFile = `find -L $bam_dir -name "*_indelRealigned_recal_$patient[$sID_index].bam"`;
             chomp($bamFile);
             #print "Bam file: $bamFile \n";
         
