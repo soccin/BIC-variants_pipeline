@@ -226,7 +226,7 @@ my %addParams = (scheduler => "$scheduler", runtime => "50", priority_project=> 
 my $additionalParams = Schedule::additionalParams(%addParams);
 
 my $clipR1 = "-a $r1adaptor";
-my $clipR2 = "-a $r2adaptor";
+my $clipR2 = "-A $r2adaptor";
 if($noClip){
     $clipR1 = "";
     $clipR2 = "";
@@ -286,6 +286,33 @@ while (<IN>){
 	}
     }
 
+    ###`$Bin/jobSync $scheduler $pre\_$uID\_ZCAT_$nameR1[0],$pre\_$uID\_ZCAT_$nameR2[0]`;
+    if($ran_zcatR1){
+	`$Bin/jobSync $scheduler $pre\_$uID\_ZCAT_$nameR1[0]`;
+    }    
+    if($ran_zcatR2){
+    `$Bin/jobSync $scheduler $pre\_$uID\_ZCAT_$nameR2[0]`;
+    }
+
+    ### skipping if either fastq is empty
+    if(!-s "$count/$nameR1[0]"){
+	print "$count/$nameR1[0] is empty\n";
+	next;
+    }
+    if($pe){
+	if(!-s "$count/$nameR2[0]"){
+	    print "$count/$nameR2[0] is empty\n";
+	    next;
+	}
+    }
+
+    ### discard reads less than half of original read length by cutadapt
+    my $readO = `/usr/bin/head -2 $count/$nameR1[0]`;
+    chomp $readO;
+    my @dataO = split(/\n/, $readO);
+    my $readLength = length($dataO[1]);
+    my $minReadLength = int(0.5*$readLength);
+
     my $ran_cqs1 = 0;
     my $cqs1_jid = '';
     if(!-e "progress/$pre\_$uID\_CQS_$nameR1[0]\.done" || $ran_zcatR1){
@@ -311,127 +338,54 @@ while (<IN>){
 	    $ran_cqs2 = 1;	
 	}
     }
-
-    my $ran_rsplit1 = 0;
-    my @rsplit_jids = ();
-    if(!-e "progress/$pre\_$uID\_RSPLIT_$nameR1[0]\.done" || $ran_cqs1){
-	sleep(2);
-	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_RSPLIT_$nameR1[0]", job_hold => "$cqs1_jid", cpu => "1", mem => "1", cluster_out => "progress/$pre\_$uID\_RSPLIT_$nameR1[0]\.log");
-	my $standardParams = Schedule::queuing(%stdParams);
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams /usr/bin/split -a 3 -l 16000000 -d $count/$nameR1[0]\_CQS $count/$nameR1[0]\_CQS__`;
-	`/bin/touch progress/$pre\_$uID\_RSPLIT_$nameR1[0]\.done`;
-	push @rsplit_jids, "$pre\_$uID\_RSPLIT_$nameR1[0]";
-	$ran_rsplit1 = 1;	
-    }
-
-    my $ran_rsplit2 = 0;
-    if($pe){
-	if(!-e "progress/$pre\_$uID\_RSPLIT_$nameR2[0]\.done" || $ran_cqs2){
-	    sleep(2);
-	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_RSPLIT_$nameR2[0]", job_hold => "$cqs2_jid", cpu => "1", mem => "1", cluster_out => "progress/$pre\_$uID\_RSPLIT_$nameR2[0]\.log");
-	    my $standardParams = Schedule::queuing(%stdParams);
-	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams /usr/bin/split -a 3 -l 16000000 -d $count/$nameR2[0]\_CQS $count/$nameR2[0]\_CQS__`;    
-	    `/bin/touch progress/$pre\_$uID\_RSPLIT_$nameR2[0]\.done`;
-	    push @rsplit_jids, "$pre\_$uID\_RSPLIT_$nameR2[0]";
-	    $ran_rsplit2 = 1;
-	}
-    }
-
-    ###`$Bin/jobSync $scheduler $pre\_$uID\_RSPLIT_$nameR1[0],$pre\_$uID\_RSPLIT_$nameR2[0]`;
-    if($ran_rsplit1){
-	`$Bin/jobSync $scheduler $pre\_$uID\_RSPLIT_$nameR1[0]`;
-    }    
-    if($ran_rsplit2){
-    `$Bin/jobSync $scheduler $pre\_$uID\_RSPLIT_$nameR2[0]`;
-    }
-
-    ### skipping if either fastq is empty
-    if(!-s "$count/$nameR1[0]"){
-	print "$count/$nameR1[0] is empty\n";
-	next;
-    }
-    if($pe){
-	if(!-s "$count/$nameR2[0]"){
-	    print "$count/$nameR2[0] is empty\n";
-	    next;
-	}
-    }
-
-    ### discard reads less than half of original read length by cutadapt
-    my $readO = `/usr/bin/head -2 $count/$nameR1[0]`;
-    chomp $readO;
-    my @dataO = split(/\n/, $readO);
-    my $readLength = length($dataO[1]);
-    my $minReadLength = int(0.5*$readLength);
     
-    opendir(RS, "$count") or die "Can't open read split directory $count";
-    my @rsplits = readdir RS;
-    closedir RS;
 
-    my $rsj = join(",", @rsplit_jids);
-    my $rcount = 0;
-    foreach my $rfile (@rsplits){
-	if($rfile =~ /$nameR1[0]\_CQS\_\_/){
-	    $rcount++;
-
-	    `/bin/mkdir -m 775 -p $count/$rcount`;
-	    if($pe){
-		my $r2file = $rfile;
-		$r2file =~ s/^(.*)R1(.*)$/$1R2$2/;
-
-		my $ran_cutadapt = 0;
-		my $ca_jid = '';
-		if(!-e "progress/$pre\_$uID\_CUTADAPT_$rfile\.done" || $ran_rsplit1 || $ran_rsplit2){
-		    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_CUTADAPT_$rfile", job_hold => "$rsj", cpu => "1", mem => "1", cluster_out => "progress/$pre\_$uID\_CUTADAPT_$rfile\.log");
-		    my $standardParams = Schedule::queuing(%stdParams);
-		    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams "$PYTHON/python $CUTADAPT/cutadapt -f fastq $clipR1 -O 10 -m $minReadLength -q $bqTrim --paired-output $count/$rcount/$r2file\_TEMP.fastq -o $count/$rcount/$rfile\_TEMP.fastq $count/$rfile $count/$r2file >$count/$rcount/$rfile\_CUTADAPT\_STATS.txt"`;
-		    
-		    sleep(2);
-		    
-		    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_CUTADAPT_$r2file", job_hold => "$pre\_$uID\_CUTADAPT_$rfile", cpu => "1", mem => "1", cluster_out => "progress/$pre\_$uID\_CUTADAPT_$r2file\.log");
-		    my $standardParams = Schedule::queuing(%stdParams);
-		    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams "$PYTHON/python $CUTADAPT/cutadapt -f fastq $clipR2 -O 10 -m $minReadLength -q $bqTrim --paired-output $count/$rcount/$rfile\_CT_PE.fastq -o $count/$rcount/$r2file\_CT_PE.fastq $count/$rcount/$r2file\_TEMP.fastq $count/$rcount/$rfile\_TEMP.fastq >$count/$rcount/$r2file\_CUTADAPT\_STATS.txt"`;
-		    `/bin/touch progress/$pre\_$uID\_CUTADAPT_$rfile\.done`;
-		    $ca_jid = "$pre\_$uID\_CUTADAPT_$r2file";
-		    $ran_cutadapt = 1;
-		}
-		
-		if(!-e "progress/$pre\_$uID\_BWA_$rfile\_$r2file\.done" || $ran_cutadapt){
-		    sleep(2);
-		    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_BWA_$rfile\_$r2file", job_hold => "$ca_jid", cpu => "12", mem => "12", cluster_out => "progress/$pre\_$uID\_BWA_$rfile\_$r2file\.log");
-		    my $standardParams = Schedule::queuing(%stdParams);
-		    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams "$BWA/bwa mem -PM -R \'$readgroup\' -t 12 $bwaDB $count/$rcount/$rfile\_CT_PE.fastq $count/$rcount/$r2file\_CT_PE.fastq >$count/$rcount/$rfile\_$r2file\_CT_PE.fastq_$species\.bwa.sam"`;
-		    `/bin/touch progress/$pre\_$uID\_BWA_$rfile\_$r2file\.done`;
-		    push @bwa_jids, "$pre\_$uID\_BWA_$rfile\_$r2file";
-		    $ran_bwa = 1;
-		}
-		push @raw, "I=$count/$rcount/$rfile\_$r2file\_CT_PE.fastq_$species\.bwa.sam";
-	    }
-	    else{
-		my $ran_cutadapt = 0;
-		my $ca_jid = '';
-		if(!-e "progress/$pre\_$uID\_CUTADAPT_$rfile\.done" || $ran_rsplit1){
-		    sleep(2);
-		    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_CUTADAPT_$rfile", job_hold => "$rsj", cpu => "1", mem => "1", cluster_out => "progress/$pre\_$uID\_CUTADAPT_$rfile\.log");
-		    my $standardParams = Schedule::queuing(%stdParams);
-		    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams "$PYTHON/python $CUTADAPT/cutadapt -f fastq $clipR1 -O 10 -m $minReadLength -q $bqTrim -o $count/$rcount/$rfile\_CT_SE.fastq $count/$rfile >$count/$rcount/$rfile\_CUTADAPT\_STATS.txt"`;
-		    `/bin/touch progress/$pre\_$uID\_CUTADAPT_$rfile\.done`;
-		    $ca_jid = "$pre\_$uID\_CUTADAPT_$rfile";
-		    $ran_cutadapt = 1;
-		}
-
-		if(!-e "progress/$pre\_$uID\_BWA_$rfile\.done" || $ran_cutadapt){
-		    sleep(2);
-		    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_BWA_$rfile", job_hold => "$ca_jid", cpu => "12", mem => "12", cluster_out => "progress/$pre\_$uID\_BWA_$rfile\.log");
-		    my $standardParams = Schedule::queuing(%stdParams);
-		    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams "$BWA/bwa mem -PM -R \'$readgroup\' -t 12 $bwaDB $count/$rcount/$rfile\_CT_SE.fastq >$count/$rcount/$rfile\_CT_SE.fastq_$species\.bwa.sam"`;
-		    `/bin/touch progress/$pre\_$uID\_BWA_$rfile\.done`;
-		    push @bwa_jids, "$pre\_$uID\_BWA_$rfile";
-		    $ran_bwa = 1;
-		}
-		push @raw, "I=$count/$rcount/$rfile\_CT_SE.fastq_$species\.bwa.sam";
-	    }
+    if($pe){
+	my $ran_cutadapt = 0;
+	my $ca_jid = '';
+	if(!-e "progress/$pre\_$uID\_CUTADAPT_$nameR1[0]\_$nameR2[0]\_CQS.done" || $ran_cqs1 || $ran_cqs2){
+	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_CUTADAPT_$nameR1[0]\_$nameR2[0]\_CQS", job_hold => "$cqs1_jid,$cqs2_jid", cpu => "1", mem => "1", cluster_out => "progress/$pre\_$uID\_CUTADAPT_$nameR1[0]\_$nameR2[0]\_CQS.log");
+	    my $standardParams = Schedule::queuing(%stdParams);
+	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams "$PYTHON/python $CUTADAPT/cutadapt -f fastq $clipR1 $clipR2 --overlap 10 --minimum-length $minReadLength --quality-cutoff $bqTrim -o $count/$nameR1[0]\_CQS_CT_PE.fastq --paired-output $count/$nameR2[0]\_CQS_CT_PE.fastq $count/$nameR1[0]\_CQS $count/$nameR2[0]\_CQS >$count/$nameR1[0]\_$nameR2[0]\_CQS_CUTADAPT\_STATS.txt"`;
+	    `/bin/touch progress/$pre\_$uID\_CUTADAPT_$nameR1[0]\_$nameR2[0]\_CQS.done`;
+	    $ca_jid = "$pre\_$uID\_CUTADAPT_$nameR1[0]\_$nameR2[0]\_CQS";
+	    $ran_cutadapt = 1;	
 	}
+	
+	if(!-e "progress/$pre\_$uID\_BWA_$nameR1[0]\_$nameR2[0]\.done" || $ran_cutadapt){
+	    sleep(2);
+	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_BWA_$nameR1[0]\_$nameR2[0]", job_hold => "$ca_jid", cpu => "12", mem => "12", cluster_out => "progress/$pre\_$uID\_BWA_$nameR1[0]\_$nameR2[0]\.log");
+	    my $standardParams = Schedule::queuing(%stdParams);
+	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams "$BWA/bwa mem -PM -R \'$readgroup\' -t 12 $bwaDB  $count/$nameR1[0]\_CQS_CT_PE.fastq $count/$nameR2[0]\_CQS_CT_PE.fastq >$count/$nameR1[0]\_$nameR2[0]\_CQS_CT_PE.fastq_$species\.bwa.sam"`;
+	    `/bin/touch progress/$pre\_$uID\_BWA_$nameR1[0]\_$nameR2[0]\.done`;
+	    push @bwa_jids, "$pre\_$uID\_BWA_$nameR1[0]\_$nameR2[0]";
+	    $ran_bwa = 1;
+	}
+	push @raw, "I=$count/$nameR1[0]\_$nameR2[0]\_CQS_CT_PE.fastq_$species\.bwa.sam";
+    }
+    else{
+	my $ran_cutadapt = 0;
+	my $ca_jid = '';
+	if(!-e "progress/$pre\_$uID\_CUTADAPT_$nameR1[0]\_CQS.done" || $ran_cqs1){
+	    sleep(2);
+	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_CUTADAPT_$nameR1[0]\_CQS", job_hold => "$cqs1_jid", cpu => "1", mem => "1", cluster_out => "progress/$pre\_$uID\_CUTADAPT_$nameR1[0]\_CQS.log");
+	    my $standardParams = Schedule::queuing(%stdParams);
+	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams "$PYTHON/python $CUTADAPT/cutadapt -f fastq $clipR1 --overlap 10 --minimum-length $minReadLength --quality-cutoff $bqTrim -o $count/$nameR1[0]\_CQS_CT_SE.fastq $count/$nameR1[0]\_CQS >$count/$nameR1[0]\_CQS_CUTADAPT\_STATS.txt"`;
+	    `/bin/touch progress/$pre\_$uID\_CUTADAPT_$nameR1[0]\_CQS.done`;
+	    $ca_jid = "$pre\_$uID\_CUTADAPT_$nameR1[0]\_CQS";
+	    $ran_cutadapt = 1;
+	}
+	
+	if(!-e "progress/$pre\_$uID\_BWA_$nameR1[0]\.done" || $ran_cutadapt){
+	    sleep(2);
+	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_BWA_$nameR1[0]", job_hold => "$ca_jid", cpu => "12", mem => "12", cluster_out => "progress/$pre\_$uID\_BWA_$nameR1[0]\.log");
+	    my $standardParams = Schedule::queuing(%stdParams);
+	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams "$BWA/bwa mem -PM -R \'$readgroup\' -t 12 $bwaDB $count/$nameR1[0]\_CQS_CT_SE.fastq >$count/$nameR1[0]\_CQS_CT_SE.fastq_$species\.bwa.sam"`;
+	    `/bin/touch progress/$pre\_$uID\_BWA_$nameR1[0]\.done`;
+	    push @bwa_jids, "$pre\_$uID\_BWA_$nameR1[0]";
+	    $ran_bwa = 1;
+	}
+	push @raw, "I=$count/$nameR1[0]\_CQS_CT_SE.fastq_$species\.bwa.sam";
     }
 }
 close IN;

@@ -2,7 +2,7 @@ ABRA			/opt/common/CentOS_6/abra/abra-0.92
 BCFTOOLS		/opt/common/CentOS_6/bcftools/bcftools-1.2/bin
 BEDTOOLS		/opt/common/CentOS_6/bedtools/bedtools-2.22.0/bin
 BWA			/opt/common/CentOS_6/bwa/bwa-0.7.12
-CUTADAPT		/opt/common/CentOS_6/cutadapt/cutadapt-1.6/bin
+CUTADAPT		/opt/common/CentOS_6/cutadapt/cutadapt-1.9.1/bin
 DELLY			/opt/common/CentOS_6/delly/delly_v0.6.1
 dRANGER			/opt/common/CentOS_6/dranger/dRanger_annotate_v2.0
 FACETS_SUITE				/opt/common/CentOS_6/facets-suite/facets-suite-0.9.7
