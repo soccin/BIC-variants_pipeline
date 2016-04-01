@@ -526,6 +526,7 @@ while(<IN>){
 
     my $irBams = join(" ", @indelBams);
     my $ran_br = 0;
+    my $brj = '';
     my $irj = join(",", @ir_jids);
     if(!-e "$output/progress/$pre\_$uID\_$gpair[0]\_BR.done" || $ran_ir){
 	sleep(2);
@@ -533,6 +534,7 @@ while(<IN>){
 	my $standardParams = Schedule::queuing(%stdParams);
 	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx30g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T BaseRecalibrator -l INFO -R $REF_SEQ -S LENIENT --knownSites $DB_SNP --knownSites $MILLS_1000G --knownSites $HAPMAP --knownSites $OMNI_1000G --knownSites $PHASE1_SNPS_1000G --covariate ContextCovariate --covariate CycleCovariate --covariate QualityScoreCovariate --covariate ReadGroupCovariate -rf BadCigar --num_cpu_threads_per_data_thread 12 --out $output/intFiles/$pre\_$gpair[0]\_recal_data.grp $irBams`;
 	`/bin/touch $output/progress/$pre\_$uID\_$gpair[0]\_BR.done`;
+	$brj = "$pre\_$uID\_$gpair[0]\_BR";
 	$ran_br = 1;
     }
     
@@ -542,7 +544,7 @@ while(<IN>){
     foreach my $c (1..22, 'X', 'Y', "$CHR_M"){
 	if(!-e "$output/progress/$pre\_$uID\_$gpair[0]\_CHR$c\_PR.done" || $ran_br){
 	    sleep(2);
-	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$gpair[0]\_CHR$c\_PR", job_hold => "$pre\_$uID\_$gpair[0]\_BR", cpu => "6", mem => "30", cluster_out => "$output/progress/$pre\_$uID\_$gpair[0]\_CHR$c\_PR.log");
+	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$gpair[0]\_CHR$c\_PR", job_hold => "$brj", cpu => "6", mem => "30", cluster_out => "$output/progress/$pre\_$uID\_$gpair[0]\_CHR$c\_PR.log");
 	    my $standardParams = Schedule::queuing(%stdParams);
 
 	    my $inIRb = "-I $output/intFiles/$pre\_$gpair[0]\_chr$c\_indelRealigned.bam";

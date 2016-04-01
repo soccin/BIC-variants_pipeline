@@ -368,9 +368,9 @@ while(<IN>){
     }
 
     my $bgroup = join(" ", @pins);
-    my $indelBam = '';
+    my @indelBams = ();
     my $ran_ir == 0;
-    my $irj = '';
+    my @ir_jids = ();
 
     if($abra){
 	my @inBams = ();
@@ -379,7 +379,7 @@ while(<IN>){
 	    my @inB = split(/\s+/, $pin);
 	    push @inBams, $inB[1];
 	    push @outBams, "$inB[1]\_ABRA.bam";
-	    $indelBam = "$inB[1]\_ABRA.bam\_FM.bam";
+	    push @indelBams, "-I $inB[1]\_ABRA.bam\_FM.bam";
 	}
 	
 	my $aiBams = join(",", @inBams);
@@ -409,7 +409,7 @@ while(<IN>){
 		my $additionalParams = Schedule::additionalParams(%addParams);
 
 		`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx50g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $PICARD/picard.jar FixMateInformation I=$outBam O=$outBam\_FM.bam SORT_ORDER=coordinate VALIDATION_STRINGENCY=LENIENT TMP_DIR=/scratch/$uID MAX_RECORDS_IN_RAM=5000000 CREATE_INDEX=true`;
-		$irj = "$pre\_$uID\_$gpair[0]\_$bcount\_FIXMATE";
+		push @ir_jids, "$pre\_$uID\_$gpair[0]\_$bcount\_FIXMATE";
 	    }
 	    `/bin/touch $output/progress/$pre\_$uID\_$gpair[0]\_FIXMATE.done`;
 	    $ran_ir = 1;
@@ -433,20 +433,24 @@ while(<IN>){
 	    my $standardParams = Schedule::queuing(%stdParams);
 	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx15g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T IndelRealigner -R $REF_SEQ $multipleTargets -S LENIENT --knownAlleles $DB_SNP --targetIntervals $output/intFiles/$pre\_$gpair[0]\_indelRealigner.intervals --maxReadsForRealignment 500000 --maxReadsInMemory 3000000 --maxReadsForConsensuses 500000 -rf BadCigar --out $output/intFiles/$pre\_$gpair[0]\_indelRealigned.bam $bgroup`;
 	    `/bin/touch $output/progress/$pre\_$uID\_$gpair[0]\_IR.done`;
-	    $irj = "$pre\_$uID\_$gpair[0]\_IR";
+	    push @ir_jids, "$pre\_$uID\_$gpair[0]\_IR";
 	    $ran_ir = 1;
 	}
 	
-	$indelBam = "$output/intFiles/$pre\_$gpair[0]\_indelRealigned.bam";
+	push @indelBams, "-I $output/intFiles/$pre\_$gpair[0]\_indelRealigned.bam";
     }
 	
+    my $irBams = join(" ", @indelBams);
     my $ran_br = 0;
+    my $brj = '';
+    my $irj = join(",", @ir_jids);
     if(!-e "$output/progress/$pre\_$uID\_$gpair[0]\_BR.done" || $ran_ir){
 	sleep(2);
 	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$gpair[0]\_BR", job_hold => "$irj", cpu => "12", mem => "40", cluster_out => "$output/progress/$pre\_$uID\_$gpair[0]\_BR.log");
 	my $standardParams = Schedule::queuing(%stdParams);
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx30g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T BaseRecalibrator -l INFO -R $REF_SEQ -S LENIENT --knownSites $DB_SNP --covariate ContextCovariate --covariate CycleCovariate --covariate QualityScoreCovariate --covariate ReadGroupCovariate -rf BadCigar --num_cpu_threads_per_data_thread 12 --out $output/intFiles/$pre\_$gpair[0]\_recal_data.grp -I $indelBam`;
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx30g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T BaseRecalibrator -l INFO -R $REF_SEQ -S LENIENT --knownSites $DB_SNP --covariate ContextCovariate --covariate CycleCovariate --covariate QualityScoreCovariate --covariate ReadGroupCovariate -rf BadCigar --num_cpu_threads_per_data_thread 12 --out $output/intFiles/$pre\_$gpair[0]\_recal_data.grp $irBams`;
 	`/bin/touch $output/progress/$pre\_$uID\_$gpair[0]\_BR.done`;
+	$brj = "$pre\_$uID\_$gpair[0]\_BR";
 	$ran_br = 1;
     }
         
@@ -454,7 +458,7 @@ while(<IN>){
     my $prj = '';
     if(!-e "$output/progress/$pre\_$uID\_$gpair[0]\_PR.done" || $ran_br){
 	sleep(2);
-	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$gpair[0]\_PR", job_hold => "$pre\_$uID\_$gpair[0]\_BR", cpu => "6", mem => "30", cluster_out => "$output/progress/$pre\_$uID\_$gpair[0]\_PR.log");
+	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$gpair[0]\_PR", job_hold => "$brj", cpu => "6", mem => "30", cluster_out => "$output/progress/$pre\_$uID\_$gpair[0]\_PR.log");
 	my $standardParams = Schedule::queuing(%stdParams);
 	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx30g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T PrintReads -R $REF_SEQ $multipleTargets --emit_original_quals -BQSR $output/intFiles/$pre\_$gpair[0]\_recal_data.grp --num_cpu_threads_per_data_thread 6 -rf BadCigar --out $output/intFiles/$pre\_$gpair[0]\_indelRealigned_recal.bam -I $output/intFiles/$pre\_$gpair[0]\_indelRealigned.bam`;
 	`/bin/touch $output/progress/$pre\_$uID\_$gpair[0]\_PR.done`;
