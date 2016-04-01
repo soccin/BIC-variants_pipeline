@@ -182,7 +182,7 @@ with open(origMAFFile) as fp:
         events[label]=r
 
 outFields=cin.fieldnames+["POS","TAG","LABEL"] + extra_cols
-cout=csv.DictWriter(sys.stdout,outFields,delimiter="\t")
+cout=csv.DictWriter(sys.stdout,outFields,delimiter="\t",lineterminator="\n")
 
 print commentHeader
 

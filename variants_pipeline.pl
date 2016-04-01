@@ -688,7 +688,7 @@ sub verifyConfig{
 sub verifyRequest{
     my $reqfile = shift;
 
-    my($pi,$piname,$inv,$invname,$pid,$runnum,$assay,$pipelines);  
+    my($pi,$piname,$inv,$invname,$pid,$runnum,$assay,$pipelines,$rerunReason,$origPi,$origInv);  
 
     open(REQUEST, "$reqfile") || die "Can't open request file $reqfile $!";
     while(<REQUEST>){
@@ -698,11 +698,17 @@ sub verifyRequest{
         if($req[0] =~ /^PI$/i){
             $pi = $req[1];
         }
+        elsif($req[0] =~ /^ORIG_PI$/i){
+            $origPi = $req[1];
+        }
         elsif($req[0] =~ /^PI_Name$/i){
             $piname = $req[1];
         }
         elsif($req[0] =~ /^Investigator$/i){
             $inv = $req[1];
+        } 
+        elsif($req[0] =~ /^ORIG_Investigator$/i){
+            $origInv = $req[1];
         }
         elsif($req[0] =~ /^Investigator_Name$/i){
             $invname = $req[1];
@@ -719,12 +725,58 @@ sub verifyRequest{
         elsif($req[0] =~ /^Pipelines$/i){
             $pipelines = $req[1];
         }
+        elsif($req[0] =~ /^Reason_for_rerun$/i){
+            $rerunReason = $req[1];
+        }
     }
     close REQUEST;
 
     if(!$pi || !$piname || !$inv || !$invname || !$pid || !$runnum || !$assay || !$pipelines) {
         die "\nERROR: Info missing from request file.\n\nREQUIRED fields are:\n  PI\n  PI_Name\n  Investigator\n  Investigator_Name\n  ProjectID\n  RunNumber\n  Assay\n  Pipelines\n\n";
-    } 
+    }
+
+    my $delDir = "/ifs/solres/seq/$pi/$inv/$pid/";
+    if($runnum > 1) {
+        if(!$rerunReason) {
+            die "\nERROR: This is a rerun, but there was no rerun reason given in the request file.\n\n";
+        }
+        if( ! -d $delDir ){
+            if( $origPi && $origInv){
+                $delDir = "/ifs/solres/seq/$origPi/$origInv/$pid/";
+                if( ! -d $delDir ){
+                    die "\nERROR: This looks like a rerun (RunNum: $runnum) but the delivered directory does not exists: $delDir \n\n";
+                }
+            }
+            die "\nERROR: This looks like a rerun (RunNum: $runnum) but the delivered directory does not exists: $delDir \n\n";
+        }
+    } else {
+        my $x = sprintf("%03d", $runnum);
+        $delDir .= "r_$x";
+        if( -d  "$delDir"){ 
+            if( $origPi && $origInv){
+                my $x = sprintf("%03d", $runnum);
+                $delDir = "/ifs/solres/seq/$origPi/$origInv/$pid/r_$x";
+                if( -d  "$delDir"){
+                    die "\nERROR: This project has a delivered directory with this rerun folder already present: $delDir \n\n";
+                }
+            }
+            die "\nERROR: This project has a delivered directory with this rerun folder already present: $delDir \n\n";
+        } 
+
+    }
+
+    if( $origPi && $origInv){
+        $delDir = "/ifs/solres/seq/$origPi/$origInv/$pid/";
+            my $x = sprintf("%03d", $runnum);
+            $delDir .= "r_$x";
+            if( -d  "$delDir"){
+                die "\nERROR: This project has a delivered directory with this rerun folder already present: $delDir \n\n";
+            }
+        }
+ 
+
+
+    
 }
 
 
