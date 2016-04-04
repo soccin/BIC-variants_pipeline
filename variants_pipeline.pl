@@ -761,8 +761,9 @@ sub verifyRequest{
                 if( ! -d $delDir ){
                     die "\nERROR: This looks like a rerun (RunNum: $runnum) but the delivered directory does not exists: $delDir \n\n";
                 }
+            } else {
+                die "\nERROR: This looks like a rerun (RunNum: $runnum) but the delivered directory does not exists: $delDir \n\n";
             }
-            die "\nERROR: This looks like a rerun (RunNum: $runnum) but the delivered directory does not exists: $delDir \n\n";
         }
     } else {
         my $x = sprintf("%03d", $runnum);
