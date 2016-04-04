@@ -294,7 +294,10 @@ generateGroupFile();
 callSNPS();
 
 my @qcpdf_jids = ();
-push @qcpdf_jids, "$pre\_$uID\_MERGE_MQ", "$pre\_$uID\_CDNA_CONTAM";
+push @qcpdf_jids, "$pre\_$uID\_MERGE_MQ";
+if($species =~ /hg18|hg19|b37|human/i){
+    push @qcpdf_jids, "$pre\_$uID\_CDNA_CONTAM";
+}
 mergeStats();
 
 
