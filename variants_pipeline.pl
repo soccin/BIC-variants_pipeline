@@ -285,23 +285,35 @@ foreach my $md_jid (@md_jids){
 }
 my $mdj = join(",", @md_jids);
 
+my @r3 = ();
+my @qcpdf_jids = ();
 if($mdOnly){
     mergeStats();
+    finalSync();
     exit(0);
 }
 
 generateGroupFile();
 callSNPS();
+push @r3, "$pre\_$uID\_RSYNC_2";
 
-my @qcpdf_jids = ();
 push @qcpdf_jids, "$pre\_$uID\_MERGE_MQ";
 if($species =~ /hg18|hg19|b37|human/i){
     push @qcpdf_jids, "$pre\_$uID\_CDNA_CONTAM";
 }
 mergeStats();
-
-
+finalSync();
 close LOG;
+
+sub finalSync {
+    my $r3j = join(",", @r3);
+    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_RSYNC_3", job_hold => "$r3j", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_RSYNC_3.log");
+    my $standardParams = Schedule::queuing(%stdParams);
+    my %addParams = (scheduler => "$scheduler", runtime => "500", priority_project=> "$priority_project", priority_group=> "$priority_group", queues => "lau.q,lcg.q,nce.q", rerun => "1", iounits => "1");
+    my $additionalParams = Schedule::additionalParams(%addParams);
+    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams /usr/bin/rsync -azvP --exclude 'intFiles' --exclude 'progress' $curDir $rsync`;
+    `/bin/touch $output/progress/$pre\_$uID\_RSYNC_3.done`;
+}
 
 sub reconstructCL {
 ### dumb reconstruction of command line
@@ -1428,6 +1440,7 @@ sub mergeStats {
 	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/qc/qcPDF.pl -path $output/metrics -pre $pre -config $config -request $request -log $output/progress/$pre\_$uID\_QCPDF_ERRORS.log -v $svnRev`;
         `/bin/touch $output/progress/$pre\_$uID\_QCPDF.done`;
     }
+    push @r3, "$qcpdfj";
 }
 
 sub generateGroupFile {
