@@ -171,8 +171,8 @@ sub lsf {
 	$cluster->cpu("-n 24");
     }
 
-    if($lsfParams{'mem'} =~ /^\d+$/){
-	$cluster->mem("-R \"rusage[mem=$lsfParams{'mem'}]\"");
+    if($lsfParams{'mem'} =~ /^(\d+)[Gg]?$/){
+	$cluster->mem("-R \"rusage[mem=$1]\"");
     }
     else{
 	###$cluster->mem("-R \"rusage[mem=$cluster->{mem}]\"");
