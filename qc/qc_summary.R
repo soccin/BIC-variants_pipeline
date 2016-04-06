@@ -50,7 +50,7 @@ no.fails = TRUE
 
 dir.create(paste(path,"/images",sep=""),showWarnings=FALSE)
 
-## read in all metrics from text tiles in path
+## read in all metrics from text files in path
 cat(c(path,"\n"))
 is = get.is.metrics(path,type)
 hs = get.hs.metrics(path,type)
@@ -67,33 +67,47 @@ mnc = get.minor.contamination(path,type)
 cc = get.cdna.contamination(path,type)
 gc = get.gc.bias(path,type)
 
+is.summary = NULL
+dp.summary = NULL
+al.summary = NULL
+cs.summary = NULL
+cv.summary = NULL
+mjc.summary = NULL
+mnc.summary = NULL
+
 ## get summary values (averages, etc)
-is.summary = get.mean.is.peak(type,dat=get.is.peaks(path,type))
-dp.summary = get.mean.duplication(type,dat=dp)*100
-ls.summary = get.mean.library.size(type,dat=ls)
-al.summary = get.alignment.totals(type,dat=al)
-cs.summary = get.capture.specificity.summary(type,cs=cs,hs=hs)
-cv.summary = get.mean.coverage(type,cv)$All
-mjc.summary = get.mean.frac.het.pos(type,dat=mjc)
-mnc.summary = get.mean.minor.allele.freq(type,dat=mnc)
+if(!is.null(is)){ is.summary = get.mean.is.peak(type,dat=get.is.peaks(path,type)) } 
+if(!is.null(dp)){ dp.summary = get.mean.duplication(type,dat=dp)*100 }
+if(!is.null(ls)){ ls.summary = get.mean.library.size(type,dat=ls) }
+if(!is.null(al)){ al.summary = get.alignment.totals(type,dat=al) }
+if(!is.null(cs) && !is.null(hs)){ cs.summary = get.capture.specificity.summary(type,cs=cs,hs=hs) }
+if(!is.null(cv)){ cv.summary = get.mean.coverage(type,cv)$All }
+if(!is.null(mjc)){ mjc.summary = get.mean.frac.het.pos(type,dat=mjc) }
+if(!is.null(mnc)){ mnc.summary = get.mean.minor.allele.freq(type,dat=mnc) }
 
 ## print images
-print.image(al,"alignment","01",plot.alignment)
-print.image(al,"alignment_percentage","02",plot.alignment.percentage)
-print.image(cs,"capture_specificity","03",plot.capture.specificity)
-print.image(cs,"capture_specificity_percentage","04",plot.capture.specificity.percentage)
-print.image(is,"insert_size","05",plot.insert.size.distribution)
-print.image(is,"insert_size_peaks","06",plot.insert.peaks)
-print.image(da,"fingerprint","07",plot.fpc.sum)#,square=TRUE)
-print.image(mjc,"major_contamination","08",plot.major.contamination)
-print.image(mnc,"minor_contamination","09",plot.minor.contamination)
-print.image(cc,"cdna_contamination","10",plot.cdna.contamination)
-print.image(dp,"duplication","11",plot.duplication)
-print.image(ls,"library_size","12",plot.library.size)
-print.image(cv,"coverage","13",plot.coverage)
-print.image(tr,"trimmed_reads","14",plot.trimmed.reads)
-print.image(bq,"base_qualities","15",plot.base.qualities)
-print.image(gc,"gc_bias","16",plot.gc.bias)#,square=TRUE)
+if(!is.null(al)){ 
+    print.image(al,"alignment","01",plot.alignment)
+    print.image(al,"alignment_percentage","02",plot.alignment.percentage)
+}
+if(!is.null(cs)){
+    print.image(cs,"capture_specificity","03",plot.capture.specificity)
+    print.image(cs,"capture_specificity_percentage","04",plot.capture.specificity.percentage)
+}
+if(!is.null(is)){
+    print.image(is,"insert_size","05",plot.insert.size.distribution)
+    print.image(is,"insert_size_peaks","06",plot.insert.peaks)
+}
+if(!is.null(da)){ print.image(da,"fingerprint","07",plot.fpc.sum) }#,square=TRUE) }
+if(!is.null(mjc)){ print.image(mjc,"major_contamination","08",plot.major.contamination) }
+if(!is.null(mnc)){ print.image(mnc,"minor_contamination","09",plot.minor.contamination) }
+if(!is.null(cc)){ print.image(cc,"cdna_contamination","10",plot.cdna.contamination) }
+if(!is.null(dp)){ print.image(dp,"duplication","11",plot.duplication) }
+if(!is.null(ls)){ print.image(ls,"library_size","12",plot.library.size) }
+if(!is.null(cv)){ print.image(cv,"coverage","13",plot.coverage) }
+if(!is.null(tr)){ print.image(tr,"trimmed_reads","14",plot.trimmed.reads) }
+if(!is.null(bq)){ print.image(bq,"base_qualities","15",plot.base.qualities) }
+if(!is.null(gc)){ print.image(gc,"gc_bias","16",plot.gc.bias) }#,square=TRUE)
 
 ## write sample level summary table
 tryCatch({
@@ -105,20 +119,20 @@ tryCatch({
 
     summary.row = rep("",ncol(detail))
     summary.row[which(colnames(detail)=="Sample")] = "Project Average"
-    summary.row[which(colnames(detail)=="Major Contamination")] = mjc.summary
-    summary.row[which(colnames(detail)=="Minor Contamination")] = mnc.summary
-    summary.row[which(colnames(detail)=="Coverage")] = round(cv.summary)
-    summary.row[which(colnames(detail)=="Duplication")] = dp.summary
-    summary.row[which(colnames(detail)=="Library Size (millions)")] = ls.summary
-    summary.row[which(colnames(detail)=="Insert Size Peak")] = round(is.summary)
-    summary.row[which(colnames(detail)=="On Bait Bases (millions)")] = round(cs.summary$meanOnBait/1000000)
-    summary.row[which(colnames(detail)=="Aligned Reads (millions)")] = round((al.summary$totalClusters/nrow(detail))/1000000)
-    summary.row[which(colnames(detail)=="Percentage Trimmed Reads")] = round(mean(as.numeric(detail[,which(colnames(detail)=="Percentage Trimmed Reads")])),digits=2)
+    if(!is.null(mjc.summary)){ summary.row[which(colnames(detail)=="Major Contamination")] = mjc.summary }
+    if(!is.null(mnc.summary)){ summary.row[which(colnames(detail)=="Minor Contamination")] = mnc.summary }
+    if(!is.null(cv.summary)){ summary.row[which(colnames(detail)=="Coverage")] = round(cv.summary) }
+    if(!is.null(dp.summary)){ summary.row[which(colnames(detail)=="Duplication")] = dp.summary }
+    if(!is.null(ls.summary)){ summary.row[which(colnames(detail)=="Library Size (millions)")] = ls.summary }
+    if(!is.null(is.summary)){ summary.row[which(colnames(detail)=="Insert Size Peak")] = round(is.summary) }
+    if(!is.null(cs.summary)){ summary.row[which(colnames(detail)=="On Bait Bases (millions)")] = round(cs.summary$meanOnBait/1000000) }
+    if(!is.null(al.summary)){ summary.row[which(colnames(detail)=="Aligned Reads (millions)")] = round((al.summary$totalClusters/nrow(detail))/1000000) }
+    summary.row[which(colnames(detail)=="Percentage Trimmed Reads")] = round(mean(as.numeric(detail[,which(colnames(detail)=="Percentage Trimmed Reads")])),digits=2) 
 
     detail = rbind(summary.row,detail)
     write.table(detail,file=file.path(path,paste(pre,"_SampleSummary.txt",sep="")),sep="\t",quote=F,row.names=F,col.names=T)
 }, error = function(e){
-        cat(paste("ERROR: could not write ",paste(path,"_SampleSummary.txt",sep=""),"\n",sep=""), file=logfile,append=TRUE)
+        cat(paste("ERROR: could not write ",paste(path,"/",pre,"_SampleSummary.txt",sep=""),"\n",sep=""), file=logfile,append=TRUE)
         cat(paste(e,"\n"),file=logfile,append=TRUE)
         no.fails = FALSE
 })

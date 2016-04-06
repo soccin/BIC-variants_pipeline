@@ -996,13 +996,17 @@ get.project.summary <- function(type,path){
 
     ## alignment totals
     atot = get.alignment.totals(type,path)
-    vals[1] = round(atot$totalClusters/1000000)
-    vals[2] = round(atot$bothReadsAligned/atot$totalClusters,digits=2)
+    if(!is.null(atot)){
+        vals[1] = round(atot$totalClusters/1000000)
+        vals[2] = round(atot$bothReadsAligned/atot$totalClusters,digits=2)
+    }
     ## cap spec summary
     css = get.capture.specificity.summary(type,path)
-    vals[4] = css$meanOnNearPercentage
-    vals[5] = css$meanOnBaitPercentage
-    vals[6] = css$meanOnTargetPercentage
+    if(!is.null(css)){
+        vals[4] = css$meanOnNearPercentage
+        vals[5] = css$meanOnBaitPercentage
+        vals[6] = css$meanOnTargetPercentage
+    }
     ## mean insert size peak
 cat(c("path",path,"\n"))
     vals[8] = get.mean.is.peak(type,path=path)
@@ -1028,11 +1032,13 @@ cat(c("path",path,"\n"))
     vals[15] = get.mean.library.size(type,path)
     ## coverage vals
     mean.cov = get.mean.coverage(type,get.coverage(path,type),path=path)
-    vals[16] = mean.cov$All
-    fails[16] = cov$fails
-    if(type == "targeted"){
-        vals[17] = mean.cov$Normals
-        vals[18] = mean.cov$Tumors
+    if(!is.null(mean.cov)){
+        vals[16] = mean.cov$All
+        fails[16] = cov$fails
+        if(type == "targeted"){
+            vals[17] = mean.cov$Normals
+            vals[18] = mean.cov$Tumors
+        }
     }
 
     fails = gsub("<strong>|</strong>","",fails)
@@ -1115,6 +1121,7 @@ get.capture.specificity.summary <- function(type,path=NULL,pipeline_run_id=NULL,
     if(is.null(hs)){
         hs = get.hs.metrics(path,type)
     }
+    if(is.null(dat) || is.null(hs)){ return(NULL) }
     summary = list()
     totals = apply(dat[,c("OnBait","NearBait","OffBait")],1,function(x) sum(as.numeric(x)))
     onNear = apply(dat[,c("OnBait","NearBait")],1,function(x) sum(as.numeric(x)))
