@@ -65,7 +65,7 @@ use Cluster;
 ### NOTE: DO NOT SUBMIT THIS WRAPPER SCRIPT TO THE CLUSTER BECAUSE ONCOTATOR STEP WILL FAIL
 ###       DUE TO NODES NOT HAVING NETWORK ACCESS
 
-my ($map, $group, $pair, $patient, $config, $help, $nosnps, $removedups, $species, $ug, $scheduler, $abra, $targets, $mdOnly, $noMD, $DB_SNP, $noClip, $request, $allSomatic, $scalpel, $somaticsniper, $strelka, $varscan, $virmid);
+my ($map, $group, $pair, $patient, $config, $help, $nosnps, $removedups, $species, $ug, $scheduler, $abra, $targets, $mdOnly, $noMD, $DB_SNP, $noClip, $request, $allSomatic, $scalpel, $somaticsniper, $strelka, $varscan, $virmid, $chip);
 
 my $pre = 'TEMP';
 my $output = "results";
@@ -92,6 +92,7 @@ GetOptions ('map=s' => \$map,
 	    'removedups' => \$removedups,
 	    'abra' => \$abra,
 	    'mdOnly|mdonly' => \$mdOnly,
+	    'chip|chipseq|chip-seq' => \$chip,
 	    'noMD|nomd|nomarkdups|noMarkdups' => \$noMD,
 	    'ug|unifiedgenotyper' => \$ug,
  	    'output|out|o=s' => \$output,
@@ -135,6 +136,7 @@ if(!$map || !$species || !$config || !$scheduler || !$targets || $help){
 	* -removedups: remove duplicate reads instead of just marking them
 	* -abra: run abra instead of GATK indelrealigner
 	* -mdOnly: will stop after markdups step (e.g. chip seq analysis)
+	* -chip: will stop after markdups step
 	* -noMD: will not run MarkDups
 	* R1ADAPTOR to specify R1 adaptor sequence (default: AGATCGGAAGAGCACACGTCT)
 	* R2ADAPTOR to specify R1 adaptor sequence (default: AGATCGGAAGAGCGTCGTGTA)
@@ -286,7 +288,7 @@ foreach my $md_jid (@md_jids){
 my $mdj = join(",", @md_jids);
 
 my @r3 = ();
-if($mdOnly){
+if($mdOnly || $chip){
     mergeStats();
     finalSync();
     exit(0);
@@ -877,7 +879,7 @@ sub processInputs {
 	close GROUP;
     }
     else{
-	if(!$mdOnly){
+	if(!$mdOnly || $chip){
 	    die "grouping file required to run pipeline $!";
 	}
     }
@@ -1196,7 +1198,7 @@ sub processBams {
 	    push @mdBams, "I=$output/intFiles/$samp/$lib/$samp\_$lib\_MD.bam";
 	}
 	
-	if($mdOnly){
+	if($mdOnly || $chip){
 	    my $mdb = join(" ", @mdBams);
 	    if(!-e "$output/progress/$pre\_$uID\_SAMP_MD_MERGE_$samp\.done" || $ran_md_glob){
 		my $mdj = join(",", @md_jids);
@@ -1231,7 +1233,7 @@ sub processBams {
 	
 	my $smsj = join(",", @samp_merge_samp_jids);
 	### HS will fail if seq dict of ref seq and bait/target intervals don't match
-	if(!-e "$output/progress/$pre\_$uID\_HS_METRICS_$samp\.done" || $ran_solexa{$samp} || $ran_samp_merge){
+	if((!-e "$output/progress/$pre\_$uID\_HS_METRICS_$samp\.done" || $ran_solexa{$samp} || $ran_samp_merge) && !$chip){
 	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_HS_METRICS\_$samp", job_hold => "$rmj,$smsj,$lmsj", cpu => "1", mem => "10", cluster_out => "$output/progress/$pre\_$uID\_HS_METRICS_$samp\.log");
 	    my $standardParams = Schedule::queuing(%stdParams);
 	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Djava.io.tmpdir=/scratch/$uID -jar $PICARD/picard.jar CalculateHsMetrics INPUT=$bamForStats OUTPUT=$output/intFiles/$pre\_HsMetrics_$samp\.txt REFERENCE_SEQUENCE=$REF_SEQ METRIC_ACCUMULATION_LEVEL=null METRIC_ACCUMULATION_LEVEL=SAMPLE BAIT_INTERVALS=$baits_ilist BAIT_SET_NAME=$assay TARGET_INTERVALS=$targets_ilist VALIDATION_STRINGENCY=LENIENT`;
@@ -1264,7 +1266,7 @@ sub processBams {
 	}
 	push @asm, "-metrics $output/intFiles/$pre\_AlignmentSummaryMetrics_$samp\.txt";
 
-	if(!-e "$output/progress/$pre\_$uID\_COG_METRICS_$samp\.done" || $ran_solexa{$samp} || $ran_samp_merge){
+	if((!-e "$output/progress/$pre\_$uID\_COG_METRICS_$samp\.done" || $ran_solexa{$samp} || $ran_samp_merge) && !$chip){
 	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_COG_METRICS\_$samp", job_hold => "$rmj,$smsj,$lmsj", cpu => "1", mem => "10", cluster_out => "$output/progress/$pre\_$uID\_COG_METRICS_$samp\.log");
 	    my $standardParams = Schedule::queuing(%stdParams);
 	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Djava.io.tmpdir=/scratch/$uID -jar $PICARD/picard.jar CollectOxoGMetrics INPUT=$bamForStats OUTPUT=$output/intFiles/$pre\_CollectOxoGMetrics_$samp\.txt REFERENCE_SEQUENCE=$REF_SEQ DB_SNP=$DB_SNP VALIDATION_STRINGENCY=LENIENT`;
@@ -1274,7 +1276,7 @@ sub processBams {
 	}
 	push @cogm, "-metrics $output/intFiles/$pre\_CollectOxoGMetrics_$samp\.txt";
 
-	if($species =~ /b37|hg19/){
+	if($species =~ /b37|hg19/ && !$chip){
             if(!-e "$output/progress/$pre\_$uID\_DOC_$samp\.done" || $ran_solexa{$samp} || $ran_samp_merge){
                 my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_DOC\_$samp", job_hold => "$rmj,$smsj,$lmsj", cpu => "1", mem => "4", cluster_out => "$output/progress/$pre\_$uID\_DOC_$samp\.log");
                 my $standardParams = Schedule::queuing(%stdParams);
@@ -1286,7 +1288,7 @@ sub processBams {
             push @docm, "$bamForStats\_FP_base_counts\.txt";
         }
 
-        if(!-e "$output/progress/$pre\_$uID\_GC_METRICS_$samp\.done" || $ran_solexa{$samp} || $ran_samp_merge){
+        if((!-e "$output/progress/$pre\_$uID\_GC_METRICS_$samp\.done" || $ran_solexa{$samp} || $ran_samp_merge) && !$chip){
             my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_GC_METRICS\_$samp", job_hold => "$rmj,$smsj,$lmsj", cpu => "1", mem => "10", cluster_out => "$output/progress/$pre\_$uID\_GC_METRICS_$samp\.log");
             my $standardParams = Schedule::queuing(%stdParams);
             `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Djava.io.tmpdir=/scratch/$uID -jar $PICARD/picard.jar CollectGcBiasMetrics INPUT=$bamForStats OUTPUT=$output/intFiles/$pre\_GcBiasMetrics_$samp\.txt REFERENCE_SEQUENCE=$REF_SEQ SUMMARY_OUTPUT=$output/intFiles/$pre\_gcbias_$samp\_summary_tmp.txt CHART_OUTPUT=$output/intFiles/$pre\_gcbias_$samp\_tmp.pdf`;
@@ -1306,7 +1308,7 @@ sub mergeStats {
     my %addParams = (scheduler => "$scheduler", runtime => "50", priority_project=> "$priority_project", priority_group=> "$priority_group", rerun => "1", iounits => "1");
     my $additionalParams = Schedule::additionalParams(%addParams);
 
-    if(!$noMD){
+    if(!$noMD || $chip){
 	my $mdfiles = join(" ", @mdm);
 	if(!-e "$output/progress/$pre\_$uID\_MERGE_MDM.done" || $ran_md_glob){
 	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_MERGE_MDM", job_hold => "$mdj", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_MERGE_MDM.log");
