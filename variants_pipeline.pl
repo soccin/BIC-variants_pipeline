@@ -286,7 +286,6 @@ foreach my $md_jid (@md_jids){
 my $mdj = join(",", @md_jids);
 
 my @r3 = ();
-my @qcpdf_jids = ();
 if($mdOnly){
     mergeStats();
     finalSync();
@@ -297,10 +296,6 @@ generateGroupFile();
 callSNPS();
 push @r3, "$pre\_$uID\_RSYNC_2";
 
-push @qcpdf_jids, "$pre\_$uID\_MERGE_MQ";
-if($species =~ /hg18|hg19|b37|human/i){
-    push @qcpdf_jids, "$pre\_$uID\_CDNA_CONTAM";
-}
 mergeStats();
 finalSync();
 close LOG;
@@ -1302,6 +1297,8 @@ sub processBams {
 }
 
 sub mergeStats {
+    my @qcpdf_jids = ();
+
     my $ran_merge = 0;
     my $ran_merge_ism = 0;
     my %addParams = (scheduler => "$scheduler", runtime => "50", priority_project=> "$priority_project", priority_group=> "$priority_group", rerun => "1", iounits => "1");

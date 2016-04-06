@@ -615,16 +615,19 @@ if(!-e "$output/progress/$pre\_$uID\_MQ.done" || $ran_ssf){
     }
 }
 
-### NOTE: always running this so that the QC_PDF doesn't fail due to it not being able to fin $pre\_$uID\_MERGE_MQ
 my $mqmj = join(",", @mq_metrics_jid);
-my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_MERGE_MQ", job_hold => "$mqmj", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_MERGE_MQ.log");
-my $standardParams = Schedule::queuing(%stdParams);
-`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PYTHON/python $Bin/qc/mergeMeanQualityHistograms.py $output '*_MeanQualityByCycle_*.txt' $output/metrics/$pre\_post_recal_MeanQualityByCycle.txt $output/metrics/$pre\_pre_recal_MeanQualityByCycle.txt`;
-`/bin/touch $output/progress/$pre\_$uID\_MERGE_MQ.done`;
-push @all_jids, "$pre\_$uID\_MERGE_MQ";
+my $ran_mmqm = 0;
+if(!-e "$output/progress/$pre\_$uID\_MQ.done" || $ran_mqm){
+    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_MERGE_MQ", job_hold => "$mqmj", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_MERGE_MQ.log");
+    my $standardParams = Schedule::queuing(%stdParams);
+    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PYTHON/python $Bin/qc/mergeMeanQualityHistograms.py $output '*_MeanQualityByCycle_*.txt' $output/metrics/$pre\_post_recal_MeanQualityByCycle.txt $output/metrics/$pre\_pre_recal_MeanQualityByCycle.txt`;
+    `/bin/touch $output/progress/$pre\_$uID\_MERGE_MQ.done`;
+    push @all_jids, "$pre\_$uID\_MERGE_MQ";
+    $ran_mmqm = 1;
+}
 
 my $allj = join(",", @all_jids);
-if(!-e "$output/progress/$pre\_$uID\_RSYNC_1.done" || $ran_ssf || $ran_mqm){
+if(!-e "$output/progress/$pre\_$uID\_RSYNC_1.done" || $ran_ssf || $ran_mmqm){
     sleep(2);
     my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_RSYNC_1", job_hold => "$allj", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_RSYNC_1.log");
     my $standardParams = Schedule::queuing(%stdParams);
