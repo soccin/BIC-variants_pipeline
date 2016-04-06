@@ -294,7 +294,9 @@ if($mdOnly){
 
 generateGroupFile();
 callSNPS();
-push @r3, "$pre\_$uID\_RSYNC_2";
+if (! $nosnps){
+    push @r3, "$pre\_$uID\_RSYNC_2";
+}
 
 mergeStats();
 finalSync();
@@ -1432,13 +1434,13 @@ sub mergeStats {
     my $svnRev = `svn info $Bin | grep Revision | cut -d " " -f 2`;
     chomp $svnRev;
     my $qcpdfj = join(",", @qcpdf_jids);
-   if(!-e "$output/progress/$pre\_$uID\_QCPDF.done" || $ran_merge){
+    if(!-e "$output/progress/$pre\_$uID\_QCPDF.done" || $ran_merge){
 	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_QCPDF", job_hold => "$qcpdfj", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_QCPDF.log");
 	my $standardParams = Schedule::queuing(%stdParams);
 	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/qc/qcPDF.pl -path $output/metrics -pre $pre -config $config -request $request -log $output/progress/$pre\_$uID\_QCPDF_ERRORS.log -v $svnRev`;
         `/bin/touch $output/progress/$pre\_$uID\_QCPDF.done`;
+        push @r3, "$pre\_$uID\_QCPDF";
     }
-    push @r3, "$qcpdfj";
 }
 
 sub generateGroupFile {
