@@ -1322,7 +1322,7 @@ sub mergeStats {
     
     my $hsfiles = join(" ", @hsm);
     my $hsj = join(",", @hs_jids);
-    if(!-e "$output/progress/$pre\_$uID\_MERGE_HSM.done" || $ran_hs){
+    if((!-e "$output/progress/$pre\_$uID\_MERGE_HSM.done" || $ran_hs) && !$chip){
 	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_MERGE_HSM", job_hold => "$hsj", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_MERGE_HSM.log");
 	my $standardParams = Schedule::queuing(%stdParams);
 	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/qc/mergePicardMetrics.pl $hsfiles ">$output/metrics/$pre\_HsMetrics.txt"`;
