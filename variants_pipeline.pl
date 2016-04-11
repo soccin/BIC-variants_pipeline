@@ -92,7 +92,7 @@ GetOptions ('map=s' => \$map,
 	    'removedups' => \$removedups,
 	    'abra' => \$abra,
 	    'mdOnly|mdonly' => \$mdOnly,
-	    'chip|chipseq|chip-seq' => \$chip,
+ 	    'chip|chipseq|chip-seq' => \$chip,
 	    'noMD|nomd|nomarkdups|noMarkdups' => \$noMD,
 	    'ug|unifiedgenotyper' => \$ug,
  	    'output|out|o=s' => \$output,
@@ -134,6 +134,7 @@ if(!$map || !$species || !$config || !$scheduler || !$targets || $help){
 	* PRIORITY_GROUP: lsf notion of priority assigned to groups (default: Pipeline)
 	* -nosnps: if no snps to be called; e.g. when only indelrealigned/recalibrated bams needed
 	* -removedups: remove duplicate reads instead of just marking them
+ 	* -chip: will stop after markdups step
 	* -abra: run abra instead of GATK indelrealigner
 	* -mdOnly: will stop after markdups step (e.g. chip seq analysis)
 	* -chip: will stop after markdups step
@@ -1233,7 +1234,7 @@ sub processBams {
 	
 	my $smsj = join(",", @samp_merge_samp_jids);
 	### HS will fail if seq dict of ref seq and bait/target intervals don't match
-	if((!-e "$output/progress/$pre\_$uID\_HS_METRICS_$samp\.done" || $ran_solexa{$samp} || $ran_samp_merge) && !$chip){
+        if((!-e "$output/progress/$pre\_$uID\_HS_METRICS_$samp\.done" || $ran_solexa{$samp} || $ran_samp_merge) && !$chip){
 	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_HS_METRICS\_$samp", job_hold => "$rmj,$smsj,$lmsj", cpu => "1", mem => "10", cluster_out => "$output/progress/$pre\_$uID\_HS_METRICS_$samp\.log");
 	    my $standardParams = Schedule::queuing(%stdParams);
 	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Djava.io.tmpdir=/scratch/$uID -jar $PICARD/picard.jar CalculateHsMetrics INPUT=$bamForStats OUTPUT=$output/intFiles/$pre\_HsMetrics_$samp\.txt REFERENCE_SEQUENCE=$REF_SEQ METRIC_ACCUMULATION_LEVEL=null METRIC_ACCUMULATION_LEVEL=SAMPLE BAIT_INTERVALS=$baits_ilist BAIT_SET_NAME=$assay TARGET_INTERVALS=$targets_ilist VALIDATION_STRINGENCY=LENIENT`;
@@ -1381,7 +1382,7 @@ sub mergeStats {
        ###       this hold causes issues on lsf because of the *
        my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_MERGE_GCM", job_hold => "$gcj", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_MERGE_GCM.log");
        my $standardParams = Schedule::queuing(%stdParams);
-       `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PYTHON/python $Bin/qc/mergeGcBiasMetrics.py $output GcBiasMetrics* $output/metrics/$pre\_GcBiasMetrics.txt`;
+       `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PYTHON/python $Bin/qc/mergeGcBiasMetrics.py $output/intFiles GcBiasMetrics* $output/metrics/$pre\_GcBiasMetrics.txt`;
        `/bin/touch $output/progress/$pre\_$uID\_MERGE_GCM.done`;
        push @qcpdf_jids, "$pre\_$uID\_MERGE_GCM";
        $ran_merge = 1;
@@ -1432,7 +1433,6 @@ sub mergeStats {
         `/bin/touch $output/progress/$pre\_$uID\_MERGE_CQS_LOGS.done`;
      }
 
-    #my $svnURL = "svn+ssh://$uID\@cbio.mskcc.org/srv/svn/svn-private/bic/variants_pipeline/trunk";
     my $svnRev = `svn info $Bin | grep Revision | cut -d " " -f 2`;
     chomp $svnRev;
     my $qcpdfj = join(",", @qcpdf_jids);
@@ -1443,6 +1443,16 @@ sub mergeStats {
         `/bin/touch $output/progress/$pre\_$uID\_QCPDF.done`;
         push @r3, "$pre\_$uID\_QCPDF";
     }
+    push @r3, "$pre\_$uID\_QCPDF";
+
+    my $qcdbj = join(",", @qcpdf_jids);
+    if(!-e "$output/progress/$pre\_$uID\_QCDB.done" || $ran_merge){
+        my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_QCDB", job_hold => "$qcdbj", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_QCDB.log");
+        my $standardParams = Schedule::queuing(%stdParams);
+        `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PYTHON/python $Bin/qc/db/load_exome_project.py -o $output/progress/$pre\_$uID\_QCDB.log $request $svnRev $output`;
+        `/bin/touch $output/progress/$pre\_$uID\_QCDB.done`;
+    }
+            
 }
 
 sub generateGroupFile {
