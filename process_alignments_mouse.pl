@@ -281,7 +281,6 @@ my $CHR_PREFIX = "chr"; #as of right now default to 'chr'. Once we add NCBI asse
 if($species =~ /mm10_custom/i){
     $REF_SEQ = "$MM10_CUSTOM_FASTA";
     $BWA_INDEX = "$MM10_CUSTOM_BWA_INDEX";
-    $ABRA_TARGETS = '';
 }
 elsif($species =~ /mm9/i){
     $REF_SEQ = "$MM9_FASTA";
