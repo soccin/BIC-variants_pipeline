@@ -25,7 +25,7 @@ use Cluster;
 my ($file, $species, $config, $scheduler, $help, $priority_project, $priority_group, $noClip, $noTrim);
 my $pre = 'TEMP';
 my $run = 'TEMP_RUN';
-my $readgroup = "\@RG\tID:TEMP_ID\tPL:Illumina\tPU:TEMP_PU\tLB:TEMP_LBSM:TEMP_SM";
+my $readgroup = "\@RG\tID:TEMP_ID\tPL:Illumina\tPU:TEMP_PU\tLB:TEMP_LB\tSM:TEMP_SM";
 my $r1adaptor = 'AGATCGGAAGAGCACACGTCT';
 my $r2adaptor = 'AGATCGGAAGAGCGTCGTGTA';
 my $bqTrim = '3';
