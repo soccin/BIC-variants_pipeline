@@ -30,7 +30,7 @@ while(<CONFIG>){
     my @conf = split(/\s+/, $_);
     if($conf[0] =~ /abra/i){
 	if(!-e "$conf[1]/abra.jar"){
-	    die "CAN'T FIND GenomeAnalysisTK.jar IN $conf[1] $!";
+	    die "CAN'T FIND abra IN $conf[1] $!";
 	}
 	$ABRA = $conf[1];
     }

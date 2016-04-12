@@ -173,7 +173,7 @@ while(<CONFIG>){
     }
     elsif($conf[0] =~ /species_custom_bwa_index/i){
 	if(!-e "$conf[1]\.bwt" || !-e "$conf[1]\.pac" || !-e "$conf[1]\.ann" || !-e "$conf[1]\.amb" || !-e "$conf[1]\.sa"){
-	    if($species =~ /mm10_custom/i){
+	    if($species =~ /species_custom/i){
 		die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR SPECIES CUSTOM WITH PREFIX $conf[1] $!";
 	    }
 	}
