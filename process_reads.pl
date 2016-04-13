@@ -22,7 +22,7 @@ use Cluster;
 
 ### ASSUMES THAT YOU HAVE /scratch/$uID ON ALL NODES SET UP
 
-my ($file, $species, $config, $scheduler, $help, $priority_project, $priority_group, $noClip, $noTrim);
+my ($file, $species, $config, $scheduler, $help, $priority_project, $priority_group, $noClip, $noTrim, $defaultBWA);
 my $pre = 'TEMP';
 my $run = 'TEMP_RUN';
 my $readgroup = "\@RG\tID:TEMP_ID\tPL:Illumina\tPU:TEMP_PU\tLB:TEMP_LB\tSM:TEMP_SM";
@@ -43,6 +43,7 @@ GetOptions ('file=s' => \$file,
 	    'noClip' => \$noClip,
 	    'bqTrim=s' => \$bqTrim,
 	    'noTrim' => \$noTrim,
+	    'defaultbwa|defaultBWA' => \$defaultBWA,
 	    'readgroup=s' => \$readgroup) or exit(1);
 
 if(!$file || !$config || !$species || !$scheduler || $help){
@@ -62,6 +63,7 @@ if(!$file || !$config || !$species || !$scheduler || $help){
 	* NOCLIP: no clipping of adaptor sequences
 	* BASEQTRIM: base quality to trim in reads (default: 3)
 	* NOTRIM: no quality trimming of reads
+	* DEFAULTBWA: runs bwa with default parameters; useful for chipseq when -PM causes issues for peakcallers like MACS; -PM is default otherwise
 	* READGROUP: string containing information for ID, PL, PU, LB, and SM e.g. '\@RG\\tID:s_CH_20__1_LOLA_1018_PE\\tPL:Illumina\\tPU:s_CH_20__1_LOLA_1018\\tLB:s_CH_20__1\\t SM:s_CH_20'; WARNING: INCOMPLETE INFORMATION WILL CAUSE GATK ISSSUES (default: '\@RG\\tID:TEMP_ID\\tPL:Illumina\\tPU:TEMP_PU\\tLB:TEMP_LB\\tSM:TEMP_SM')
 HELP
 exit;
@@ -232,6 +234,11 @@ if($noClip){
     $clipR2 = "";
 }
 
+my $bwaOptions = "-MP";
+if($defaultBWA){
+    $bwaOptions = "";
+}
+
 my $ran_bwa = 0;
 my @bwa_jids = ();
 while (<IN>){
@@ -356,7 +363,7 @@ while (<IN>){
 	    sleep(2);
 	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_BWA_$nameR1[0]\_$nameR2[0]", job_hold => "$ca_jid", cpu => "12", mem => "12", cluster_out => "progress/$pre\_$uID\_BWA_$nameR1[0]\_$nameR2[0]\.log");
 	    my $standardParams = Schedule::queuing(%stdParams);
-	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams "$BWA/bwa mem -PM -R \'$readgroup\' -t 12 $bwaDB  $count/$nameR1[0]\_CQS_CT_PE.fastq $count/$nameR2[0]\_CQS_CT_PE.fastq >$count/$nameR1[0]\_$nameR2[0]\_CQS_CT_PE.fastq_$species\.bwa.sam"`;
+	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams "$BWA/bwa mem $bwaOptions -R \'$readgroup\' -t 12 $bwaDB  $count/$nameR1[0]\_CQS_CT_PE.fastq $count/$nameR2[0]\_CQS_CT_PE.fastq >$count/$nameR1[0]\_$nameR2[0]\_CQS_CT_PE.fastq_$species\.bwa.sam"`;
 	    `/bin/touch progress/$pre\_$uID\_BWA_$nameR1[0]\_$nameR2[0]\.done`;
 	    push @bwa_jids, "$pre\_$uID\_BWA_$nameR1[0]\_$nameR2[0]";
 	    $ran_bwa = 1;
@@ -380,7 +387,7 @@ while (<IN>){
 	    sleep(2);
 	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_BWA_$nameR1[0]", job_hold => "$ca_jid", cpu => "12", mem => "12", cluster_out => "progress/$pre\_$uID\_BWA_$nameR1[0]\.log");
 	    my $standardParams = Schedule::queuing(%stdParams);
-	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams "$BWA/bwa mem -PM -R \'$readgroup\' -t 12 $bwaDB $count/$nameR1[0]\_CQS_CT_SE.fastq >$count/$nameR1[0]\_CQS_CT_SE.fastq_$species\.bwa.sam"`;
+	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams "$BWA/bwa mem $bwaOptions -R \'$readgroup\' -t 12 $bwaDB $count/$nameR1[0]\_CQS_CT_SE.fastq >$count/$nameR1[0]\_CQS_CT_SE.fastq_$species\.bwa.sam"`;
 	    `/bin/touch progress/$pre\_$uID\_BWA_$nameR1[0]\.done`;
 	    push @bwa_jids, "$pre\_$uID\_BWA_$nameR1[0]";
 	    $ran_bwa = 1;

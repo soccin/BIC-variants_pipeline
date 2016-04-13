@@ -137,7 +137,7 @@ if(!$map || !$species || !$config || !$scheduler || !$targets || $help){
  	* -chip: will stop after markdups step
 	* -abra: run abra instead of GATK indelrealigner
 	* -mdOnly: will stop after markdups step (e.g. chip seq analysis)
-	* -chip: will stop after markdups step
+	* -chip: will stop after markdups step; will also run bwa without -PM options
 	* -noMD: will not run MarkDups
 	* R1ADAPTOR to specify R1 adaptor sequence (default: AGATCGGAAGAGCACACGTCT)
 	* R2ADAPTOR to specify R1 adaptor sequence (default: AGATCGGAAGAGCGTCGTGTA)
@@ -1040,6 +1040,11 @@ sub alignReads {
 	$aSeq = "-r1adaptor $r1adaptor -r2adaptor $r2adaptor";
     }
 
+    my $defaultBWA = '';
+    if($chip){
+	$defaultBWA = '-defaultBWA';
+    }
+
     open(IN, "$map") or die "Can't open $map $!";
     while(<IN>){
 	chomp;
@@ -1097,7 +1102,7 @@ sub alignReads {
 	print LOG "$currentTime[2]:$currentTime[1]:$currentTime[0], $currentTime[3]\/$currentTime[4]\/$currentTime[5]\tSTARTING READS PROCESSING/ALIGNMENT FOR $data[1]\_$data[0]\_$data[2]\n";
 
 	if(!-e "$output/progress/reads_files_$data[1]\_$data[0]\_$data[2]\.done"){	    
-	    `$Bin/process_reads.pl -file files_$data[1]\_$data[0]\_$data[2] -pre $pre -run $data[1]\_$data[0]\_$data[2] -readgroup "\@RG\\tID:$data[1]\_$data[0]\_$data[2]\_$seq_type{$data[1]}\\tPL:Illumina\\tPU:$data[1]\_$data[0]\_$data[2]\\tLB:$data[1]\_$data[0]\\tSM:$data[1]" -species $species -config $config -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $no_clip $aSeq -bqTrim $bqTrim > files_$data[1]\_$data[0]\_$data[2]\_process_reads_$seq_type{$data[1]}\.log 2>&1`;
+	    `$Bin/process_reads.pl -file files_$data[1]\_$data[0]\_$data[2] -pre $pre -run $data[1]\_$data[0]\_$data[2] -readgroup "\@RG\\tID:$data[1]\_$data[0]\_$data[2]\_$seq_type{$data[1]}\\tPL:Illumina\\tPU:$data[1]\_$data[0]\_$data[2]\\tLB:$data[1]\_$data[0]\\tSM:$data[1]" -species $species -config $config -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $no_clip $aSeq -bqTrim $bqTrim $defaultBWA > files_$data[1]\_$data[0]\_$data[2]\_process_reads_$seq_type{$data[1]}\.log 2>&1`;
 	    ###`/common/sge/bin/lx24-amd64/qsub /home/mpirun/tools/qCMD $Bin/solexa_PE.pl -file files -pre $pre -run $data[1]\_$data[0]\_$data[2] -readgroup "\@RG\\\tID:$data[1]\_$data[0]\_$data[2]\_PE\\\tPL:Illumina\\\tPU:$data[1]\_$data[0]\_$data[2]\\\tLB:$data[1]\_$data[0]\\\tSM:$data[1]" -species $species -config $config $targeted -scheduler $scheduler`;
 	    $ran_sol = 1;
 	    $ran_solexa{$data[1]} = 1;
