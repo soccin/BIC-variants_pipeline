@@ -366,6 +366,9 @@ sub reconstructCL {
     if($mdOnly){
 	$rCL .= " -mdOnly";
     }
+    if($chip){
+	$rCL .= " -chip";
+    }
     if($noMD){
 	$rCL .= " -noMD";
     }
