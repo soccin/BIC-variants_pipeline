@@ -597,27 +597,25 @@ my $ssfj = join(",", @ssf_jids);
 push @all_jids, @ssf_jids;
 my @mq_metrics_jid = ();
 my $ran_mqm = 0;
-if(!-e "$output/progress/$pre\_$uID\_MQ.done" || $ran_ssf){
-    foreach my $finalBam (@finalBams){
-        my @sn = split(/\//, $finalBam);
-        my $samp = $sn[-1];
-        $samp =~ s/\.bam//g;
-        $samp =~ s/$pre\_indelRealigned_recal_//g;
-
-	if(!-e "$output/progress/$pre\_$uID\_MQ_METRICS_$samp\.done" || $ran_ssf){
-	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_MQ_METRICS_$samp", job_hold => "$ssfj", cpu => "1", mem => "10", cluster_out => "$output/progress/$pre\_$uID\_MQ_METRICS_$samp\.log");
-	    my $standardParams = Schedule::queuing(%stdParams);
-	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Djava.io.tmpdir=/scratch/$uID -jar $PICARD/picard.jar MeanQualityByCycle INPUT=$finalBam OUTPUT=$output/intFiles/$pre\_MeanQualityByCycle_$samp.txt CHART_OUTPUT=$output/intFiles/$pre\_MeanQualityByCycle_$samp.pdf REFERENCE_SEQUENCE=$REF_SEQ VALIDATION_STRINGENCY=LENIENT ASSUME_SORTED=true TMP_DIR=/scratch/$uID`;
-	    push @mq_metrics_jid, "$pre\_$uID\_MQ_METRICS_$samp";
-	    `/bin/touch $output/progress/$pre\_$uID\_MQ_METRICS_$samp\.done`;
-	    $ran_mqm = 1; 
-	}
+foreach my $finalBam (@finalBams){
+    my @sn = split(/\//, $finalBam);
+    my $samp = $sn[-1];
+    $samp =~ s/\.bam//g;
+    $samp =~ s/$pre\_indelRealigned_recal_//g;
+    
+    if(!-e "$output/progress/$pre\_$uID\_MQ_METRICS_$samp\.done" || $ran_ssf){
+	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_MQ_METRICS_$samp", job_hold => "$ssfj", cpu => "1", mem => "10", cluster_out => "$output/progress/$pre\_$uID\_MQ_METRICS_$samp\.log");
+	my $standardParams = Schedule::queuing(%stdParams);
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Djava.io.tmpdir=/scratch/$uID -jar $PICARD/picard.jar MeanQualityByCycle INPUT=$finalBam OUTPUT=$output/intFiles/$pre\_MeanQualityByCycle_$samp.txt CHART_OUTPUT=$output/intFiles/$pre\_MeanQualityByCycle_$samp.pdf REFERENCE_SEQUENCE=$REF_SEQ VALIDATION_STRINGENCY=LENIENT ASSUME_SORTED=true TMP_DIR=/scratch/$uID`;
+	push @mq_metrics_jid, "$pre\_$uID\_MQ_METRICS_$samp";
+	`/bin/touch $output/progress/$pre\_$uID\_MQ_METRICS_$samp\.done`;
+	$ran_mqm = 1; 
     }
 }
 
 my $mqmj = join(",", @mq_metrics_jid);
 my $ran_mmqm = 0;
-if(!-e "$output/progress/$pre\_$uID\_MQ.done" || $ran_mqm){
+if(!-e "$output/progress/$pre\_$uID\_MERGE_MQ.done" || $ran_mqm){
     my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_MERGE_MQ", job_hold => "$mqmj", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_MERGE_MQ.log");
     my $standardParams = Schedule::queuing(%stdParams);
     `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PYTHON/python $Bin/qc/mergeMeanQualityHistograms.py $output '*_MeanQualityByCycle_*.txt' $output/metrics/$pre\_post_recal_MeanQualityByCycle.txt $output/metrics/$pre\_pre_recal_MeanQualityByCycle.txt`;
