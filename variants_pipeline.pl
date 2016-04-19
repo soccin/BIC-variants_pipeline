@@ -1454,10 +1454,14 @@ sub mergeStats {
     push @r3, "$pre\_$uID\_QCPDF";
 
     my $qcdbj = join(",", @qcpdf_jids);
+    my $chp = '';
+    if($chip){
+        $chp = '--chip';
+    }
     if(!-e "$output/progress/$pre\_$uID\_QCDB.done" || $ran_merge){
         my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_QCDB", job_hold => "$qcdbj", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_QCDB.log");
         my $standardParams = Schedule::queuing(%stdParams);
-        `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PYTHON/python $Bin/qc/db/load_exome_project.py -o $output/progress/$pre\_$uID\_QCDB.log $request $svnRev $output`;
+        `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PYTHON/python $Bin/qc/db/load_exome_project.py -o $output/progress/$pre\_$uID\_QCDB_LOG.log $chp $request $svnRev $output`;
         `/bin/touch $output/progress/$pre\_$uID\_QCDB.done`;
     }
             

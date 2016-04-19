@@ -387,11 +387,15 @@ def read_and_save_fp_het(file_id, in_file_name, project_id, pipeline_run_id, con
             #log_file.write("LOG: query = '%s', params = '%s'\n" % (stat_query, params))
             stat_cursor.execute(stat_query, params)
 
-def load(species, stat_type, project_name, pi, investigator, rerun_number, revision_number, in_file_name, conn, log_file):
+def load(species, chipseq, stat_type, project_name, pi, investigator, rerun_number, revision_number, in_file_name, conn, log_file):
     if species.lower() in ['human','hg18','hg19','b37','grch37']:
         stats = human_stats
+        if chipseq:
+            stats = human_chipseq_stats
     elif species.lower() in ['mouse','mm9','mm10']:
         stats = mouse_stats
+        if chipseq:
+            stats = mouse_chipseq_stats
 
     if stat_type not in stats:
         raise Exception ("Do not know sample type '%s'" % (stat_type))
@@ -493,11 +497,25 @@ human_stats = {
     "OrgBaseQualities": Stat("OrgBaseQualities", ["_pre_recal_MeanQualityByCycle.txt"], read_and_save_org_base_qualities)
 }
 
+human_chipseq_stats = {
+    "FPHet": Stat("FPHet", ["_MajorContamination.txt"], read_and_save_fp_het),
+    "FPCSummary": Stat("FPCSummary", ["_DiscordantHomAlleleFractions.txt"], read_and_save_fpc_summary),
+    "FPAvgHom": Stat("FPAvgHom", ["_MinorContamination.txt"], read_and_save_fp_avg_hom),
+    "FPSummary": Stat("FPSummary", ["_FingerprintSummary.txt"], read_and_save_fp_summary),
+    "FPCResultsUnMatch": Stat("FPCResultsUnMatch", ["_UnexpectedMatches.txt"], read_and_save_fpc_results_unmatch),
+    "FPCResultsUnMismatch": Stat("FPCResultsUnMismatch", ["_UnexpectedMismatches.txt"], read_and_save_fpc_results_unmismatch),
+    "InsertSizeMetrics": Stat("InsertSizeMetrics", ["_InsertSizeMetrics_Histograms.txt"], read_and_save_insert_size_metrics),
+}
+
 mouse_stats = {
     "BaseQualities": Stat("BaseQualities", ["_post_recal_MeanQualityByCycle.txt"], read_and_save_base_qualities),
     "HSMetrics": Stat("HSMetrics", ["_HsMetrics.txt"], read_and_save_hs_metrics),
     "InsertSizeMetrics": Stat("InsertSizeMetrics", ["_InsertSizeMetrics_Histograms.txt"], read_and_save_insert_size_metrics),
     "OrgBaseQualities": Stat("OrgBaseQualities", ["_pre_recal_MeanQualityByCycle.txt"], read_and_save_org_base_qualities)
+}
+
+mouse_chipseq_stats = {
+    "InsertSizeMetrics": Stat("InsertSizeMetrics", ["_InsertSizeMetrics_Histograms.txt"], read_and_save_insert_size_metrics),
 }
 
 if __name__ == "__main__":

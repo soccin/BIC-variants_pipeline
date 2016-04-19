@@ -68,11 +68,15 @@ def validate_files(project_name, project_dir, stats, log_file):
     #####
 
 
-def load(species, project_name, rerun_number, pi, investigator, tumor_type, pipeline, revision_number, project_dir, conn, log_file):
+def load(species, chipseq, project_name, rerun_number, pi, investigator, tumor_type, pipeline, revision_number, project_dir, conn, log_file):
     if species.lower() in ['human','hg18','hg19','b37','grch37']:
         stats = load_exome_stats.human_stats.values()
+        if chipseq:
+            stats = load_exome_stats.human_chipseq_stats.values()
     elif species.lower() in ['mouse','mm9','mm10']:
         stats = load_exome_stats.mouse_stats.values()
+        if chipseq:
+            stats = load_exome_stats.mouse_chipseq_stats.values()
 
     validate_files(project_name, project_dir, stats, log_file)
     # now load data 
@@ -81,7 +85,7 @@ def load(species, project_name, rerun_number, pi, investigator, tumor_type, pipe
     for stat in stats:
         file_name = get_stat_file(project_name, project_dir, stat)
         log_file.write("LOG: Loading stat '%s' from '%s'\n" % (stat.name, file_name))
-        load_exome_stats.load(species, stat.name, project_name, pi, investigator, rerun_number, revision_number, file_name, conn, log_file)
+        load_exome_stats.load(species, chipseq, stat.name, project_name, pi, investigator, rerun_number, revision_number, file_name, conn, log_file)
 
 def parse_request(request_file):
     project_id = rerun_number = pi = investigator = species = None
@@ -120,17 +124,20 @@ if __name__ == "__main__":
         #print "\t./load_project.py -o Proj_4773_qc_db_load.log 4773 0 faginj knaufj THCA dmp 2207 /ifs/solres/seq/faginj/knaufj/Proj_4773/"
         #sys.exit()
 
-    if not len(sys.argv) == 4 and  not len(sys.argv) == 6:  # with or without '-o log.txt'
-        print "Usage: ./load_exome_project.py [-o log_file.log] request_file revision_number project_dir"
+    if not len(sys.argv) in [4,5,7]:  # with or without '-o log.txt'
+        print "Usage: ./load_exome_project.py [-o log_file.log] [--chip] request_file revision_number project_dir"
         print "\t./load_exome_project.py -o Proj_4773_qc_db_load.log Proj_4773_request.txt 2207 /ifs/solres/seq/faginj/knaufj/Proj_4773/"
         sys.exit()
 
     log_file_name = "qc_db_scripts.%s.log" % (datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
-    opts, args = getopt.getopt(sys.argv[1:],"o:",["out"])
+    opts, args = getopt.getopt(sys.argv[1:],"o:",["out","chip"])
+    chipseq = False
 
     for opt, arg in opts:
         if opt in("-o","--out"):
             log_file_name = arg
+        elif opt == "--chip":
+            chipseq = True
 
     #project_id, rerun_number, pi, investigator, tumor_type, pipeline, revision_number, project_dir = args
     request_file, revision_number, project_dir = args
@@ -165,7 +172,7 @@ if __name__ == "__main__":
             conn = mysql.connector.connect(**db_config.params)
 
             project_dir = os.path.abspath(project_dir)
-            load(species, project_id, rerun_number, pi, investigator, tumor_type, pipeline, revision_number, project_dir, conn, log_file)
+            load(species, chipseq, project_id, rerun_number, pi, investigator, tumor_type, pipeline, revision_number, project_dir, conn, log_file)
 
             conn.commit()
             conn.close() 
