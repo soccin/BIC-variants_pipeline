@@ -28,6 +28,10 @@ HELP
     exit;
 }
 
+if( -f "$seg_output"){
+    unlink("$seg_output");
+}
+
 my @sampleDirs = `ls -d $facets_dir/*`;
 
 foreach my $sample (@sampleDirs){
