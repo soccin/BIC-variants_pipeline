@@ -124,7 +124,7 @@ if __name__ == "__main__":
         #print "\t./load_project.py -o Proj_4773_qc_db_load.log 4773 0 faginj knaufj THCA dmp 2207 /ifs/solres/seq/faginj/knaufj/Proj_4773/"
         #sys.exit()
 
-    if not len(sys.argv) in [4,5,7]:  # with or without '-o log.txt'
+    if not len(sys.argv) in [4,5,6,7]:  # with or without '-o log.txt'
         print "Usage: ./load_exome_project.py [-o log_file.log] [--chip] request_file revision_number project_dir"
         print "\t./load_exome_project.py -o Proj_4773_qc_db_load.log Proj_4773_request.txt 2207 /ifs/solres/seq/faginj/knaufj/Proj_4773/"
         sys.exit()
