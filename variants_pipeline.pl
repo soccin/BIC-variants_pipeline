@@ -715,18 +715,22 @@ sub verifyRequest{
         my @req = split(/:\s/, $_);
         if($req[0] =~ /^PI$/i){
             $pi = $req[1];
+            $pi =~ s/\@mskcc\.org//;
         }
         elsif($req[0] =~ /^ORIG_PI$/i){
             $origPi = $req[1];
+            $origPi =~ s/\@mskcc\.org//;
         }
         elsif($req[0] =~ /^PI_Name$/i){
             $piname = $req[1];
         }
         elsif($req[0] =~ /^Investigator$/i){
             $inv = $req[1];
+            $inv =~ s/\@mskcc\.org//;
         } 
         elsif($req[0] =~ /^ORIG_Investigator$/i){
             $origInv = $req[1];
+            $origInv =~ s/\@mskcc\.org//;
         }
         elsif($req[0] =~ /^Investigator_Name$/i){
             $invname = $req[1];
