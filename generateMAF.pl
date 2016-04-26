@@ -306,6 +306,16 @@ if($species !~ /hg19|b37|mm10|mouse|human/i) { ###   |mm10|mouse/i) { uncomment 
     exit 0;
 }
 
+## Check again for empty maf.
+$numLines = `grep -c -v "^Hugo_Symbol" $vcf\_$somatic\_maf1.txt`;
+if($numLines == 0){
+    `touch $vcf\_UNPAIRED_TCGA_MAF.txt $vcf\_UNPAIRED_TCGA_PORTAL_MAF.txt $vcf\_UNPAIRED_TCGA_PORTAL_MAF_fillout.txt $vcf\_UNPAIRED_VEP_MAF.txt `;
+    if($delete_temp){
+        &cleanUp;
+    }
+    exit 0;
+}
+
 # these are names needed for the "retain-cols" option in VEP
 #/ my $VEP_COLUMN_NAMES = "Center,Verification_Status,Validation_Status,Mutation_Status,Sequencing_Phase,Sequence_Source,Validation_Method,Score,BAM_file,Sequencer,Tumor_Sample_UUID,Match_Norm_Sample_UUID,Caller";
 # ## Create tmp and ref directory. Delete these later*
@@ -330,6 +340,9 @@ if($force_run || !-e "$progress/" . basename("$vcf") . "_VEP.done"){
     print "\n$PERL/perl $VCF2MAF/maf2maf.pl --tmp-dir $output/tmp_$somatic --ref-fasta $output/ref_$somatic/$ref_base --ncbi-build $NCBI_BUILD --species $VEP_SPECIES --vep-forks 4 --vep-path $VEP --vep-data $VEP --retain-cols $VEP_COLUMN_NAMES --input-maf $vcf\_$somatic\_maf1.txt --output-maf $vcf\_$somatic\_maf1.VEP\n\n";
 
     `$PERL/perl $VCF2MAF/maf2maf.pl --tmp-dir $output/tmp_$somatic --ref-fasta $output/ref_$somatic/$ref_base --ncbi-build $NCBI_BUILD --species $VEP_SPECIES --vep-forks 4 --vep-path $VEP --vep-data $VEP --retain-cols $VEP_COLUMN_NAMES --input-maf $vcf\_$somatic\_maf1.txt --output-maf $vcf\_$somatic\_maf1.VEP > $vcf\_$somatic\_maf1.log 2>&1`;
+     if( -z "$vcf\_$somatic\_maf1.VEP") {
+         unlink("$vcf\_$somatic\_maf1.VEP");
+     }
      &checkResult($?, $progress, basename("$vcf") . "_VEP", "$vcf\_$somatic\_maf1.VEP");
 }
 
