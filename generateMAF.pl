@@ -73,6 +73,7 @@ my $PERL = '';
 my $VCF2MAF = '';
 my $VEP = '';
 my $MM10_FASTA = '';
+my $MM10_CUSTOM_FASTA = '';
 my $B37_FASTA = '';
 my $B37_MM10_HYBRID_FASTA = '';
 
@@ -94,6 +95,14 @@ while(<CONFIG>){
             }
         }
         $MM10_FASTA = $conf[1];
+    }
+    elsif($conf[0] =~ /mm10_custom_fasta/i){
+        if(!-e "$conf[1]"){
+            if($species =~ /mm10_custom/i){
+                die "CAN'T FIND $conf[1] $!";
+            }
+        }
+        $MM10_CUSTOM_FASTA = $conf[1];
     }
     elsif($conf[0] =~ /python/i){
 	if(!-e "$conf[1]/python"){
@@ -180,7 +189,12 @@ elsif($species =~ /mouse|^mm10$/i){
     $NCBI_BUILD = "GRCm38";
     $VEP_SPECIES = "mus_musculus";
 }
-
+elsif($species =~ /^mm10_custom$/i){
+    $species = 'mm10_custom';
+    $REF_FASTA = "$MM10_CUSTOM_FASTA";
+    $NCBI_BUILD = "GRCm38";
+    $VEP_SPECIES = "mus_musculus";
+}
 my $output = dirname($vcf);
 
 my $progress = "$output/progress_$somatic";
@@ -296,7 +310,7 @@ if($force_run || !-e "$progress/" . basename("$vcf") . "_oldmaf2tcgamaf.done"){
     `$PYTHON/python $Bin/maf/oldMAF2tcgaMAF.py $species $vcf\_$somatic\_maf0.txt $vcf\_$somatic\_maf1.txt`;
     &checkResult($?, $progress, basename("$vcf") . "_oldmaf2tcgamaf");
 }
-if($species !~ /hg19|b37|mm10|mouse|human/i) { ###   |mm10|mouse/i) { uncomment later!
+if($species !~ /^hg19$|^b37$|^mm10$|^mm10_custom$|^mouse$|^human$/i) { ###   |mm10|mouse/i) { uncomment later!
     `cut -f-34 $vcf\_$somatic\_maf1.txt > $vcf\_$somatic\_TCGA_MAF.txt`;
     print "End of species ambiguous portion of the script.\n";
 
