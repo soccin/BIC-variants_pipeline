@@ -86,28 +86,22 @@ if(!is.null(mjc)){ mjc.summary = get.mean.frac.het.pos(type,dat=mjc) }
 if(!is.null(mnc)){ mnc.summary = get.mean.minor.allele.freq(type,dat=mnc) }
 
 ## print images
-if(!is.null(al)){ 
-    print.image(al,"alignment","01",plot.alignment)
-    print.image(al,"alignment_percentage","02",plot.alignment.percentage)
-}
-if(!is.null(cs)){
-    print.image(cs,"capture_specificity","03",plot.capture.specificity)
-    print.image(cs,"capture_specificity_percentage","04",plot.capture.specificity.percentage)
-}
-if(!is.null(is)){
-    print.image(is,"insert_size","05",plot.insert.size.distribution)
-    print.image(is,"insert_size_peaks","06",plot.insert.peaks)
-}
-if(!is.null(da)){ print.image(da,"fingerprint","07",plot.fpc.sum) }#,square=TRUE) }
-if(!is.null(mjc)){ print.image(mjc,"major_contamination","08",plot.major.contamination) }
-if(!is.null(mnc)){ print.image(mnc,"minor_contamination","09",plot.minor.contamination) }
-if(!is.null(cc)){ print.image(cc,"cdna_contamination","10",plot.cdna.contamination) }
-if(!is.null(dp)){ print.image(dp,"duplication","11",plot.duplication) }
-if(!is.null(ls)){ print.image(ls,"library_size","12",plot.library.size) }
-if(!is.null(cv)){ print.image(cv,"coverage","13",plot.coverage) }
-if(!is.null(tr)){ print.image(tr,"trimmed_reads","14",plot.trimmed.reads) }
-if(!is.null(bq)){ print.image(bq,"base_qualities","15",plot.base.qualities) }
-if(!is.null(gc)){ print.image(gc,"gc_bias","16",plot.gc.bias) }#,square=TRUE)
+print.image(al,"alignment","01",plot.alignment)
+print.image(al,"alignment_percentage","02",plot.alignment.percentage)
+print.image(cs,"capture_specificity","03",plot.capture.specificity)
+print.image(cs,"capture_specificity_percentage","04",plot.capture.specificity.percentage)
+print.image(is,"insert_size","05",plot.insert.size.distribution)
+print.image(is,"insert_size_peaks","06",plot.insert.peaks)
+print.image(da,"fingerprint","07",plot.fpc.sum) #,square=TRUE) }
+print.image(mjc,"major_contamination","08",plot.major.contamination) 
+print.image(mnc,"minor_contamination","09",plot.minor.contamination) 
+print.image(cc,"cdna_contamination","10",plot.cdna.contamination) 
+print.image(dp,"duplication","11",plot.duplication) 
+print.image(ls,"library_size","12",plot.library.size) 
+print.image(cv,"coverage","13",plot.coverage) 
+print.image(tr,"trimmed_reads","14",plot.trimmed.reads) 
+print.image(bq,"base_qualities","15",plot.base.qualities) 
+print.image(gc,"gc_bias","16",plot.gc.bias) #,square=TRUE)
 
 ## write sample level summary table
 tryCatch({

@@ -1316,6 +1316,10 @@ sub processBams {
 sub mergeStats {
     my @qcpdf_jids = ();
 
+    if(!$mdOnly && !$chip){
+        push @qcpdf_jids, "$pre\_$uID\_MERGE_MQ"; 
+    }
+
     my $ran_merge = 0;
     my $ran_merge_ism = 0;
     my %addParams = (scheduler => "$scheduler", runtime => "50", priority_project=> "$priority_project", priority_group=> "$priority_group", rerun => "1", iounits => "1");
@@ -1467,6 +1471,7 @@ sub mergeStats {
         my $standardParams = Schedule::queuing(%stdParams);
         `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PYTHON/python $Bin/qc/db/load_exome_project.py -o $output/progress/$pre\_$uID\_QCDB_LOG.log $chp $request $svnRev $output`;
         `/bin/touch $output/progress/$pre\_$uID\_QCDB.done`;
+        push @r3, "$pre\_$uID\_QCDB";
     }
             
 }
