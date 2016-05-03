@@ -8,7 +8,7 @@ use Schedule;
 use Cluster;
 use File::Basename;
 
-my ($patient, $pair, $group, $bamgroup, $config, $nosnps, $targets, $ug, $scheduler, $priority_project, $priority_group, $abra, $help, $step1, $allSomatic, $scalpel, $somaticsniper, $strelka, $varscan, $virmid);
+my ($patient, $pair, $group, $bamgroup, $svnRev, $config, $nosnps, $targets, $ug, $scheduler, $priority_project, $priority_group, $abra, $help, $step1, $allSomatic, $scalpel, $somaticsniper, $strelka, $varscan, $virmid);
 
 my $pre = 'TEMP';
 my $output = "results";
@@ -31,7 +31,8 @@ GetOptions ('pre=s' => \$pre,
 	    'step1' => \$step1,
 	    'bamgroup=s' => \$bamgroup,
  	    'scheduler=s' => \$scheduler,
- 	    'priority_project=s' => \$priority_project,
+ 	    'svnRev=s' => \$svnRev,
+            'priority_project=s' => \$priority_project,
  	    'priority_group=s' => \$priority_group,
 	    'help' => \$help,
 	    'rsync=s' => \$rsync,
@@ -1137,13 +1138,14 @@ if($pair){
 	my $muj = join(",", @mu_jids);
 	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_HAPLOTECT", job_hold => "$arihcj,$muj", cpu => "4", mem => "8", cluster_out => "$output/progress/$pre\_$uID\_HAPLOTECT.log");
 	my $standardParams = Schedule::queuing(%stdParams);
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/haploTect_merge.pl -pair $pair -hc_vcf $output/variants/snpsIndels/haplotypecaller/$pre\_HaplotypeCaller.vcf -species $species -pre $pre -output $output/variants/snpsIndels/haplotect -mutect_dir $output/variants/snpsIndels/mutect -config $config $patientFile -align_dir $output/alignments/ -delete_temp`;
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/haploTect_merge.pl -pair $pair -hc_vcf $output/variants/snpsIndels/haplotypecaller/$pre\_HaplotypeCaller.vcf -species $species -pre $pre -output $output/variants/snpsIndels/haplotect -mutect_dir $output/variants/snpsIndels/mutect -config $config $patientFile -align_dir $output/alignments/ -svnRev $svnRev -delete_temp`;
 
         $haplotect_run = 1;
 	`/bin/touch $output/progress/$pre\_$uID\_HAPLOTECT.done`;
         $facets_haplotect_jid .= ",$pre\_$uID\_HAPLOTECT";
     }
 
+    my $mafAnnoRun=0;
     ## Now join maf
     if($hasPair && (!-e "$output/progress/$pre\_$uID\_join_maf.done" || $haplotect_run || $facets_run)){
         sleep(2);
@@ -1153,6 +1155,17 @@ if($pair){
 	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $FACETS_SUITE/facets mafAnno -m $output/variants/snpsIndels/haplotect/$pre\_haplotect_VEP_MAF.txt -f $output/variants/copyNumber/facets/facets_mapping.txt -o $output/variants/$pre\_CMO_MAF.txt`; 
         `/bin/touch $output/progress/$pre\_$uID\_join_maf.done`;
 	push @all_jids, "$pre\_$uID\_join_maf";
+        $mafAnnoRun = 1;
+    }
+
+    if($hasPair && (! -e "$output/progress/$pre\_$uID\_wes_filters.done" || $mafAnnoRun )) {
+        my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_wes_filters", job_hold => "$pre\_$uID\_join_maf", cpu => "2", mem => "8", cluster_out => "$output/progress/$pre\_$uID\_wes_filters.log");
+        my $standardParams = Schedule::queuing(%stdParams);
+        my %addParams = (scheduler => "$scheduler", runtime => "7", priority_project=> "$priority_project", priority_group=> "$priority_group", queues => "lau.q,lcg.q,nce.q", rerun => "1", iounits => "0");
+        my $additionalParams = Schedule::additionalParams(%addParams);
+        `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/maf/post_filters.pl -in_maf $output/variants/$pre\_CMO_MAF.txt -out_maf $output/variants/$pre\_CMO_MAF_FLAGGED.txt -config $config -species $species -filter_ffpe -blacklist -low_conf`;
+        `/bin/touch $output/progress/$pre\_$uID\_wes_filters.done`;
+        push @all_jids, "$pre\_$uID\_wes_filters";
     }
 
     open(GROUP, "$group") || die "CAN'T OPEN SAMPLE GROUPING FILE $group $!";

@@ -8,7 +8,7 @@ use lib "$Bin/lib";
 use Schedule;
 use Cluster;
 
-my ($pair, $patient, $group, $bamgroup, $config, $nosnps, $targets, $ug, $scheduler, $priority_project, $priority_group, $abra, $help, $step1, $DB_SNP, $allSomatic, $scalpel, $somaticsniper, $strelka, $varscan, $virmid);
+my ($pair, $svnRev, $patient, $group, $bamgroup, $config, $nosnps, $targets, $ug, $scheduler, $priority_project, $priority_group, $abra, $help, $step1, $DB_SNP, $allSomatic, $scalpel, $somaticsniper, $strelka, $varscan, $virmid);
 
 my $pre = 'TEMP';
 my $output = "results";
@@ -30,6 +30,7 @@ GetOptions ('pre=s' => \$pre,
 	    'abra' => \$abra,
 	    'bamgroup=s' => \$bamgroup,
  	    'scheduler=s' => \$scheduler,
+            'svnRev=s' => \$svnRev,
  	    'priority_project=s' => \$priority_project,
  	    'priority_group=s' => \$priority_group,
  	    'db_snp|dbsnp=s' => \$DB_SNP,

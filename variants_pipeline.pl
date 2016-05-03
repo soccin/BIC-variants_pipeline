@@ -210,6 +210,9 @@ if($allSomatic){
 &verifyConfig($config);
 processInputs();
 
+my $svnRev = `svn info $Bin | grep Revision | cut -d " " -f 2`;
+chomp $svnRev;
+
 my %samp_libs_run = ();
 my $slr_count = 0;
 my %ran_solexa = ();
@@ -1449,8 +1452,6 @@ sub mergeStats {
         `/bin/touch $output/progress/$pre\_$uID\_MERGE_CQS_LOGS.done`;
      }
 
-    my $svnRev = `svn info $Bin | grep Revision | cut -d " " -f 2`;
-    chomp $svnRev;
     my $qcpdfj = join(",", @qcpdf_jids);
     if(!-e "$output/progress/$pre\_$uID\_QCPDF.done" || $ran_merge){
 	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_QCPDF", job_hold => "$qcpdfj", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_QCPDF.log");
@@ -1459,7 +1460,6 @@ sub mergeStats {
         `/bin/touch $output/progress/$pre\_$uID\_QCPDF.done`;
         push @r3, "$pre\_$uID\_QCPDF";
     }
-    push @r3, "$pre\_$uID\_QCPDF";
 
     my $qcdbj = join(",", @qcpdf_jids);
     my $chp = '';
@@ -1568,15 +1568,15 @@ sub callSNPS {
     
     if($species =~ /b37|hg19|hybrid/i){
 	###`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/process_alignments_human.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra $run_step1 $patientFile -species $species`;
-	`$Bin/process_alignments_human.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra $run_step1 $patientFile -species $species -rsync $rsync $somaticCallers > $output/progress/process_alignments_human.log 2>&1`;
+	`$Bin/process_alignments_human.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -svnRev $svnRev -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra $run_step1 $patientFile -species $species -rsync $rsync $somaticCallers > $output/progress/process_alignments_human.log 2>&1`;
     }
     elsif($species =~ /mm9|^mm10$|mm10_custom/i){
 	###`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/process_alignments_mouse.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group -species $species $run_abra $run_step1`;
-	`$Bin/process_alignments_mouse.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra $run_step1 -species $species -rsync $rsync $somaticCallers > $output/progress/process_alignments_mouse.log 2>&1`;
+	`$Bin/process_alignments_mouse.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -svnRev $svnRev -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra $run_step1 -species $species -rsync $rsync $somaticCallers > $output/progress/process_alignments_mouse.log 2>&1`;
     }
     elsif($species =~ /species_custom/i){
 	###`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/process_alignments_species_custom.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra $run_step1`;
-	`$Bin/process_alignments_species_custom.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra $run_step1 -rsync $rsync $somaticCallers > $output/progress/process_alignments_species_custom.log 2>&1`;
+	`$Bin/process_alignments_species_custom.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -svnRef $svnRev -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra $run_step1 -rsync $rsync $somaticCallers > $output/progress/process_alignments_species_custom.log 2>&1`;
     }
     elsif($species =~ /dm3/i){
 	###`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/process_alignments_dm3.pl -pre $pre -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra $run_step1 -species $species -rsync $rsync $somaticCallers > $output/progress/process_alignments_drosophila.log 2>&1`;

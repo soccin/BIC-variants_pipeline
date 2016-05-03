@@ -6,7 +6,7 @@ use FindBin qw($Bin);
 use File::Path qw(make_path);
 use File::Basename;
 
-my ($pairing, $hc_vcf, $help, $mutect_dir, $species, $bam_dir, $patient, $pre, $output, $delete_temp, $config);
+my ($svnRev, $pairing, $hc_vcf, $help, $mutect_dir, $species, $bam_dir, $patient, $pre, $output, $delete_temp, $config);
 
 # Default output = results/variants/FinalReport
 # get current directory
@@ -14,7 +14,7 @@ $output = "results/variants/FinalReport";
 my $curDir = `pwd`;
 chomp $curDir;
 my $commandline = join " ", "\n", $0, @ARGV;
-
+my @maf_header=();
 my $force_run;
 
 # Print command line.
@@ -30,6 +30,7 @@ GetOptions ('pair=s' => \$pairing,
             'delete_temp' => \$delete_temp,
 	    'config=s' => \$config,
             'species=s' => \$species,
+            'svnRev=s' => \$svnRev,
             'help|h' => \$help ) or exit(1);
 
 # if the basic necessities are missing, exit
@@ -450,11 +451,15 @@ if($force_run || ! -e "$progress/$pre\_merge_maf.done"){
     }
 } 
 
+push @maf_header, "#version 2.4";
+push @maf_header, "#SVN Revision: $svnRev";
+
 if($species !~ /hg19|b37|mm10|mouse|human/i) { ###   |mm10|mouse/i) { uncomment later!
     sleep(2);
     print "cut -f-34 $output/$pre\_merge_maf0.txt > $output/$pre\_haplotect_TCGA_MAF.txt\n\n";
     `cut -f-34 $output/$pre\_merge_maf0.txt > $output/$pre\_haplotect_TCGA_MAF.txt`;
     print "Must be human or mouse(mm10 )species to continue.\n";
+    &addHeader;
     if($delete_temp){
         &cleanUp;
     }
@@ -489,6 +494,8 @@ if($force_run || ! -e "$progress/$pre\_run_vep.done"){
     `$PERL/perl $VCF2MAF/maf2maf.pl --tmp-dir $output/tmp --ref-fasta $output/ref/$ref_base --ncbi-build $ncbi --vep-forks 4 --vep-path $VEP --vep-data $VEP --retain-cols $VEP_COLUMN_NAMES --input-maf $output/$pre\_merge_maf0.txt --output-maf $output/$pre\_merge_maf0.VEP > $output/$pre\_merge_maf0.log 2>&1`;
     &checkResult($?, $progress, "$pre\_run_vep");
 }
+push @maf_header, "#VCF2MAF maf2maf.pl\tVEP: $VEP\tNCBI: $ncbi\tLOCATION: $VCF2MAF";
+
 
 if($force_run || ! -e "$progress/$pre\_tcgaMaf_portalMaf.done"){
     $force_run = 1;
@@ -589,10 +596,44 @@ sub checkResult{
 }
 
 ##
+## Add headers to files that will be kept. 
+##
+## Print maf headers
+open ( my $fh, '>', "$output/header.txt");
+while(@maf_header){
+    print $fh shift @maf_header;
+    print $fh "\n";
+}
+close $fh;
+
+##
+## Add header
+##
+&addHeader;
+
+##
 ## Delete Temp Files
 ##
 if($delete_temp){
     &cleanUp;
+}
+
+sub addHeader{
+    my @outFileArray = ();
+    if($species !~ /hg19|b37|mm10|mouse|human/i) {
+        @outFileArray = ( "$output/$pre\_haplotect_TCGA_MAF.txt");
+    } elsif($patient && $bam_dir){
+        @outFileArray = ( "$output/$pre\_haplotect_VEP_MAF.txt", "$output/$pre\_haplotect_TCGA_PORTAL_MAF_fillout.txt", "$output/$pre\_haplotect_TCGA_PORTAL_MAF.txt", "$output/$pre\_haplotect_TCGA_MAF.txt");
+    } else {
+        @outFileArray = ( "$output/$pre\_haplotect_VEP_MAF.txt", "$output/$pre\_haplotect_TCGA_PORTAL_MAF.txt", "$output/$pre\_haplotect_TCGA_MAF.txt" );
+    }
+
+    foreach my $f (@outFileArray){
+        `grep -v ^# $f > $f\_temp`;
+        `cat $output/header.txt $f\_temp > $f`;
+        unlink("$f\_temp");
+    }
+
 }
 
 sub cleanUp{
@@ -601,7 +642,7 @@ sub cleanUp{
         print "Removing: $fname \n";
         unlink($fname);
     }
-    @files = glob ("$output/exact.vcf $output/maf_targets.* $output/TriNuc.txt $output/*mutect_calls* $output/blank $output/*Haplotype* $output/*maf2.txt* $output/ref $output/tmp $output/*basecounts.txt $output/$pre\_merge_maf0.VEP");
+    @files = glob ("$output/exact.vcf $output/header.txt $output/maf_targets.* $output/TriNuc.txt $output/*mutect_calls* $output/blank $output/*Haplotype* $output/*maf2.txt* $output/ref $output/tmp $output/*basecounts.txt $output/$pre\_merge_maf0.VEP");
 
 
     for my $fname (@files) {

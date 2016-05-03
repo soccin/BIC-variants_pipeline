@@ -10,7 +10,7 @@ use Cluster;
 use File::Basename;
 
 
-my ($pair, $patient, $group, $bamgroup, $config, $nosnps, $targets, $ug, $scheduler, $priority_project, $priority_group, $abra, $help, $step1, $allSomatic, $scalpel, $somaticsniper, $strelka, $varscan, $virmid);
+my ($pair, $svnRev, $patient, $group, $bamgroup, $config, $nosnps, $targets, $ug, $scheduler, $priority_project, $priority_group, $abra, $help, $step1, $allSomatic, $scalpel, $somaticsniper, $strelka, $varscan, $virmid);
 
 my $pre = 'TEMP';
 my $output = "results";
@@ -32,7 +32,8 @@ GetOptions ('pre=s' => \$pre,
 	    'ug|unifiedgenotyper' => \$ug,
 	    'abra' => \$abra,
 	    'bamgroup=s' => \$bamgroup,
- 	    'scheduler=s' => \$scheduler,
+            'svnRev=s' => \$svnRev,
+  	    'scheduler=s' => \$scheduler,
  	    'priority_project=s' => \$priority_project,
  	    'priority_group=s' => \$priority_group,
 	    'help' => \$help,
@@ -901,7 +902,7 @@ if($pair){
         my $muj = join(",", @mu_jids);
         my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_HAPLOTECT", job_hold => "$hcj,$muj", cpu => "4", mem => "8", cluster_out => "$output/progress/$pre\_$uID\_HAPLOTECT.log");
         my $standardParams = Schedule::queuing(%stdParams);
-        `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/haploTect_merge.pl -pair $pair -hc_vcf $output/variants/snpsIndels/haplotypecaller/$pre\_HaplotypeCaller.vcf -species $species -pre $pre -output $output/variants/snpsIndels/haplotect -mutect_dir $output/variants/snpsIndels/mutect -config $config $patientFile -align_dir $output/alignments/ -delete_temp`;
+        `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/haploTect_merge.pl -pair $pair -hc_vcf $output/variants/snpsIndels/haplotypecaller/$pre\_HaplotypeCaller.vcf -species $species -pre $pre -output $output/variants/snpsIndels/haplotect -mutect_dir $output/variants/snpsIndels/mutect -config $config $patientFile -align_dir $output/alignments/ -svnRev $svnRev -delete_temp`;
 
         $haplotect_run = 1;
         `/bin/touch $output/progress/$pre\_$uID\_HAPLOTECT.done`;
