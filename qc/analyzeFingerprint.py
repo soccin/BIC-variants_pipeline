@@ -19,14 +19,23 @@ def printMajorContamination(het,allSamples,pre,outdir):
         sys.exit(1)
     return
 
-def printMinorContamination(homPos,allSamples,pre,outdir):
+def printMinorContamination(homPos,allSamples,pre,pairs,outdir):
     FILE = os.path.join(outdir,pre+'_MinorContamination.txt')
     try:
         with open(FILE,'w') as out:
             print("\t".join(['Sample','AvgMinorHomFreq']),file=out)
-            for s in allSamples:
+            for s in homPos:
+                fracs = []
+                if s in pairs and not pairs[s].lower() == 'na': ## sample is tumor and has a matched normal
+                    norm = pairs[s]
+                    for loc in homPos[s]:
+                        if loc in homPos[norm]:# and homPos[norm][loc] < 0.10:
+                            fracs.append(homPos[s][loc])
+                else:
+                    fracs = homPos[s].values()
                 try:
-                    f = float(sum(homPos[s]))/len(homPos[s])
+                    f = float(sum(fracs))/len(fracs)
+                    #f = float(sum(homPos[s]))/len(homPos[s])
                 except ZeroDivisionError:
                     f = 0.00
                 print("\t".join([s,str(f)]),file=out)
@@ -79,6 +88,7 @@ def getSampleName(filePath,pre):
     '''
     #pattern = '_indelRealigned_recal_'
     pattern = '__1'
+    #pattern = '_bc'
     fname = filePath.rstrip('/').split('/')[-1]
     if not pattern in fname:
         print("ERROR: search pattern '"+pattern+"' is not in file name "+fname+" so we have no way to extract sample name!",file=sys.stderr)
@@ -89,23 +99,10 @@ def getSampleName(filePath,pre):
     end = fname.index(pattern)
     return fname[start:end]
 
-def makeGroups(file,type):
+def makeGroups(file):
     groups = {}
-    with open(file,'r') as f:
-        if type == 'pairing':
-            grp = 1
-            for line in f:
-                s1,s2 = line.strip().split("\t")
-                s1 = s1.strip()
-                s2 = s2.strip()
-                if not s1 in groups:
-                    groups[s1] = []
-                if not s2 in groups:
-                    groups[s2] = []
-                groups[s1].append(grp)
-                groups[s2].append(grp)
-                grp += 1
-        elif type == 'grouping':
+    try:
+        with open(file,'r') as f:
             for line in f:
                 s,grp = line.strip().split("\t")
                 s = s.strip()
@@ -113,12 +110,33 @@ def makeGroups(file,type):
                 if not s in groups:
                     groups[s] = []
                 groups[s].append(grp)
-        else:
-            print("ERROR: '"+type+"' is not a valid type of grouping file. Must be 'grouping' or 'pairing'.",file=sys.stderr)
-            exit(1)
-    print(groups)
+    except IOError:
+        print("ERROR: Could not open grouping file "+file,file=sys.stderr)
+        exit(1)
     return groups
 
+def makePairs(file):
+    pairs = {}
+    try:
+        with open(file,'r') as f:
+            for line in f:
+                n,t = line.strip('\n').split('\t')
+                n = n.strip()
+                t = t.strip()
+                if t.lower() == 'na':
+                    continue
+                if "pool" in n.lower():
+                    continue
+                if not t in pairs:
+                    pairs[t] = []
+                pairs[t] = n
+    except IOError:
+        print("ERROR: Could not open pairing file "+file,file=sys.stderr)
+        exit(1)
+    except ValueError:
+        print("ERROR: Pairing file "+file+"format invalid.",file=sys.stderr)
+        exit(1)
+    return pairs
 
 def printSampleErrors(contamination,pre,groups,outdir):
     '''
@@ -218,7 +236,7 @@ def printDiscordantAlleleFractions(contamination,pre,outdir):
         sys.exit(1)
     return
 
-def getContamination(docFiles,fpFile,pre,group,outdir):
+def getContamination(docFiles,fpFile,pre,group,pairs,outdir):
     '''
     This script has four goals:
        1) print fingerprint summary file that contains allele counts, 
@@ -229,7 +247,7 @@ def getContamination(docFiles,fpFile,pre,group,outdir):
     '''
 
     fps = indexFPgenotypes(fpFile)
-    homPos = {}     ## key: sample; value: list of frequencies at homozygous positions
+    homPos = {}     ## key: sample; value: dictionary where key: locus with hom, value:freq
     het = {}        ## key: sample; value: count of heterozygous positions
     finalOut = OrderedDict()   ## key: locus; value: dictionary in which key: sample; value = [counts,genotype,minAlleleFreq]
     allSamples = []    ## list of all samples
@@ -245,7 +263,7 @@ def getContamination(docFiles,fpFile,pre,group,outdir):
             print("ERROR: Duplicate sample found: "+sample,file=sys.stderr)
             continue
         allSamples.append(sample)
-        homPos[sample] = []
+        homPos[sample] = {}
         het[sample] = 0
 
         with open(doc,'r') as c:
@@ -279,11 +297,11 @@ def getContamination(docFiles,fpFile,pre,group,outdir):
                     gt = "--"
                 elif a1freq < a2freq:
                     frac = a1freq/(a1freq+a2freq)
-                    if frac < 0.1:
+                    if frac < 0.10:
                         gt = a2+a2
                 else:
                     frac = a2freq/(a1freq+a2freq)
-                    if frac < 0.1:
+                    if frac < 0.10:
                         gt = a1+a1
                 ## store final genotype and fraction of minor allele
                 row += [gt,str(frac)]
@@ -291,14 +309,15 @@ def getContamination(docFiles,fpFile,pre,group,outdir):
                 finalOut[locus][sample] = row
                 ## keep track of minor allele freqs at homozygous positions for minor contamination
                 ## and number of heterozygous positions for major contamination
-                if gt in homGTs:
-                    homPos[sample].append(frac)
+                #if gt in homGTs and frac < 0.1:
+                if frac < 0.10:
+                    homPos[sample][locus] = frac
                 elif not gt == "--":
                     numHet += 1
             ## store fraction of heterozygous positions for this sample
             het[sample] = float(numHet/tot)
     ## print output files
-    printMinorContamination(homPos,allSamples,pre,outdir)
+    printMinorContamination(homPos,allSamples,pre,pairs,outdir)
     printMajorContamination(het,allSamples,pre,outdir)
     printSummary(finalOut,allSamples,pre,outdir)
 
@@ -326,8 +345,8 @@ def get_args(sysargs):
     parser.add_argument('-pattern',required=True,help='pattern to use to find DepthOfCoverage output files')
     parser.add_argument('-pre',required=True,help='project prefix')
     parser.add_argument('-fp',required=True,help='fingerprint genotypes file')
-    parser.add_argument('-group',required=True,help='sample grouping/pairing file')
-    parser.add_argument('-groupType',required=True,help='type of grouping file (\'grouping\' OR \'pairing\')')
+    parser.add_argument('-group',required=True,help='sample grouping file')
+    parser.add_argument('-pair',required=True,help='sample pairing file')
     parser.add_argument('-dir',help='directory to search; cwd by default')
     parser.add_argument('-outdir',help='output directory')
 
@@ -343,5 +362,6 @@ if __name__ == '__main__':
     else:
         dir=args.dir
     docFiles = findFiles(dir,args.pattern)
-    groups = makeGroups(args.group,args.groupType)
-    getContamination(docFiles,args.fp,args.pre,groups,args.outdir)
+    groups = makeGroups(args.group)
+    pairs = makePairs(args.pair)
+    getContamination(docFiles,args.fp,args.pre,groups,pairs,args.outdir)
