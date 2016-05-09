@@ -1159,7 +1159,11 @@ if($pair){
     }
 
     if($hasPair && (! -e "$output/progress/$pre\_$uID\_wes_filters.done" || $mafAnnoRun )) {
-        my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_wes_filters", job_hold => "$pre\_$uID\_join_maf", cpu => "2", mem => "8", cluster_out => "$output/progress/$pre\_$uID\_wes_filters.log");
+        my $holdVar = '';
+        if( $mafAnnoRun) { 
+            $holdVar = "$pre\_$uID\_join_maf";
+        }
+        my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_wes_filters", job_hold => "$holdVar", cpu => "2", mem => "8", cluster_out => "$output/progress/$pre\_$uID\_wes_filters.log");
         my $standardParams = Schedule::queuing(%stdParams);
         my %addParams = (scheduler => "$scheduler", runtime => "7", priority_project=> "$priority_project", priority_group=> "$priority_group", queues => "lau.q,lcg.q,nce.q", rerun => "1", iounits => "0");
         my $additionalParams = Schedule::additionalParams(%addParams);
