@@ -1152,7 +1152,7 @@ if($pair){
 
        my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_join_maf", job_hold => "$facets_haplotect_jid", cpu => "4", mem => "8", cluster_out => "$output/progress/$pre\_$uID\_join_maf.log");
         my $standardParams = Schedule::queuing(%stdParams); 
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $FACETS_SUITE/facets mafAnno -m $output/variants/snpsIndels/haplotect/$pre\_haplotect_VEP_MAF.txt -f $output/variants/copyNumber/facets/facets_mapping.txt -o $output/variants/$pre\_CMO_MAF.txt`; 
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $FACETS_SUITE/facets mafAnno -m $output/variants/snpsIndels/haplotect/$pre\_haplotect_VEP_MAF.txt -f $output/variants/copyNumber/facets/facets_mapping.txt -o $output/intFiles/$pre\_CMO_MAF_intermediate.txt`; 
         `/bin/touch $output/progress/$pre\_$uID\_join_maf.done`;
 	push @all_jids, "$pre\_$uID\_join_maf";
         $mafAnnoRun = 1;
@@ -1167,7 +1167,7 @@ if($pair){
         my $standardParams = Schedule::queuing(%stdParams);
         my %addParams = (scheduler => "$scheduler", runtime => "7", priority_project=> "$priority_project", priority_group=> "$priority_group", queues => "lau.q,lcg.q,nce.q", rerun => "1", iounits => "0");
         my $additionalParams = Schedule::additionalParams(%addParams);
-        `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/maf/post_filters.pl -in_maf $output/variants/$pre\_CMO_MAF.txt -out_maf $output/variants/$pre\_CMO_MAF_FLAGGED.txt -config $config -species $species -filter_ffpe -blacklist -low_conf`;
+        `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/maf/post_filters.pl -in_maf $output/intFiles/$pre\_CMO_MAF_intermediate.txt -out_maf $output/variants/$pre\_CMO_MAF.txt -config $config -species $species -filter_ffpe -blacklist -low_conf`;
         `/bin/touch $output/progress/$pre\_$uID\_wes_filters.done`;
         push @all_jids, "$pre\_$uID\_wes_filters";
     }
