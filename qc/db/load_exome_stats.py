@@ -158,6 +158,8 @@ def read_and_save_hs_metrics(file_id, in_file_name, project_id, pipeline_run_id,
                 val = all_stats[field]
                 if not val:
                     val = 0   #### is this correct?
+                if val == '?':
+                    val = None
                 params.append(val)
             except KeyError:
                 print "ERROR: '%s' field missing for sample with ID %s" %(field, sample_id)
