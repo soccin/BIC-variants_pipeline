@@ -206,7 +206,7 @@ if($allSomatic){
     $virmid = 1;
 }
 
-#&verifyRequest($request);
+&verifyRequest($request);
 &verifyConfig($config);
 processInputs();
 

@@ -251,6 +251,14 @@ my $multipleTargets = '';
 ###    $multipleTargets = "-L $target_bed --interval_set_rule INTERSECTION";
 ###}
 
+if($allSomatic){
+    $scalpel = 1;
+    $somaticsniper = 1;
+    $strelka = 1;
+    $varscan = 1;
+    $virmid = 1;
+}
+
 my $count = 0;
 my %inputFiles = ();
 my @processedBams = ();

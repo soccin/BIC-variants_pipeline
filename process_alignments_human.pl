@@ -8,7 +8,7 @@ use Schedule;
 use Cluster;
 use File::Basename;
 
-my ($patient, $pair, $group, $bamgroup, $svnRev, $config, $nosnps, $targets, $ug, $scheduler, $priority_project, $priority_group, $abra, $help, $step1, $allSomatic, $scalpel, $somaticsniper, $strelka, $varscan, $virmid);
+my ($patient, $svnRev, $pair, $group, $bamgroup, $config, $nosnps, $targets, $ug, $scheduler, $priority_project, $priority_group, $abra, $help, $step1, $allSomatic, $scalpel, $somaticsniper, $strelka, $varscan, $virmid);
 
 my $pre = 'TEMP';
 my $output = "results";
@@ -32,7 +32,7 @@ GetOptions ('pre=s' => \$pre,
 	    'bamgroup=s' => \$bamgroup,
  	    'scheduler=s' => \$scheduler,
  	    'svnRev=s' => \$svnRev,
-            'priority_project=s' => \$priority_project,
+ 	    'priority_project=s' => \$priority_project,
  	    'priority_group=s' => \$priority_group,
 	    'help' => \$help,
 	    'rsync=s' => \$rsync,
@@ -102,11 +102,15 @@ my $TABIX = '';
 my $PYTHON = '';
 my $PERL = '';
 my $B37_FASTA = '';
+my $B37_FAI = '';
 my $B37_MM10_HYBRID_FASTA = '';
+my $B37_MM10_HYBRID_FAI = '';
 my $B37_BWA_INDEX = '';
 my $B37_MM10_HYBRID_BWA_INDEX = '';
 my $HG19_FASTA = '';
+my $HG19_FAI = '';
 my $HG19_MM10_HYBRID_FASTA = '';
+my $HG19_MM10_HYBRID_FAI = '';
 my $HG19_BWA_INDEX = '';
 my $HG19_MM10_HYBRID_BWA_INDEX = '';
 
@@ -238,6 +242,14 @@ while(<CONFIG>){
 	}
 	$B37_FASTA = $conf[1];
     }
+    elsif($conf[0] =~ /b37_fai/i){
+	if(!-e "$conf[1]"){
+	    if($species =~ /human|^b37$/i){
+		die "CAN'T FIND $conf[1] $!";
+	    }
+	}
+	$B37_FAI = $conf[1];
+    }
     elsif($conf[0] =~ /b37_mm10_hybrid_fasta/i){
 	if(!-e "$conf[1]"){
 	    if($species =~ /hybrid|b37_mm10/i){
@@ -245,6 +257,14 @@ while(<CONFIG>){
 	    }
 	}
 	$B37_MM10_HYBRID_FASTA = $conf[1];
+    }
+    elsif($conf[0] =~ /b37_mm10_hybrid_fai/i){
+	if(!-e "$conf[1]"){
+	    if($species =~ /hybrid|b37_mm10/i){
+		die "CAN'T FIND $conf[1] $!";
+	    }
+	}
+	$B37_MM10_HYBRID_FAI = $conf[1];
     }
     elsif($conf[0] =~ /b37_bwa_index/i){
 	if(!-e "$conf[1]\.bwt" || !-e "$conf[1]\.pac" || !-e "$conf[1]\.ann" || !-e "$conf[1]\.amb" || !-e "$conf[1]\.sa"){
@@ -270,6 +290,14 @@ while(<CONFIG>){
 	}
 	$HG19_FASTA = $conf[1];
     }
+    elsif($conf[0] =~ /hg19_fai/i){
+	if(!-e "$conf[1]"){
+	    if($species =~ /^hg19$/i){
+		die "CAN'T FIND $conf[1] $!";
+	    }
+	}
+	$HG19_FAI = $conf[1];
+    }
     elsif($conf[0] =~ /hg19_mm10_hybrid_fasta/i){
 	if(!-e "$conf[1]"){
 	    if($species =~ /hybrid|hg19_mm10/i){
@@ -277,6 +305,14 @@ while(<CONFIG>){
 	    }
 	}
 	$HG19_MM10_HYBRID_FASTA = $conf[1];
+    }
+    elsif($conf[0] =~ /hg19_mm10_hybrid_fai/i){
+	if(!-e "$conf[1]"){
+	    if($species =~ /hybrid|hg19_mm10/i){
+		die "CAN'T FIND $conf[1] $!";
+	    }
+	}
+	$HG19_MM10_HYBRID_FAI = $conf[1];
     }
     elsif($conf[0] =~ /hg19_bwa_index/i){
 	if(!-e "$conf[1]\.bwt" || !-e "$conf[1]\.pac" || !-e "$conf[1]\.ann" || !-e "$conf[1]\.amb" || !-e "$conf[1]\.sa"){
@@ -297,19 +333,19 @@ while(<CONFIG>){
 }
 close CONFIG;
 
-my $REF_SEQ = "";
-my $BWA_INDEX = "";
+my $REF_SEQ = '';
+my $REF_FAI = '';
+my $BWA_INDEX = '';
 my $DB_SNP = "";
 my $MILLS_1000G = '';
 my $HAPMAP = '';
 my $OMNI_1000G = '';
 my $PHASE1_SNPS_1000G = '';
 my $COSMIC = '';
-my $CHR_PRE = '';
-my $CHR_M = '';
 my $ABRA_TARGETS = '';
 if($species =~ /^b37$|human/i){
     $REF_SEQ = "$B37_FASTA";
+    $REF_FAI = "$B37_FAI";
     $BWA_INDEX = "$B37_BWA_INDEX";
     $DB_SNP = "$Bin/data/b37/dbsnp_138.b37.excluding_sites_after_129.vcf";
     $MILLS_1000G = "$Bin/data/b37/Mills_and_1000G_gold_standard.indels.b37.vcf";
@@ -317,11 +353,11 @@ if($species =~ /^b37$|human/i){
     $OMNI_1000G = "$Bin/data/b37/1000G_omni2.5.b37.vcf";
     $PHASE1_SNPS_1000G = "$Bin/data/b37/1000G_phase1.snps.high_confidence.b37.vcf";
     $COSMIC = "$Bin/data/b37/CosmicCodingMuts_v67_b37_20131024__NDS.vcf";
-    $CHR_M = 'MT';
     $ABRA_TARGETS = "$Bin/targets/abra/abra_target_regions_b37.bed";
 }
 elsif($species =~ /hybrid|b37_mm10/i){
     $REF_SEQ = "$B37_MM10_HYBRID_FASTA";
+    $REF_FAI = "$B37_MM10_HYBRID_FAI";
     $BWA_INDEX = "$B37_MM10_HYBRID_BWA_INDEX";
     $DB_SNP = "$Bin/data/b37/dbsnp_138.b37.excluding_sites_after_129.vcf";
     $MILLS_1000G = "$Bin/data/b37/Mills_and_1000G_gold_standard.indels.b37.vcf";
@@ -329,11 +365,11 @@ elsif($species =~ /hybrid|b37_mm10/i){
     $OMNI_1000G = "$Bin/data/b37/1000G_omni2.5.b37.vcf";
     $PHASE1_SNPS_1000G = "$Bin/data/b37/1000G_phase1.snps.high_confidence.b37.vcf";
     $COSMIC = "$Bin/data/b37/CosmicCodingMuts_v67_b37_20131024__NDS.vcf";
-    $CHR_M = 'MT';
     $ABRA_TARGETS = "$Bin/targets/abra/abra_target_regions_b37.bed";
 }
 elsif($species =~ /^hg19$/i){
     $REF_SEQ = "$HG19_FASTA";
+    $REF_FAI = "$HG19_FAI";
     $BWA_INDEX = "$HG19_BWA_INDEX";
     $DB_SNP = "$Bin/data/hg19/dbsnp_138.hg19.excluding_sites_after_129.vcf";
     $MILLS_1000G = "$Bin/data/hg19/Mills_and_1000G_gold_standard.indels.hg19.vcf";
@@ -341,12 +377,11 @@ elsif($species =~ /^hg19$/i){
     $OMNI_1000G = "$Bin/data/hg19/1000G_omni2.5.hg19.vcf";
     $PHASE1_SNPS_1000G = "$Bin/data/hg19/1000G_phase1.snps.high_confidence.hg19.vcf";
     $COSMIC = "$Bin/data/hg19/CosmicCodingMuts_v67_20131024.vcf";
-    $CHR_PRE = 'chr';
-    $CHR_M = 'M';
     $ABRA_TARGETS = "$Bin/targets/abra/abra_target_regions_hg19.bed";
 }
 elsif($species =~ /hg19_mm10/i){
     $REF_SEQ = "$HG19_MM10_HYBRID_FASTA";
+    $REF_FAI = "$HG19_MM10_HYBRID_FAI";
     $BWA_INDEX = "$HG19_MM10_HYBRID_BWA_INDEX";
     $DB_SNP = "$Bin/data/hg19/dbsnp_138.hg19.excluding_sites_after_129.vcf";
     $MILLS_1000G = "$Bin/data/hg19/Mills_and_1000G_gold_standard.indels.hg19.vcf";
@@ -354,8 +389,6 @@ elsif($species =~ /hg19_mm10/i){
     $OMNI_1000G = "$Bin/data/hg19/1000G_omni2.5.hg19.vcf";
     $PHASE1_SNPS_1000G = "$Bin/data/hg19/1000G_phase1.snps.high_confidence.hg19.vcf";
     $COSMIC = "$Bin/data/hg19/CosmicCodingMuts_v67_20131024.vcf";
-    $CHR_PRE = "chr";
-    $CHR_M = 'M';
     $ABRA_TARGETS = "$Bin/targets/abra/abra_target_regions_hg19.bed";
 }
 elsif($species !~ /b37|hg19|hybrid|b37_mm10|hg19_mm10/){
@@ -402,6 +435,24 @@ my $multipleTargets = '';
 ###    }
 ###    $multipleTargets = "-L $target_bed --interval_set_rule INTERSECTION";
 ###}
+
+my @ref_chr = ();
+open(FAI, "$REF_FAI") or die "CAN'T OPEN FAI FILE $REF_FAI $!";
+while(<FAI>){
+    chomp;
+
+    my @line = split(/\s+/, $_);
+    push @ref_chr, $line[0];
+}
+close FAI;
+
+if($allSomatic){
+    $scalpel = 1;
+    $somaticsniper = 1;
+    $strelka = 1;
+    $varscan = 1;
+    $virmid = 1;
+}
 
 my $count = 0;
 my %inputFiles = ();
@@ -454,75 +505,125 @@ while(<IN>){
     my $ran_ir = 0;
     my @ir_jids = ();
 
-    if($abra){
-	my @inBams = ();
-	my @outBams = ();
-	foreach my $pin (@pins){
-	    my @inB = split(/\s+/, $pin);
-	    push @inBams, $inB[1];
-	    push @outBams, "$inB[1]\_ABRA.bam";
-	    push @indelBams, "-I $inB[1]\_ABRA.bam\_FM.bam";
-	}
-	
-	my $aiBams = join(",", @inBams);
-	my $aoBams = join(",", @outBams);
-	my $ran_abra = 0;
-	my $abra_jid = '';
-	if(!-e "$output/progress/$pre\_$uID\_$gpair[0]\_ABRA.done" || $step1){
-	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$gpair[0]\_ABRA", cpu => "12", mem => "90", cluster_out => "$output/progress/$pre\_$uID\_$gpair[0]\_ABRA.log");
-	    my $standardParams = Schedule::queuing(%stdParams);	    
-	    my %addParams = (scheduler => "$scheduler", runtime => "500", priority_project=> "$priority_project", priority_group=> "$priority_group", rerun => "1", iounits => "4");
-	    my $additionalParams = Schedule::additionalParams(%addParams);
-	    ###`$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx100g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $ABRA/abra.jar --in $aiBams --out $aoBams --ref $REF_SEQ --bwa-ref $BWA_INDEX --targets $ABRA_TARGETS --working $output/intFiles/abra_$gpair[0] --threads 12`;
-	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/abra_wrapper.pl -inBams $aiBams -outBams $aoBams -refSeq $REF_SEQ -bwaRef $BWA_INDEX -targets $ABRA_TARGETS -working $output/intFiles/abra_$gpair[0] -config $config -log $output/progress/$pre\_$uID\_$gpair[0]\_ABRA_WRAPPER.log`;
+    foreach my $c (@ref_chr){
+	if($abra){
+	    my @inBams = ();
+	    my @outBams = ();
+	    my $ran_chr_split_index = 0;
+	    my @chri_jids = ();
+	    foreach my $pin (@pins){
+		my @inB = split(/\s+/, $pin);
+		my @bpath = split(/\//, $inB[1]);
+		my $boi = pop @bpath;
+		
+		my $ran_chr_split = 0;
+		my $chrsj = '';
 
-	    $abra_jid = "$pre\_$uID\_$gpair[0]\_ABRA";
-	    `/bin/touch $output/progress/$pre\_$uID\_$gpair[0]\_ABRA.done`;
-	    $ran_abra = 1;
-	}
+		if(!-e "$output/progress/$pre\_$uID\_$boi\_$c\.done" || $step1){
+		    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$boi\_$c", cpu => "1", mem => "10", cluster_out => "$output/progress/$pre\_$uID\_$boi\_$c\.log");
+		    my $standardParams = Schedule::queuing(%stdParams);	    
+		    my %addParams = (scheduler => "$scheduler", runtime => "500", priority_project=> "$priority_project", priority_group=> "$priority_group", rerun => "1", iounits => "2");
+		    my $additionalParams = Schedule::additionalParams(%addParams);
+		    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $SAMTOOLS/samtools view -b -o $inB[1]\_$c\.bam $inB[1] $c`;
+		
+		    $chrsj = "$pre\_$uID\_$boi\_$c";		    
+		    `/bin/touch $output/progress/$pre\_$uID\_$boi\_$c\.done`;
+		    $ran_chr_split = 1;
+		}
 
-	if(!-e "$output/progress/$pre\_$uID\_$gpair[0]\_FIXMATE.done" || $ran_abra){
+		if(!-e "$output/progress/$pre\_$uID\_$boi\_$c\_INDEX.done" || $ran_chr_split){
+		    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$boi\_$c\_INDEX", job_hold => "$chrsj", cpu => "1", mem => "10", cluster_out => "$output/progress/$pre\_$uID\_$boi\_$c\_INDEX.log");
+		    my $standardParams = Schedule::queuing(%stdParams);	    
+		    my %addParams = (scheduler => "$scheduler", runtime => "500", priority_project=> "$priority_project", priority_group=> "$priority_group", rerun => "1", iounits => "2");
+		    my $additionalParams = Schedule::additionalParams(%addParams);
+		    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $SAMTOOLS/samtools index $inB[1]\_$c\.bam`;
+		    
+		    push @chri_jids, "$pre\_$uID\_$boi\_$c\_INDEX";
+		    `/bin/touch $output/progress/$pre\_$uID\_$boi\_$c\_INDEX.done`;
+		    $ran_chr_split_index = 1;
+		}
+
+		push @inBams, "$inB[1]\_$c\.bam";
+		push @outBams, "$inB[1]\_$c\_ABRA.bam";
+	    }
+
+	    my $aiBams = join(",", @inBams);
+	    my $aoBams = join(",", @outBams);
+	    my $cij = join(",", @chri_jids);
+	    my $ran_abra = 0;
+	    my $abra_jid = '';
+	    if(!-e "$output/progress/$pre\_$uID\_$gpair[0]\_$c\_ABRA.done" || $ran_chr_split_index){
+		my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$gpair[0]\_$c\_ABRA", job_hold => "$cij", cpu => "12", mem => "90", cluster_out => "$output/progress/$pre\_$uID\_$gpair[0]\_$c\_ABRA.log");
+		my $standardParams = Schedule::queuing(%stdParams);	    
+		my %addParams = (scheduler => "$scheduler", runtime => "500", priority_project=> "$priority_project", priority_group=> "$priority_group", rerun => "1", iounits => "4");
+		my $additionalParams = Schedule::additionalParams(%addParams);
+		###`$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx100g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $ABRA/abra.jar --in $aiBams --out $aoBams --ref $REF_SEQ --bwa-ref $BWA_INDEX --targets $ABRA_TARGETS --working $output/intFiles/abra_$gpair[0] --threads 12`;
+		`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/abra_wrapper.pl -inBams $aiBams -outBams $aoBams -refSeq $REF_SEQ -bwaRef $BWA_INDEX -targets $ABRA_TARGETS -working $output/intFiles/abra_$gpair[0]\_$c -config $config -log $output/progress/$pre\_$uID\_$gpair[0]\_$c\_ABRA_WRAPPER.log`;
+		
+		$abra_jid = "$pre\_$uID\_$gpair[0]\_$c\_ABRA";
+		`/bin/touch $output/progress/$pre\_$uID\_$gpair[0]\_$c\_ABRA.done`;
+		$ran_abra = 1;
+	    }
+	    
+	    my $ran_fm = 0;
+	    my @fm_jids = ();
+	    my @fm_bams = ();
+	    my $bcount = 0;
 	    my $bcount = 0;
 	    foreach my $outBam (@outBams){
 		$bcount++;
-		my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$gpair[0]\_$bcount\_FIXMATE", job_hold => "$abra_jid", cpu => "1", mem => "50", cluster_out => "$output/progress/$pre\_$uID\_$gpair[0]\_$bcount\_FIXMATE.log");
-		my $standardParams = Schedule::queuing(%stdParams);
-		my %addParams = (scheduler => "$scheduler", runtime => "500", priority_project=> "$priority_project", priority_group=> "$priority_group", queues => "lau.q,lcg.q,nce.q", rerun => "1", iounits => "5");
-		my $additionalParams = Schedule::additionalParams(%addParams);
-
-		`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx50g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $PICARD/picard.jar FixMateInformation I=$outBam O=$outBam\_FM.bam SORT_ORDER=coordinate VALIDATION_STRINGENCY=LENIENT TMP_DIR=/scratch/$uID MAX_RECORDS_IN_RAM=5000000 CREATE_INDEX=true`;
-		push @ir_jids, "$pre\_$uID\_$gpair[0]\_$bcount\_FIXMATE";
+		if(!-e "$output/progress/$pre\_$uID\_$gpair[0]\_$bcount\_$c\_FIXMATE.done" || $ran_abra){
+		    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$gpair[0]\_$bcount\_$c\_FIXMATE", job_hold => "$abra_jid", cpu => "1", mem => "50", cluster_out => "$output/progress/$pre\_$uID\_$gpair[0]\_$bcount\_$c\_FIXMATE.log");
+		    my $standardParams = Schedule::queuing(%stdParams);
+		    my %addParams = (scheduler => "$scheduler", runtime => "500", priority_project=> "$priority_project", priority_group=> "$priority_group", queues => "lau.q,lcg.q,nce.q", rerun => "1", iounits => "5");
+		    my $additionalParams = Schedule::additionalParams(%addParams);
+		    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx50g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $PICARD/picard.jar FixMateInformation I=$outBam O=$outBam\_FM.bam SORT_ORDER=coordinate VALIDATION_STRINGENCY=LENIENT TMP_DIR=/scratch/$uID MAX_RECORDS_IN_RAM=5000000 CREATE_INDEX=true`;
+		    push @fm_jids, "$pre\_$uID\_$gpair[0]\_$bcount\_$c\_FIXMATE";
+		    `/bin/touch $output/progress/$pre\_$uID\_$gpair[0]\_$bcount\_$c\_FIXMATE.done`;
+		    $ran_fm = 1;
+		}
+		push @fm_bams, "I=$outBam\_FM.bam";
 	    }
-	    `/bin/touch $output/progress/$pre\_$uID\_$gpair[0]\_FIXMATE.done`;
-	    $ran_ir = 1;
+
+	    my $fmj = join(",", @fm_jids);
+	    my $fmb = join(" ", @fm_bams);
+	    if(!-e "$output/progress/$pre\_$uID\_$gpair[0]\_MERGE_$c\_FM.done" || $ran_fm){
+		sleep(2);
+		my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$gpair[0]\_MERGE_$c\_FM", job_hold => "$fmj", cpu => "8", mem => "30", cluster_out => "$output/progress/$pre\_$uID\_$gpair[0]\_MERGE_$c\_FM.log");
+		my $standardParams = Schedule::queuing(%stdParams);
+		my %addParams = (scheduler => "$scheduler", runtime => "500", priority_project=> "$priority_project", priority_group=> "$priority_group", queues => "lau.q,lcg.q,nce.q", rerun => "1", iounits => "10");
+		my $additionalParams = Schedule::additionalParams(%addParams);
+		`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx30g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $PICARD/picard.jar MergeSamFiles $fmb O=$output/intFiles/$pre\_$gpair[0]\_$c\_indelRealigned.bam SORT_ORDER=coordinate VALIDATION_STRINGENCY=LENIENT TMP_DIR=/scratch/$uID CREATE_INDEX=true USE_THREADING=false MAX_RECORDS_IN_RAM=5000000`;
+		`/bin/touch $output/progress/$pre\_$uID\_$gpair[0]\_MERGE_$c\_FM.done`;
+		push @ir_jids, "$pre\_$uID\_$gpair[0]\_MERGE_$c\_FM";
+		$ran_ir = 1;
+	    }
 	}
-    }
-    else{
-	foreach my $c (1..22, 'X', 'Y', "$CHR_M"){
+	else{
 	    my $ran_rtc = 0;
 	    my $rtc_jid = '';
-	    if(!-e "$output/progress/$pre\_$uID\_$gpair[0]\_CHR$c\_RTC.done" || $step1){
-		my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$gpair[0]\_CHR$c\_RTC", cpu => "10", mem => "5", cluster_out => "$output/progress/$pre\_$uID\_$gpair[0]\_CHR$c\_RTC.log");
+	    if(!-e "$output/progress/$pre\_$uID\_$gpair[0]\_$c\_RTC.done" || $step1){
+		my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$gpair[0]\_$c\_RTC", cpu => "10", mem => "5", cluster_out => "$output/progress/$pre\_$uID\_$gpair[0]\_$c\_RTC.log");
 		my $standardParams = Schedule::queuing(%stdParams);
-		`$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx5g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T RealignerTargetCreator -R $REF_SEQ -L $CHR_PRE$c $multipleTargets --known $MILLS_1000G --known $DB_SNP -S LENIENT -nt 10 -rf BadCigar --downsampling_type NONE --out $output/intFiles/$pre\_$gpair[0]\_chr$c\_indelRealigner.intervals $bgroup`;
-		`/bin/touch $output/progress/$pre\_$uID\_$gpair[0]\_CHR$c\_RTC.done`;
-		$rtc_jid = "$pre\_$uID\_$gpair[0]\_CHR$c\_RTC";
+		`$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx5g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T RealignerTargetCreator -R $REF_SEQ -L $c $multipleTargets --known $MILLS_1000G --known $DB_SNP -S LENIENT -nt 10 -rf BadCigar --downsampling_type NONE --out $output/intFiles/$pre\_$gpair[0]\_$c\_indelRealigner.intervals $bgroup`;
+		`/bin/touch $output/progress/$pre\_$uID\_$gpair[0]\_$c\_RTC.done`;
+		$rtc_jid = "$pre\_$uID\_$gpair[0]\_$c\_RTC";
 		$ran_rtc = 1;
 	    }
 	    
 	    ### seems to randomly have issues with file locking timeout on the m nodes so not submitting to it anymore
-	    if(!-e "$output/progress/$pre\_$uID\_$gpair[0]\_CHR$c\_IR.done" || $ran_rtc){
+	    if(!-e "$output/progress/$pre\_$uID\_$gpair[0]\_$c\_IR.done" || $ran_rtc){
 		sleep(2);
-		my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$gpair[0]\_CHR$c\_IR", job_hold => "$rtc_jid", cpu => "1", mem => "15", cluster_out => "$output/progress/$pre\_$uID\_$gpair[0]\_CHR$c\_IR.log");
+		my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$gpair[0]\_$c\_IR", job_hold => "$rtc_jid", cpu => "1", mem => "15", cluster_out => "$output/progress/$pre\_$uID\_$gpair[0]\_$c\_IR.log");
 		my $standardParams = Schedule::queuing(%stdParams);
-		`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx15g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T IndelRealigner -R $REF_SEQ -L $CHR_PRE$c $multipleTargets --knownAlleles $MILLS_1000G --knownAlleles $DB_SNP -S LENIENT --targetIntervals $output/intFiles/$pre\_$gpair[0]\_chr$c\_indelRealigner.intervals --maxReadsForRealignment 500000 --maxReadsInMemory 3000000 --maxReadsForConsensuses 500000 -rf BadCigar --out $output/intFiles/$pre\_$gpair[0]\_chr$c\_indelRealigned.bam $bgroup`;
-		`/bin/touch $output/progress/$pre\_$uID\_$gpair[0]\_CHR$c\_IR.done`;
-		push @ir_jids, "$pre\_$uID\_$gpair[0]\_CHR$c\_IR";
+		`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx15g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T IndelRealigner -R $REF_SEQ -L $c $multipleTargets --knownAlleles $MILLS_1000G --knownAlleles $DB_SNP -S LENIENT --targetIntervals $output/intFiles/$pre\_$gpair[0]\_$c\_indelRealigner.intervals --maxReadsForRealignment 500000 --maxReadsInMemory 3000000 --maxReadsForConsensuses 500000 -rf BadCigar --out $output/intFiles/$pre\_$gpair[0]\_$c\_indelRealigned.bam $bgroup`;
+		`/bin/touch $output/progress/$pre\_$uID\_$gpair[0]\_$c\_IR.done`;
+		push @ir_jids, "$pre\_$uID\_$gpair[0]\_$c\_IR";
 		$ran_ir = 1;
 	    }
-
-	    push @indelBams, "-I $output/intFiles/$pre\_$gpair[0]\_chr$c\_indelRealigned.bam";
 	}
+
+	push @indelBams, "-I $output/intFiles/$pre\_$gpair[0]\_$c\_indelRealigned.bam";
     }
 
     my $irBams = join(" ", @indelBams);
@@ -542,42 +643,36 @@ while(<IN>){
     my @indelRecalBams1 = ();
     my $ran_pr = 0;
     my @pr_jids = ();
-    foreach my $c (1..22, 'X', 'Y', "$CHR_M"){
-	if(!-e "$output/progress/$pre\_$uID\_$gpair[0]\_CHR$c\_PR.done" || $ran_br){
+    foreach my $c (@ref_chr){
+	if(!-e "$output/progress/$pre\_$uID\_$gpair[0]\_$c\_PR.done" || $ran_br){
 	    sleep(2);
-	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$gpair[0]\_CHR$c\_PR", job_hold => "$brj", cpu => "6", mem => "30", cluster_out => "$output/progress/$pre\_$uID\_$gpair[0]\_CHR$c\_PR.log");
+	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$gpair[0]\_$c\_PR", job_hold => "$brj", cpu => "6", mem => "30", cluster_out => "$output/progress/$pre\_$uID\_$gpair[0]\_$c\_PR.log");
 	    my $standardParams = Schedule::queuing(%stdParams);
-
-	    my $inIRb = "-I $output/intFiles/$pre\_$gpair[0]\_chr$c\_indelRealigned.bam";
-	    if($abra){
-		$inIRb = "$irBams";
-	    }
-
-	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx30g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T PrintReads -R $REF_SEQ -L $CHR_PRE$c $multipleTargets --emit_original_quals -BQSR $output/intFiles/$pre\_$gpair[0]\_recal_data.grp --num_cpu_threads_per_data_thread 6 -rf BadCigar --downsampling_type NONE --out $output/intFiles/$pre\_$gpair[0]\_chr$c\_indelRealigned_recal.bam $inIRb`;
-	    `/bin/touch $output/progress/$pre\_$uID\_$gpair[0]\_CHR$c\_PR.done`;
-	    push @pr_jids, "$pre\_$uID\_$gpair[0]\_CHR$c\_PR";
-	    push @prg_jids, "$pre\_$uID\_$gpair[0]\_CHR$c\_PR";
+	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx30g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T PrintReads -R $REF_SEQ -L $c $multipleTargets --emit_original_quals -BQSR $output/intFiles/$pre\_$gpair[0]\_recal_data.grp --num_cpu_threads_per_data_thread 6 -rf BadCigar --downsampling_type NONE --out $output/intFiles/$pre\_$gpair[0]\_$c\_indelRealigned_recal.bam -I $output/intFiles/$pre\_$gpair[0]\_$c\_indelRealigned.bam`;
+	    `/bin/touch $output/progress/$pre\_$uID\_$gpair[0]\_$c\_PR.done`;
+	    push @pr_jids, "$pre\_$uID\_$gpair[0]\_$c\_PR";
+	    push @prg_jids, "$pre\_$uID\_$gpair[0]\_$c\_PR";
 	    $ran_pr = 1;
-	    $ran_pr_glob{"chr$c"} = 1;
+	    $ran_pr_glob{"$c"} = 1;
 	}
     
-	push @indelRecalBams1, "I=$output/intFiles/$pre\_$gpair[0]\_chr$c\_indelRealigned_recal.bam";
-	push @{$processedBams{"chr$c"}}, "-I $output/intFiles/$pre\_$gpair[0]\_chr$c\_indelRealigned_recal.bam";
+	push @indelRecalBams1, "I=$output/intFiles/$pre\_$gpair[0]\_$c\_indelRealigned_recal.bam";
+	push @{$processedBams{"$c"}}, "-I $output/intFiles/$pre\_$gpair[0]\_$c\_indelRealigned_recal.bam";
     }
 
     my $irBams1 = join(" ", @indelRecalBams1);
     my $ran_m = 0;
     my $prj = join(",", @pr_jids);
     my @merge_jids = ();
-    if(!-e "$output/progress/$pre\_$uID\_$gpair[0]\_MERGE.done" || $ran_pr){
+    if(!-e "$output/progress/$pre\_$uID\_$gpair[0]\_MERGE_PR.done" || $ran_pr){
 	sleep(2);
-	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$gpair[0]\_MERGE", job_hold => "$prj", cpu => "8", mem => "30", cluster_out => "$output/progress/$pre\_$uID\_$gpair[0]\_MERGE.log");
+	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$gpair[0]\_MERGE_PR", job_hold => "$prj", cpu => "8", mem => "30", cluster_out => "$output/progress/$pre\_$uID\_$gpair[0]\_MERGE_PR.log");
 	my $standardParams = Schedule::queuing(%stdParams);
 	my %addParams = (scheduler => "$scheduler", runtime => "500", priority_project=> "$priority_project", priority_group=> "$priority_group", queues => "lau.q,lcg.q,nce.q", rerun => "1", iounits => "10");
 	my $additionalParams = Schedule::additionalParams(%addParams);
 	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx30g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $PICARD/picard.jar MergeSamFiles $irBams1 O=$output/intFiles/$pre\_$gpair[0]\_indelRealigned_recal.bam SORT_ORDER=coordinate VALIDATION_STRINGENCY=LENIENT TMP_DIR=/scratch/$uID CREATE_INDEX=true USE_THREADING=false MAX_RECORDS_IN_RAM=5000000`;
-	`/bin/touch $output/progress/$pre\_$uID\_$gpair[0]\_MERGE.done`;
-	push @merge_jids, "$pre\_$uID\_$gpair[0]\_MERGE";
+	`/bin/touch $output/progress/$pre\_$uID\_$gpair[0]\_MERGE_PR.done`;
+	push @merge_jids, "$pre\_$uID\_$gpair[0]\_MERGE_PR";
 	$ran_m = 1;
     }
 
@@ -649,7 +744,7 @@ my $ran_hc = 0;
 my @ug_jids = ();
 my @hc_jids = ();
 my $prgj = join(",", @prg_jids);
-foreach my $c (1..22, 'X', 'Y', "$CHR_M"){
+foreach my $c (@ref_chr){
     ### NOTE1: GET THIS RANDOM ERROR NOW FOR SNP CALLS
     ###       Unexpectedly couldn't find valid codec for temporary output file
     ###       RERUNNING THE SAME COMMAND SEEMS TO FIX IT
@@ -658,31 +753,31 @@ foreach my $c (1..22, 'X', 'Y', "$CHR_M"){
     ###        OF INPUT FILES TO UNIFIEDGENOTYPE WITH NUM THREADS > 1 -nt
     ###        NOT A PROBLEM WHEN RUNNING IT WITH LOTS OF INPUT FILES ON RAY
     
-    my $irBams2 = join(" ", @{$processedBams{"chr$c"}});
+    my $irBams2 = join(" ", @{$processedBams{"$c"}});
 
     if($ug){
-	if(!-e "$output/progress/$pre\_$uID\_CHR$c\_UG.done" || $ran_pr_glob{"chr$c"}){
-	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_CHR$c\_UG", job_hold => "$prgj", cpu => "12", mem => "24", cluster_out => "$output/progress/$pre\_$uID\_CHR$c\_UG.log");
+	if(!-e "$output/progress/$pre\_$uID\_$c\_UG.done" || $ran_pr_glob{"$c"}){
+	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$c\_UG", job_hold => "$prgj", cpu => "12", mem => "24", cluster_out => "$output/progress/$pre\_$uID\_$c\_UG.log");
 	    my $standardParams = Schedule::queuing(%stdParams);
-	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx24g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T UnifiedGenotyper -R $REF_SEQ --reference_sample_name $species -L $CHR_PRE$c $multipleTargets --dbsnp $DB_SNP --downsampling_type NONE --annotateNDA --annotation AlleleBalance --annotation AlleleBalanceBySample --annotation HardyWeinberg --genotype_likelihoods_model BOTH --read_filter BadCigar --num_cpu_threads_per_data_thread 12 --out $output/intFiles/$pre\_chr$c\_UnifiedGenotyper.vcf $irBams2`;
-	    `/bin/touch $output/progress/$pre\_$uID\_CHR$c\_UG.done`;
-	    push @ug_jids, "$pre\_$uID\_CHR$c\_UG";
+	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx24g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T UnifiedGenotyper -R $REF_SEQ --reference_sample_name $species -L $c $multipleTargets --dbsnp $DB_SNP --downsampling_type NONE --annotateNDA --annotation AlleleBalance --annotation AlleleBalanceBySample --annotation HardyWeinberg --genotype_likelihoods_model BOTH --read_filter BadCigar --num_cpu_threads_per_data_thread 12 --out $output/intFiles/$pre\_$c\_UnifiedGenotyper.vcf $irBams2`;
+	    `/bin/touch $output/progress/$pre\_$uID\_$c\_UG.done`;
+	    push @ug_jids, "$pre\_$uID\_$c\_UG";
 	    $ran_ug = 1;
 	}
     }
 
     ### NOTE: ANNOTATIONS THAT DON'T WORK:AlleleBalance, HardyWeinberg,IndelType
-    if(!-e "$output/progress/$pre\_$uID\_CHR$c\_HC.done" || $ran_pr_glob{"chr$c"}){
-	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_CHR$c\_HC", job_hold => "$prgj", cpu => "24", mem => "90", cluster_out => "$output/progress/$pre\_$uID\_CHR$c\_HC.log");
+    if(!-e "$output/progress/$pre\_$uID\_$c\_HC.done" || $ran_pr_glob{"$c"}){
+	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$c\_HC", job_hold => "$prgj", cpu => "24", mem => "90", cluster_out => "$output/progress/$pre\_$uID\_$c\_HC.log");
 	my $standardParams = Schedule::queuing(%stdParams);
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx90g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T HaplotypeCaller -R $REF_SEQ -L $CHR_PRE$c $multipleTargets --dbsnp $DB_SNP --downsampling_type NONE --annotation AlleleBalanceBySample --annotation ClippingRankSumTest --read_filter BadCigar --num_cpu_threads_per_data_thread 24 --out $output/intFiles/$pre\_chr$c\_HaplotypeCaller.vcf $irBams2`;
-	`/bin/touch $output/progress/$pre\_$uID\_CHR$c\_HC.done`;
-	push @hc_jids, "$pre\_$uID\_CHR$c\_HC";
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx90g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T HaplotypeCaller -R $REF_SEQ -L $c $multipleTargets --dbsnp $DB_SNP --downsampling_type NONE --annotation AlleleBalanceBySample --annotation ClippingRankSumTest --read_filter BadCigar --num_cpu_threads_per_data_thread 24 --out $output/intFiles/$pre\_$c\_HaplotypeCaller.vcf $irBams2`;
+	`/bin/touch $output/progress/$pre\_$uID\_$c\_HC.done`;
+	push @hc_jids, "$pre\_$uID\_$c\_HC";
 	$ran_hc = 1;
     }
     
-    push @ugVariants, "--variant $output/intFiles/$pre\_chr$c\_UnifiedGenotyper.vcf";
-    push @hcVariants, "--variant $output/intFiles/$pre\_chr$c\_HaplotypeCaller.vcf";
+    push @ugVariants, "--variant $output/intFiles/$pre\_$c\_UnifiedGenotyper.vcf";
+    push @hcVariants, "--variant $output/intFiles/$pre\_$c\_HaplotypeCaller.vcf";
     
 }
 
@@ -1145,8 +1240,8 @@ if($pair){
         $facets_haplotect_jid .= ",$pre\_$uID\_HAPLOTECT";
     }
 
-    my $mafAnnoRun=0;
     ## Now join maf
+    my $mafAnnoRun=0;
     if($hasPair && (!-e "$output/progress/$pre\_$uID\_join_maf.done" || $haplotect_run || $facets_run)){
         sleep(2);
 
@@ -1254,8 +1349,8 @@ sub generateMaf{
     my @vcf_files;
     my @chr_maf_jids;
     # split and send each split thing to generate maf separately
-    foreach my $c (1..22, 'X', 'Y', "$CHR_M"){
-        if(!-e "$output/progress/$pre\_$uID\_$jna\_CHR$c\_MAF_UNPAIRED.done" || $ran_hc){
+    foreach my $c (@ref_chr){
+        if(!-e "$output/progress/$pre\_$uID\_$jna\_$c\_MAF_UNPAIRED.done" || $ran_hc){
             if((! -e "$vcf.gz" || $ran_hc) && !$bgzipped){
                 $bgzipped = 1;
                 my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$jna\_bgzip", job_hold => "$hold", cpu => "1", mem => "5", cluster_out => "$output/progress/$pre\_$uID\_$jna\_bgzip.log");
@@ -1268,20 +1363,20 @@ sub generateMaf{
             }
 
             `/bin/mkdir -m 775 -p $vcf_dir/chrom_$c`;
-            my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$jna\_split_CHR_$c", job_hold => $bgz_jid, cpu => "1", mem => "5", cluster_out => "$output/progress/$pre\_$uID\_$jna\_split_CHR$c.log");
+            my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$jna\_split_CHR_$c", job_hold => $bgz_jid, cpu => "1", mem => "5", cluster_out => "$output/progress/$pre\_$uID\_$jna\_split_$c.log");
             my $standardParams = Schedule::queuing(%stdParams);
-            `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $BCFTOOLS/bcftools filter -r $CHR_PRE$c $vcf.gz -O v -o $vcf_dir/chrom_$c/$jna\_CHR$c.vcf`;
+            `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $BCFTOOLS/bcftools filter -r $c $vcf.gz -O v -o $vcf_dir/chrom_$c/$jna\_$c.vcf`;
 
-            %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$jna\_CHR$c\_MAF_UNPAIRED", job_hold => "$pre\_$uID\_$jna\_split_CHR_$c", cpu => "4", mem => "10", cluster_out => "$output/progress/$pre\_$uID\_$jna\_CHR$c\_MAF_UNPAIRED.log");
+            %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$jna\_$c\_MAF_UNPAIRED", job_hold => "$pre\_$uID\_$jna\_split_CHR_$c", cpu => "4", mem => "10", cluster_out => "$output/progress/$pre\_$uID\_$jna\_$c\_MAF_UNPAIRED.log");
             $standardParams = Schedule::queuing(%stdParams);
-            `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/generateMAF.pl -vcf $vcf_dir/chrom_$c/$jna\_CHR$c.vcf -species $species -config $config -caller $type $patientFile -align_dir $output/alignments -delete_temp`;
-            `/bin/touch $output/progress/$pre\_$uID\_$jna\_CHR$c\_MAF_UNPAIRED.done`;
-            push @all_jids, "$pre\_$uID\_$jna\_CHR$c\_MAF_UNPAIRED";
-            push @chr_maf_jids, "$pre\_$uID\_$jna\_CHR$c\_MAF_UNPAIRED";
-            push @vcf_files, "$vcf_dir/chrom_$c/$jna\_CHR$c.vcf";
+            `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/generateMAF.pl -vcf $vcf_dir/chrom_$c/$jna\_$c.vcf -species $species -config $config -caller $type $patientFile -align_dir $output/alignments -delete_temp`;
+            `/bin/touch $output/progress/$pre\_$uID\_$jna\_$c\_MAF_UNPAIRED.done`;
+            push @all_jids, "$pre\_$uID\_$jna\_$c\_MAF_UNPAIRED";
+            push @chr_maf_jids, "$pre\_$uID\_$jna\_$c\_MAF_UNPAIRED";
+            push @vcf_files, "$vcf_dir/chrom_$c/$jna\_$c.vcf";
         }
-        #push @vcf_files, "$vcf_dir/chrom_$c/$jna\_CHR$c.vcf";
-        #push @chr_maf_jids, "$pre\_$uID\_$jna\_CHR$c\_MAF_UNPAIRED";
+        #push @vcf_files, "$vcf_dir/chrom_$c/$jna\_$c.vcf";
+        #push @chr_maf_jids, "$pre\_$uID\_$jna\_$c\_MAF_UNPAIRED";
     }
 
     my $jid_holds = join(",", @chr_maf_jids);
@@ -1314,7 +1409,7 @@ sub generateMaf{
             $merge_files = join(" -i ", @merge_files);
             %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$jna\_merge_TCGA_PORTAL_MAF_fillout", job_hold => "$jid_holds", cpu => "1", mem => "5", cluster_out => "$output/progress/$pre\_$uID\_$jna\_merge_TCGA_PORTAL_MAF_fillout.log");
             $standardParams = Schedule::queuing(%stdParams);
-            print "$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/maf/mergeMaf.pl -i $merge_files -o $vcf_dir/$jna\_UNPAIRED_TCGA_PORTAL_MAF_fillout.txt\n";
+            ###print "$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/maf/mergeMaf.pl -i $merge_files -o $vcf_dir/$jna\_UNPAIRED_TCGA_PORTAL_MAF_fillout.txt\n";
             `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/maf/mergeMaf.pl -i $merge_files -o $vcf_dir/$jna\_UNPAIRED_TCGA_PORTAL_MAF_fillout.txt`;
             push @merge_jids, "$pre\_$uID\_$jna\_merge_TCGA_PORTAL_MAF_fillout";
         }
