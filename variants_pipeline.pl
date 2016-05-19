@@ -284,6 +284,7 @@ my @gc_jids = ();
 my @cog_jids = ();
 my @doc_jids = ();
 my %bamsggf = ();
+my @r3 = ();
 
 processBams();
 foreach my $md_jid (@md_jids){
@@ -291,7 +292,6 @@ foreach my $md_jid (@md_jids){
 }
 my $mdj = join(",", @md_jids);
 
-my @r3 = ();
 if($mdOnly || $chip){
     mergeStats();
     finalSync();
@@ -1222,6 +1222,7 @@ sub processBams {
 		my $standardParams = Schedule::queuing(%stdParams);
 		`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Djava.io.tmpdir=/scratch/$uID -jar $PICARD/picard.jar MergeSamFiles $mdb O=$output/alignments/$pre\_$samp\.bam SORT_ORDER=coordinate VALIDATION_STRINGENCY=LENIENT TMP_DIR=/scratch/$uID CREATE_INDEX=true USE_THREADING=false MAX_RECORDS_IN_RAM=5000000`;
 		`/bin/touch $output/progress/$pre\_$uID\_SAMP_MD_MERGE_$samp\.done`;
+                push @r3, "$pre\_$uID\_SAMP_MD_MERGE_$samp";
 	    }
 	}
 	
