@@ -360,6 +360,15 @@ if($force_run || !-e "$progress/" . basename("$vcf") . "_VEP.done"){
      &checkResult($?, $progress, basename("$vcf") . "_VEP", "$vcf\_$somatic\_maf1.VEP");
 }
 
+# Check line nums again
+$numLines = `grep -v "^#" $vcf\_$somatic\_maf1.VEP | grep -c -v "^Hugo_Symbol"`;
+if($numLines == 0){
+    unlink("$vcf\_$somatic\_maf1.VEP");
+    `touch $vcf\_UNPAIRED_TCGA_MAF.txt $vcf\_UNPAIRED_TCGA_PORTAL_MAF.txt $vcf\_UNPAIRED_TCGA_PORTAL_MAF_fillout.txt $vcf\_UNPAIRED_VEP_MAF.txt `;
+    exit 0;
+}
+        
+
 if($force_run || !-e "$progress/" . basename("$vcf") . "_TCGA_MAF.done"){
     $force_run = 1;
     print "creating TCGA-formatted MAF file... \n";
