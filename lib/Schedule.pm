@@ -227,6 +227,10 @@ sub additionalLSF {
 	$aLSF .=" -R \"rusage[iounits=10]\"";
     }
 
+    if($addLSF{'mail'}){
+	$aLSF .= " -u \"$addLSF{'mail'}\""
+    }
+
     return $aLSF;
 }
 

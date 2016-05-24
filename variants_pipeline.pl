@@ -77,6 +77,8 @@ my $bqTrim = '3';
 
 my $uID = `/usr/bin/id -u -n`;
 chomp $uID;
+
+my $email = "$uID\@cbio.mskcc.org";
 my $rsync = "/ifs/solres/$uID";
 
 
@@ -112,6 +114,7 @@ GetOptions ('map=s' => \$map,
 	    'strelka' => \$strelka,
 	    'varscan' => \$varscan,
 	    'virmid' => \$virmid,
+	    'email' => \$email,
             'request=s' => \$request) or exit(1);
 
 if(!$map || !$species || !$config || !$scheduler || !$targets || $help){
@@ -125,6 +128,7 @@ if(!$map || !$species || !$config || !$scheduler || !$targets || $help){
 	* CONFIG: file listing paths to programs needed for pipeline; full path to config file needed (REQUIRED)
         * REQUEST: file containing request information such as PI, investigator, etc. (REQUIRED)
 	* SCHEDULER: currently support for SGE and LSF (REQUIRED)
+	* EMAIL: email to send notication of finished final job of pipeline (default: $uID\@cbio.mskcc.org)
 	* PAIR: file listing tumor/normal pairing of samples for mutect/maf conversion; if not specified, considered unpaired
         * PATIENT: if a patient file is given, patient wide fillout will be added to maf file
 	* PRE: output prefix (default: TEMP)
@@ -312,7 +316,7 @@ sub finalSync {
     my $r3j = join(",", @r3);
     my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_RSYNC_3", job_hold => "$r3j", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_RSYNC_3.log");
     my $standardParams = Schedule::queuing(%stdParams);
-    my %addParams = (scheduler => "$scheduler", runtime => "500", priority_project=> "$priority_project", priority_group=> "$priority_group", queues => "lau.q,lcg.q,nce.q", rerun => "1", iounits => "1");
+    my %addParams = (scheduler => "$scheduler", runtime => "500", priority_project=> "$priority_project", priority_group=> "$priority_group", queues => "lau.q,lcg.q,nce.q", rerun => "1", iounits => "1", mail => "$email");
     my $additionalParams = Schedule::additionalParams(%addParams);
     `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams /usr/bin/rsync -azvP --exclude 'intFiles' --exclude 'progress' $curDir $rsync`;
     `/bin/touch $output/progress/$pre\_$uID\_RSYNC_3.done`;
@@ -356,6 +360,9 @@ sub reconstructCL {
     }
     if($targets){
 	$rCL .= " -targets $targets";
+    }
+    if($email){
+	$rCL .= " -email $email";
     }
     if($nosnps){
 	$rCL .= " -nosnps";
