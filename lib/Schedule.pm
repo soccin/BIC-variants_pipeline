@@ -228,7 +228,7 @@ sub additionalLSF {
     }
 
     if($addLSF{'mail'}){
-	$aLSF .= " -u \"$addLSF{'mail'}\""
+	$aLSF .= " -u \"$addLSF{'mail'}\" -N"
     }
 
     return $aLSF;
