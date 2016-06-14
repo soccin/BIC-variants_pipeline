@@ -8,7 +8,7 @@ use Schedule;
 use Cluster;
 use File::Basename;
 
-my ($patient, $svnRev, $pair, $group, $bamgroup, $config, $nosnps, $targets, $ug, $scheduler, $priority_project, $priority_group, $abra, $help, $step1, $allSomatic, $scalpel, $somaticsniper, $strelka, $varscan, $virmid);
+my ($patient, $svnRev, $pair, $group, $bamgroup, $config, $nosnps, $targets, $ug, $scheduler, $priority_project, $priority_group, $abra, $indelrealigner, $help, $step1, $allSomatic, $scalpel, $somaticsniper, $strelka, $varscan, $virmid);
 
 my $pre = 'TEMP';
 my $output = "results";
@@ -28,6 +28,7 @@ GetOptions ('pre=s' => \$pre,
 	    'nosnps' => \$nosnps,
 	    'ug|unifiedgenotyper' => \$ug,
 	    'abra' => \$abra,
+	    'indelrealigner' => \$indelrealigner,
 	    'step1' => \$step1,
 	    'bamgroup=s' => \$bamgroup,
  	    'scheduler=s' => \$scheduler,
@@ -62,7 +63,8 @@ if(!$group || !$config || !$scheduler || !$targets || !$bamgroup || $help){
 	* PRIORITY_PROJECT: sge notion of priority assigned to projects (default: ngs)
 	* PRIORITY_GROUP: lsf notion of priority assigned to groups (default: Pipeline)
 	* -nosnps: if no snps to be called; e.g. when only indelrealigned/recalibrated bams needed
-	* -abra: run abra instead of GATK indelrealigner
+	* -abra: run abra to realign indels (default)
+	* -indelrealigner: run GATK indelrealigner (abra runs as default)
 	* -step1: forece the pipeline to start from the first step in pipeline
 	* haplotypecaller is default; -ug || -unifiedgenotyper to also make unifiedgenotyper variant calls	
 	* ALLSOMATIC: run all somatic callers; mutect/haplotypecaller always run; otherwise -scalpel, -somaticsniper, -strelka, -varscan, -virmid to run them individually	
@@ -82,6 +84,21 @@ if($output !~ /^\//){
 
 if($pre =~ /^\d+/){
     $pre = "s_$pre";
+}
+
+if($abra && $indelrealigner){
+    die "Cannot run both abra and gatk indelrealigner $!";
+}
+elsif(!$abra && !$indelrealigner){
+    $abra = 1;
+}
+
+if($allSomatic){
+    $scalpel = 1;
+    $somaticsniper = 1;
+    $strelka = 1;
+    $varscan = 1;
+    $virmid = 1;
 }
 
 my $ABRA = '';
@@ -599,7 +616,7 @@ while(<IN>){
 		$ran_ir = 1;
 	    }
 	}
-	else{
+	elsif($indelrealigner){
 	    my $ran_rtc = 0;
 	    my $rtc_jid = '';
 	    if(!-e "$output/progress/$pre\_$uID\_$gpair[0]\_$c\_RTC.done" || $step1){
@@ -622,7 +639,9 @@ while(<IN>){
 		$ran_ir = 1;
 	    }
 	}
-
+	else{
+	    die "no indel realinger chosen #!";
+	}
 	push @indelBams, "-I $output/intFiles/$pre\_$gpair[0]\_$c\_indelRealigned.bam";
     }
 

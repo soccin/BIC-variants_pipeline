@@ -65,7 +65,7 @@ use Cluster;
 ### NOTE: DO NOT SUBMIT THIS WRAPPER SCRIPT TO THE CLUSTER BECAUSE ONCOTATOR STEP WILL FAIL
 ###       DUE TO NODES NOT HAVING NETWORK ACCESS
 
-my ($map, $group, $pair, $patient, $config, $help, $nosnps, $removedups, $species, $ug, $scheduler, $abra, $targets, $mdOnly, $noMD, $DB_SNP, $noClip, $request, $allSomatic, $scalpel, $somaticsniper, $strelka, $varscan, $virmid, $chip);
+my ($map, $group, $pair, $patient, $config, $help, $nosnps, $removedups, $species, $ug, $scheduler, $abra, $indelrealigner, $targets, $mdOnly, $noMD, $DB_SNP, $noClip, $request, $allSomatic, $scalpel, $somaticsniper, $strelka, $varscan, $virmid, $chip);
 
 my $pre = 'TEMP';
 my $output = "results";
@@ -93,6 +93,7 @@ GetOptions ('map=s' => \$map,
 	    'nosnps' => \$nosnps,
 	    'removedups' => \$removedups,
 	    'abra' => \$abra,
+	    'indelrealigner' => \$indelrealigner,
 	    'mdOnly|mdonly' => \$mdOnly,
  	    'chip|chipseq|chip-seq' => \$chip,
 	    'noMD|nomd|nomarkdups|noMarkdups' => \$noMD,
@@ -133,13 +134,14 @@ if(!$map || !$species || !$config || !$scheduler || !$targets || $help){
         * PATIENT: if a patient file is given, patient wide fillout will be added to maf file
 	* PRE: output prefix (default: TEMP)
 	* OUTPUT: output results directory (default: results)
-	* RSYNC:  path to rsync data for archive (default: /ifs/solres/USER_ID)
+	* RSYNC:  path to rsync data for archive (default: /ifs/solres/$uID)
 	* PRIORITY_PROJECT: sge notion of priority assigned to projects (default: ngs)
 	* PRIORITY_GROUP: lsf notion of priority assigned to groups (default: Pipeline)
 	* -nosnps: if no snps to be called; e.g. when only indelrealigned/recalibrated bams needed
 	* -removedups: remove duplicate reads instead of just marking them
  	* -chip: will stop after markdups step
-	* -abra: run abra instead of GATK indelrealigner
+	* -abra: run abra to realign indels (default)
+	* -indelrealigner: run GATK indelrealigner (abra runs as default)
 	* -mdOnly: will stop after markdups step (e.g. chip seq analysis)
 	* -chip: will stop after markdups step; will also run bwa without -PM options
 	* -noMD: will not run MarkDups
@@ -208,6 +210,13 @@ if($allSomatic){
     $strelka = 1;
     $varscan = 1;
     $virmid = 1;
+}
+
+if($abra && $indelrealigner){
+    die "Cannot run both abra and gatk indelrealigner $!";
+}
+elsif(!$abra && !$indelrealigner){
+    $abra = 1;
 }
 
 &verifyRequest($request);
@@ -1537,9 +1546,14 @@ sub callSNPS {
 	$run_ug = "-ug";
     }
 
-    my $run_abra = '';
-    if($abra){
-	$run_abra = "-abra";
+    ###my $run_abra = '';
+    ###if($abra){
+###	$run_abra = "-abra";
+   ### }
+
+    my $run_ir = '';
+    if($indelrealigner){
+	$run_ir = '-indelrealigner';
     }
     
     my $run_step1 = '';
@@ -1577,15 +1591,15 @@ sub callSNPS {
     
     if($species =~ /b37|hg19|hybrid/i){
 	###`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/process_alignments_human.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra $run_step1 $patientFile -species $species`;
-	`$Bin/process_alignments_human.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -svnRev $svnRev -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra $run_step1 $patientFile -species $species -rsync $rsync $somaticCallers > $output/progress/process_alignments_human.log 2>&1`;
+	`$Bin/process_alignments_human.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -svnRev $svnRev -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_ir $run_step1 $patientFile -species $species -rsync $rsync $somaticCallers > $output/progress/process_alignments_human.log 2>&1`;
     }
     elsif($species =~ /mm9|^mm10$|mm10_custom/i){
 	###`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/process_alignments_mouse.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group -species $species $run_abra $run_step1`;
-	`$Bin/process_alignments_mouse.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -svnRev $svnRev -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra $run_step1 -species $species -rsync $rsync $somaticCallers > $output/progress/process_alignments_mouse.log 2>&1`;
+	`$Bin/process_alignments_mouse.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -svnRev $svnRev -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_ir $run_step1 -species $species -rsync $rsync $somaticCallers > $output/progress/process_alignments_mouse.log 2>&1`;
     }
     elsif($species =~ /species_custom/i){
 	###`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/process_alignments_species_custom.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra $run_step1`;
-	`$Bin/process_alignments_species_custom.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -svnRef $svnRev -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra $run_step1 -rsync $rsync $somaticCallers > $output/progress/process_alignments_species_custom.log 2>&1`;
+	`$Bin/process_alignments_species_custom.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -svnRef $svnRev -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_step1 -rsync $rsync $somaticCallers > $output/progress/process_alignments_species_custom.log 2>&1`;
     }
     elsif($species =~ /dm3/i){
 	###`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/process_alignments_dm3.pl -pre $pre -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra $run_step1 -species $species -rsync $rsync $somaticCallers > $output/progress/process_alignments_drosophila.log 2>&1`;
