@@ -106,6 +106,7 @@ my $GATK = '';
 my $PICARD = '';
 my $MUTECT = '';
 my $SAMTOOLS = '';
+my $BEDTOOLS = '';
 my $SOMATIC_SNIPER = '';
 my $VARSCAN = '';
 my $STRELKA = '';
@@ -189,6 +190,12 @@ while(<CONFIG>){
 	    die "CAN'T FIND samtools IN $conf[1] $!";
 	}
 	$SAMTOOLS = $conf[1];
+    }
+    elsif($conf[0] =~ /bedtools/i){
+        if(!-e "$conf[1]/bedtools"){
+            die "CAN'T FIND bedtools IN $conf[1] $!";
+        }
+        $BEDTOOLS = $conf[1];
     }
     elsif($conf[0] =~ /somaticsniper/i){
 	if(!-e "$conf[1]/bam-somaticsniper"){
@@ -359,6 +366,7 @@ my $HAPMAP = '';
 my $OMNI_1000G = '';
 my $PHASE1_SNPS_1000G = '';
 my $COSMIC = '';
+my $COSMIC_HOTSPOTS = '';
 my $ABRA_TARGETS = '';
 if($species =~ /^b37$|human/i){
     $REF_SEQ = "$B37_FASTA";
@@ -370,6 +378,7 @@ if($species =~ /^b37$|human/i){
     $OMNI_1000G = "$Bin/data/b37/1000G_omni2.5.b37.vcf";
     $PHASE1_SNPS_1000G = "$Bin/data/b37/1000G_phase1.snps.high_confidence.b37.vcf";
     $COSMIC = "$Bin/data/b37/CosmicCodingMuts_v67_b37_20131024__NDS.vcf";
+    $COSMIC_HOTSPOTS = "$Bin/data/b37/dmp_cosmic_for_hotspots.vcf";
     $ABRA_TARGETS = "$Bin/targets/abra/abra_target_regions_b37.bed";
 }
 elsif($species =~ /hybrid|b37_mm10/i){
@@ -382,6 +391,7 @@ elsif($species =~ /hybrid|b37_mm10/i){
     $OMNI_1000G = "$Bin/data/b37/1000G_omni2.5.b37.vcf";
     $PHASE1_SNPS_1000G = "$Bin/data/b37/1000G_phase1.snps.high_confidence.b37.vcf";
     $COSMIC = "$Bin/data/b37/CosmicCodingMuts_v67_b37_20131024__NDS.vcf";
+    $COSMIC_HOTSPOTS = "$Bin/data/b37/dmp_cosmic_for_hotspots.vcf";
     $ABRA_TARGETS = "$Bin/targets/abra/abra_target_regions_b37.bed";
 }
 elsif($species =~ /^hg19$/i){
@@ -394,6 +404,7 @@ elsif($species =~ /^hg19$/i){
     $OMNI_1000G = "$Bin/data/hg19/1000G_omni2.5.hg19.vcf";
     $PHASE1_SNPS_1000G = "$Bin/data/hg19/1000G_phase1.snps.high_confidence.hg19.vcf";
     $COSMIC = "$Bin/data/hg19/CosmicCodingMuts_v67_20131024.vcf";
+    $COSMIC_HOTSPOTS = "$Bin/data/b37/dmp_cosmic_for_hotspots.vcf";
     $ABRA_TARGETS = "$Bin/targets/abra/abra_target_regions_hg19.bed";
 }
 elsif($species =~ /hg19_mm10/i){
@@ -406,6 +417,7 @@ elsif($species =~ /hg19_mm10/i){
     $OMNI_1000G = "$Bin/data/hg19/1000G_omni2.5.hg19.vcf";
     $PHASE1_SNPS_1000G = "$Bin/data/hg19/1000G_phase1.snps.high_confidence.hg19.vcf";
     $COSMIC = "$Bin/data/hg19/CosmicCodingMuts_v67_20131024.vcf";
+    $COSMIC_HOTSPOTS = "$Bin/data/b37/dmp_cosmic_for_hotspots.vcf";
     $ABRA_TARGETS = "$Bin/targets/abra/abra_target_regions_hg19.bed";
 }
 elsif($species !~ /b37|hg19|hybrid|b37_mm10|hg19_mm10/){
@@ -705,13 +717,14 @@ while(<IN>){
 	push @ssf_jids, "$pre\_$uID\_$gpair[0]\_SSF";
 	$ran_ssf = 1;
     }
-
 }
 
 my $ssfj = join(",", @ssf_jids);
 push @all_jids, @ssf_jids;
 my @mq_metrics_jid = ();
+my @ad_jids = ();
 my $ran_mqm = 0;
+my $ran_ad = 0;
 foreach my $finalBam (@finalBams){
     my @sn = split(/\//, $finalBam);
     my $samp = $sn[-1];
@@ -726,6 +739,16 @@ foreach my $finalBam (@finalBams){
 	`/bin/touch $output/progress/$pre\_$uID\_MQ_METRICS_$samp\.done`;
 	$ran_mqm = 1; 
     }
+
+    ## generate *alleledepth file for 'hotspots in normals' qc
+    if(!-e "$output/progress/$pre\_$uID\_MUT_AD_$samp\.done" || $ran_ssf){
+        my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_MUT_AD_$samp", job_hold => "$ssfj", cpu => "1", mem => "2", cluster_out => "$output/progress/$pre\_$uID\_MUT_AD_$samp\.log");
+        my $standardParams = Schedule::queuing(%stdParams);
+        `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/qc/dmp_genotype_allele.pl -fmv $COSMIC_HOTSPOTS -bam $finalBam -rf $REF_SEQ -s $SAMTOOLS -b $BEDTOOLS -o $output/intFiles/$samp -of $pre\_indelRealigned_recal_$samp\.mpileup.alleledepth -mof $pre\_indelRealigned_recal_$samp\.mpileup`;
+        push @ad_jids, "$pre\_$uID\_MUT_AD_$samp";
+        `/bin/touch $output/progress/$pre\_$uID\_MUT_AD_$samp\.done`;
+        $ran_ad = 1;
+    }
 }
 
 my $mqmj = join(",", @mq_metrics_jid);
@@ -739,8 +762,19 @@ if(!-e "$output/progress/$pre\_$uID\_MERGE_MQ.done" || $ran_mqm){
     $ran_mmqm = 1;
 }
 
+my $adj = join(",", @ad_jids);
+my $ran_hn = 0;
+if(!-e "$output/progress/$pre\_$uID\_HOTSPOTS_NORMALS.done" || $ran_ad){
+    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_HOTSPOTS_NORMALS", job_hold => "$adj", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_HOTSPOTS_NORMALS.log");
+    my $standardParams = Schedule::queuing(%stdParams);
+    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PYTHON/python $Bin/qc/hotspots_in_normals.py $output/intFiles '*.alleledepth' $COSMIC_HOTSPOTS $pair $output/metrics/$pre\_HotspotsInNormals.txt`;
+    `/bin/touch $output/progress/$pre\_$uID\_HOTSPOTS_NORMALS.done`;
+    push @all_jids, "$pre\_$uID\_HOTSPOTS_NORMALS";
+    $ran_hn = 1;
+}
+
 my $allj = join(",", @all_jids);
-if(!-e "$output/progress/$pre\_$uID\_RSYNC_1.done" || $ran_ssf || $ran_mmqm){
+if(!-e "$output/progress/$pre\_$uID\_RSYNC_1.done" || $ran_ssf || $ran_mmqm || $ran_hn){
     sleep(2);
     my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_RSYNC_1", job_hold => "$allj", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_RSYNC_1.log");
     my $standardParams = Schedule::queuing(%stdParams);
