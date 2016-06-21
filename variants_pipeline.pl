@@ -65,7 +65,7 @@ use Cluster;
 ### NOTE: DO NOT SUBMIT THIS WRAPPER SCRIPT TO THE CLUSTER BECAUSE ONCOTATOR STEP WILL FAIL
 ###       DUE TO NODES NOT HAVING NETWORK ACCESS
 
-my ($map, $group, $pair, $patient, $config, $help, $nosnps, $removedups, $species, $ug, $scheduler, $abra, $indelrealigner, $targets, $mdOnly, $noMD, $DB_SNP, $noClip, $request, $allSomatic, $scalpel, $somaticsniper, $strelka, $varscan, $virmid, $chip);
+my ($map, $group, $pair, $patient, $impact, $wes, $config, $help, $nosnps, $removedups, $species, $ug, $scheduler, $abra, $indelrealigner, $targets, $mdOnly, $noMD, $DB_SNP, $noClip, $request, $allSomatic, $scalpel, $somaticsniper, $strelka, $varscan, $virmid, $chip);
 
 my $pre = 'TEMP';
 my $output = "results";
@@ -93,7 +93,9 @@ GetOptions ('map=s' => \$map,
 	    'nosnps' => \$nosnps,
 	    'removedups' => \$removedups,
 	    'abra' => \$abra,
-	    'indelrealigner' => \$indelrealigner,
+	    'impact' => \$impact,
+            'wes' => \$wes,
+            'indelrealigner' => \$indelrealigner,
 	    'mdOnly|mdonly' => \$mdOnly,
  	    'chip|chipseq|chip-seq' => \$chip,
 	    'noMD|nomd|nomarkdups|noMarkdups' => \$noMD,
@@ -121,7 +123,7 @@ GetOptions ('map=s' => \$map,
 if(!$map || !$species || !$config || !$scheduler || !$targets || $help){
     print <<HELP;
 
-    USAGE: variants_pipeline.pl -config CONFIG -species SPECIES -scheduler SCHEDULER -targets TARGETS
+    USAGE: variants_pipeline.pl -wes -config CONFIG -species SPECIES -scheduler SCHEDULER -targets TARGETS
 	* MAP: file listing sample information for processing (REQUIRED)
 	* GROUP: file listing grouping of samples for realign/recal steps (REQUIRED, unless using -mdOnly flag)
 	* SPECIES: b37 (default: human), hg19, mm9, mm10 (default: mouse), hybrid (hg19+mm10), mm10_custom, species_custom and dm3 currently supported (REQUIRED)
@@ -137,6 +139,8 @@ if(!$map || !$species || !$config || !$scheduler || !$targets || $help){
 	* RSYNC:  path to rsync data for archive (default: /ifs/solres/$uID)
 	* PRIORITY_PROJECT: sge notion of priority assigned to projects (default: ngs)
 	* PRIORITY_GROUP: lsf notion of priority assigned to groups (default: Pipeline)
+	* -wes: run pipeline as whole exome (must use either -wes or -impact)
+	* -impact: run pipeline as an impact project (must use either -wes or -impact) 
 	* -nosnps: if no snps to be called; e.g. when only indelrealigned/recalibrated bams needed
 	* -removedups: remove duplicate reads instead of just marking them
  	* -chip: will stop after markdups step
@@ -210,6 +214,12 @@ if($allSomatic){
     $strelka = 1;
     $varscan = 1;
     $virmid = 1;
+}
+
+if($wes && $impact){
+    die "Cannot run as both a wes and an impact. Please select -wes OR -impact";
+}elsif(!$wes && !$impact){
+    die "Must specify to run the project as either -wes or -impact";
 }
 
 if($abra && $indelrealigner){
@@ -379,6 +389,12 @@ sub reconstructCL {
     }
     if($removedups){
 	$rCL .= " -removedups";
+    }
+    if($wes){
+        $rCL .= " -wes";
+    }
+    if($impact){
+        $rCL .= " -impact";
     }
     if($abra){
 	$rCL .= " -abra";
@@ -986,7 +1002,7 @@ sub processInputs {
             }
 
             if(!$grouping_samples{$sid}) {
-                 die "groupi;ng file $group missing sample $sid found in patient file $patient $!";
+                 die "grouping file $group missing sample $sid found in patient file $patient $!";
             }
 
             if(!$pairing_samples{$sid}) {
@@ -1551,6 +1567,13 @@ sub callSNPS {
 ###	$run_abra = "-abra";
    ### }
 
+    my $wesImpact = '';
+    if($wes){
+        $wesImpact = '-wes';
+    }else{
+        $wesImpact = '-impact';
+    }
+
     my $run_ir = '';
     if($indelrealigner){
 	$run_ir = '-indelrealigner';
@@ -1591,7 +1614,7 @@ sub callSNPS {
     
     if($species =~ /b37|hg19|hybrid/i){
 	###`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/process_alignments_human.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra $run_step1 $patientFile -species $species`;
-	`$Bin/process_alignments_human.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -svnRev $svnRev -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_ir $run_step1 $patientFile -species $species -rsync $rsync $somaticCallers > $output/progress/process_alignments_human.log 2>&1`;
+	`$Bin/process_alignments_human.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps $wesImpact -targets $targets $run_ug -output $output -svnRev $svnRev -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_ir $run_step1 $patientFile -species $species -rsync $rsync $somaticCallers > $output/progress/process_alignments_human.log 2>&1`;
     }
     elsif($species =~ /mm9|^mm10$|mm10_custom/i){
 	###`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/process_alignments_mouse.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group -species $species $run_abra $run_step1`;

@@ -6,8 +6,8 @@ DIR=$3
 TAG=$4
 FILE=$5
 GENOME=$6
-PC=100
-C=50
+PC=$7
+C=$8
 
 x=3;
 
