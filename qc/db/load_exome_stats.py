@@ -389,6 +389,31 @@ def read_and_save_fp_het(file_id, in_file_name, project_id, pipeline_run_id, con
             #log_file.write("LOG: query = '%s', params = '%s'\n" % (stat_query, params))
             stat_cursor.execute(stat_query, params)
 
+def read_and_save_gc_bias(file_id, in_file_name, project_id, pipeline_run_id, conn, sample_cursor, stat_cursor, barcode_query, sample_and_barcode_query, sample_query, log_file):
+    # e.g. /ifs/res/seq/faginj/knaufj/Proj_4773/FinalReport/CompiledMetrics/Proj_4773_ALL_gcbias.txt
+    stat_query = "INSERT INTO sample_gc_bias (sample_id, gc_content, value, file_id) VALUES (%s, %s, %s, %s) ON DUPLICATE KEY UPDATE id=LAST_INSERT_ID(id), value=%s, file_id=%s"
+    with open(in_file_name, "r") as in_file:
+        # read header
+        header = in_file.readline().strip("\n")
+        #barcodes = header.split("\t")[1:]
+        samples = header.split("\t")[1:]
+        sample_ids = []
+        for sample_name in samples:
+            sample_id = find_sample_id_by_name(pipeline_run_id, conn, sample_cursor, sample_query, sample_name, log_file)
+            sample_ids.append(sample_id)
+
+        for line in in_file:
+            line = line.strip("\n")
+            cells = line.split("\t")
+            values = cells[1:]
+            for i in range(0, len(values)):
+                value = values[i]
+                sample_id = sample_ids[i]
+                params = (sample_id, cells[0], value, file_id, value, file_id)
+                #log_file.write("LOG: i=%d, query = '%s', params = '%s'\n" % (i, stat_query, params))
+                stat_cursor.execute(stat_query, params)
+
+
 def load(species, chipseq, stat_type, project_name, pi, investigator, rerun_number, revision_number, in_file_name, conn, log_file):
     if species.lower() in ['human','hg18','hg19','b37','grch37']:
         stats = human_stats
@@ -496,7 +521,8 @@ human_stats = {
     "FPCResultsUnMismatch": Stat("FPCResultsUnMismatch", ["_UnexpectedMismatches.txt"], read_and_save_fpc_results_unmismatch),
     "HSMetrics": Stat("HSMetrics", ["_HsMetrics.txt"], read_and_save_hs_metrics),
     "InsertSizeMetrics": Stat("InsertSizeMetrics", ["_InsertSizeMetrics_Histograms.txt"], read_and_save_insert_size_metrics),
-    "OrgBaseQualities": Stat("OrgBaseQualities", ["_pre_recal_MeanQualityByCycle.txt"], read_and_save_org_base_qualities)
+    "OrgBaseQualities": Stat("OrgBaseQualities", ["_pre_recal_MeanQualityByCycle.txt"], read_and_save_org_base_qualities),
+    "GCBias": Stat("GCBias", ["_GcBiasMetrics.txt"], read_and_save_gc_bias)
 }
 
 human_chipseq_stats = {
@@ -507,17 +533,20 @@ human_chipseq_stats = {
     "FPCResultsUnMatch": Stat("FPCResultsUnMatch", ["_UnexpectedMatches.txt"], read_and_save_fpc_results_unmatch),
     "FPCResultsUnMismatch": Stat("FPCResultsUnMismatch", ["_UnexpectedMismatches.txt"], read_and_save_fpc_results_unmismatch),
     "InsertSizeMetrics": Stat("InsertSizeMetrics", ["_InsertSizeMetrics_Histograms.txt"], read_and_save_insert_size_metrics),
+    "GCBias": Stat("GCBias", ["_GcBiasMetrics.txt"], read_and_save_gc_bias)
 }
 
 mouse_stats = {
     "BaseQualities": Stat("BaseQualities", ["_post_recal_MeanQualityByCycle.txt"], read_and_save_base_qualities),
     "HSMetrics": Stat("HSMetrics", ["_HsMetrics.txt"], read_and_save_hs_metrics),
     "InsertSizeMetrics": Stat("InsertSizeMetrics", ["_InsertSizeMetrics_Histograms.txt"], read_and_save_insert_size_metrics),
-    "OrgBaseQualities": Stat("OrgBaseQualities", ["_pre_recal_MeanQualityByCycle.txt"], read_and_save_org_base_qualities)
+    "OrgBaseQualities": Stat("OrgBaseQualities", ["_pre_recal_MeanQualityByCycle.txt"], read_and_save_org_base_qualities),
+    "GCBias": Stat("GCBias", ["_GcBiasMetrics.txt"], read_and_save_gc_bias)
 }
 
 mouse_chipseq_stats = {
     "InsertSizeMetrics": Stat("InsertSizeMetrics", ["_InsertSizeMetrics_Histograms.txt"], read_and_save_insert_size_metrics),
+    "GCBias": Stat("GCBias", ["_GcBiasMetrics.txt"], read_and_save_gc_bias)
 }
 
 if __name__ == "__main__":
