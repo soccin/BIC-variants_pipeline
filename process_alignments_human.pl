@@ -369,6 +369,7 @@ my $REF_SEQ = '';
 my $REF_FAI = '';
 my $BWA_INDEX = '';
 my $DB_SNP = "";
+my $FACETS_DB_SNP = "";
 my $MILLS_1000G = '';
 my $HAPMAP = '';
 my $OMNI_1000G = '';
@@ -381,6 +382,7 @@ if($species =~ /^b37$|human/i){
     $REF_FAI = "$B37_FAI";
     $BWA_INDEX = "$B37_BWA_INDEX";
     $DB_SNP = "$Bin/data/b37/dbsnp_138.b37.excluding_sites_after_129.vcf";
+    $FACETS_DB_SNP = "$Bin/data/b37/dbsnp_137.b37__RmDupsClean__plusPseudo50__DROP_SORT.vcf";
     $MILLS_1000G = "$Bin/data/b37/Mills_and_1000G_gold_standard.indels.b37.vcf";
     $HAPMAP = "$Bin/data/b37/hapmap_3.3.b37.vcf";
     $OMNI_1000G = "$Bin/data/b37/1000G_omni2.5.b37.vcf";
@@ -394,6 +396,7 @@ elsif($species =~ /hybrid|b37_mm10/i){
     $REF_FAI = "$B37_MM10_HYBRID_FAI";
     $BWA_INDEX = "$B37_MM10_HYBRID_BWA_INDEX";
     $DB_SNP = "$Bin/data/b37/dbsnp_138.b37.excluding_sites_after_129.vcf";
+    $FACETS_DB_SNP = "$Bin/data/b37/dbsnp_137.b37__RmDupsClean__plusPseudo50__DROP_SORT.vcf";
     $MILLS_1000G = "$Bin/data/b37/Mills_and_1000G_gold_standard.indels.b37.vcf";
     $HAPMAP = "$Bin/data/b37/hapmap_3.3.b37.vcf";
     $OMNI_1000G = "$Bin/data/b37/1000G_omni2.5.b37.vcf";
@@ -407,6 +410,7 @@ elsif($species =~ /^hg19$/i){
     $REF_FAI = "$HG19_FAI";
     $BWA_INDEX = "$HG19_BWA_INDEX";
     $DB_SNP = "$Bin/data/hg19/dbsnp_138.hg19.excluding_sites_after_129.vcf";
+    $FACETS_DB_SNP = "$Bin/data/hg19/dbsnp_137.hg19__RmDupsClean__plusPseudo50__DROP_SORT.vcf";
     $MILLS_1000G = "$Bin/data/hg19/Mills_and_1000G_gold_standard.indels.hg19.vcf";
     $HAPMAP = "$Bin/data/hg19/hapmap_3.3.hg19.vcf";
     $OMNI_1000G = "$Bin/data/hg19/1000G_omni2.5.hg19.vcf";
@@ -420,6 +424,7 @@ elsif($species =~ /hg19_mm10/i){
     $REF_FAI = "$HG19_MM10_HYBRID_FAI";
     $BWA_INDEX = "$HG19_MM10_HYBRID_BWA_INDEX";
     $DB_SNP = "$Bin/data/hg19/dbsnp_138.hg19.excluding_sites_after_129.vcf";
+    $FACETS_DB_SNP = "$Bin/data/hg19/dbsnp_137.hg19__RmDupsClean__plusPseudo50__DROP_SORT.vcf";
     $MILLS_1000G = "$Bin/data/hg19/Mills_and_1000G_gold_standard.indels.hg19.vcf";
     $HAPMAP = "$Bin/data/hg19/hapmap_3.3.hg19.vcf";
     $OMNI_1000G = "$Bin/data/hg19/1000G_omni2.5.hg19.vcf";
@@ -1230,13 +1235,13 @@ if($pair){
             my $standardParams = Schedule::queuing(%stdParams);
             my %addParams = (runtime => "30");
             my $additionalParams = Schedule::additionalParams(%addParams);
-            `$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{job_hold} $standardParams->{cluster_out} $additionalParams $Bin/facets/bin/GetBaseCounts --thread 4 --filter_improper_pair 0 --sort_output --fasta $REF_SEQ --vcf $DB_SNP --maq $MAPQ --baq $BASEQ --cov $MINCOV --bam $output/alignments/$pre\_indelRealigned_recal\_$data[1]\.bam --out $output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets/tmp/$pre\_indelRealigned_recal\_$data[1].dat`;
+            `$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{job_hold} $standardParams->{cluster_out} $additionalParams $Bin/facets/bin/GetBaseCounts --thread 4 --filter_improper_pair 0 --sort_output --fasta $REF_SEQ --vcf $FACETS_DB_SNP --maq $MAPQ --baq $BASEQ --cov $MINCOV --bam $output/alignments/$pre\_indelRealigned_recal\_$data[1]\.bam --out $output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets/tmp/$pre\_indelRealigned_recal\_$data[1].dat`;
 	    
             %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$data[0]\_$data[1]\_facets_SETUP_N",  cpu => "4", mem => "5", job_hold => "$ssfj", cluster_out => "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_facets_SETUP_N.log");
             my $standardParams2 = Schedule::queuing(%stdParams);
             %addParams = (runtime => "30");
             my $additionalParams2 = Schedule::additionalParams(%addParams);
-            `$standardParams2->{submit} $standardParams2->{job_name} $standardParams2->{cpu} $standardParams2->{mem} $standardParams2->{job_hold} $standardParams2->{cluster_out} $additionalParams2 $Bin/facets/bin/GetBaseCounts --thread 4 --filter_improper_pair 0 --sort_output --fasta $REF_SEQ --vcf $DB_SNP --maq $MAPQ --baq $BASEQ --cov $MINCOV --bam $output/alignments/$pre\_indelRealigned_recal\_$data[0]\.bam --out $output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets/tmp/$pre\_indelRealigned_recal\_$data[0].dat`;
+            `$standardParams2->{submit} $standardParams2->{job_name} $standardParams2->{cpu} $standardParams2->{mem} $standardParams2->{job_hold} $standardParams2->{cluster_out} $additionalParams2 $Bin/facets/bin/GetBaseCounts --thread 4 --filter_improper_pair 0 --sort_output --fasta $REF_SEQ --vcf $FACETS_DB_SNP --maq $MAPQ --baq $BASEQ --cov $MINCOV --bam $output/alignments/$pre\_indelRealigned_recal\_$data[0]\.bam --out $output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets/tmp/$pre\_indelRealigned_recal\_$data[0].dat`;
 
             %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$data[0]\_$data[1]\_merge_counts_facets_SETUP",  cpu => "4", mem => "18", job_hold => "$pre\_$uID\_$data[0]\_$data[1]\_facets_SETUP_N,$pre\_$uID\_$data[0]\_$data[1]\_facets_SETUP_T", cluster_out => "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_facets_SETUP.log");
             my $standardParams3 = Schedule::queuing(%stdParams);
