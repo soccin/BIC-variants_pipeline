@@ -52,7 +52,7 @@ if(!$file || !$config || !$species || !$scheduler || $help){
     USAGE: process_reads_pe.pl -file FILE -pre PRE -species SPECIES -config CONFIG -run RUN -readgroup READGROUP -scheduler SCHEDULER
 	* FILE: file listing read pairs to process (REQUIRED)
 	* PRE: output prefix (default: TEMP)
-	* SPECIES: b37, hg19, mm9, mm10, hybrid (hg19+mm10), mm10_custom, species_custom, and dm3 currently supported (REQUIRED)
+	* SPECIES: b37, mm9, mm10, mm10_custom, species_custom, and dm3 currently supported (REQUIRED)
 	* CONFIG: file listing paths to programs needed for pipeline; full path to config file needed (REQUIRED)
 	* SCHEDULER: currently support for SGE and LSF (REQUIRED)
 	* RUN: RUN IDENTIFIER (default: TEMP_RUN)
@@ -196,6 +196,9 @@ if($species =~/^b37$|human/i){
     $bwaDB = "$B37_BWA_INDEX";
 }
 elsif($species =~/^hg19$/i){
+
+    die "hg19 is no longer supported in the variants pipeline";
+    
     $bwaDB = "$HG19_BWA_INDEX";
 }
 elsif($species =~ /^mm10$|mouse/i){
@@ -217,7 +220,7 @@ elsif($species =~ /dm3/i){
     $bwaDB = "$DM3_BWA_INDEX";
 }
 else{
-    die "SPECIES $species ISN'T CURRENTLY SUPPORTED; ONLY SUPPORT FOR b37|hg19, mm9|mm10|mm10_custom, and species_custom\n";
+    die "SPECIES $species ISN'T CURRENTLY SUPPORTED; ONLY SUPPORT FOR b37, mm9|mm10|mm10_custom, and species_custom\n";
 }
 
 `/bin/mkdir -m 775 -p progress`;

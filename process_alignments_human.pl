@@ -54,7 +54,7 @@ if(!$group || !$config || !$scheduler || !$targets || !$bamgroup || $help){
     USAGE: process_alignments_human.pl -group GROUP -bampgroup BAMBROUP -config CONFIG -scheduler SCHEDULER -targets TARGETS
 	* GROUP: file listing grouping of samples for realign/recal steps (REQUIRED)
 	* BAMGROUP: files listing bams to be processed together; every bam for each group on 1 line, comma-separated (required)
-	* SPECIES: b37 (default), hg19, hybrid (b37_mm10)
+	* SPECIES: b37, hybrid (b37_mm10)
 	* TARGETS: name of targets assay; will search for targets/baits ilists and targets padded file in $Bin/targets/TARGETS unless given full path to targets directory (REQUIRED)
 	* CONFIG: file listing paths to programs needed for pipeline; full path to config file needed (REQUIRED)
 	* SCHEDULER: currently support for SGE and LSF (REQUIRED)
@@ -406,6 +406,9 @@ elsif($species =~ /hybrid|b37_mm10/i){
     $ABRA_TARGETS = "$Bin/targets/abra/abra_target_regions_b37.bed";
 }
 elsif($species =~ /^hg19$/i){
+
+    die "hg19 is no longer supported in the variants pipeline";
+
     $REF_SEQ = "$HG19_FASTA";
     $REF_FAI = "$HG19_FAI";
     $BWA_INDEX = "$HG19_BWA_INDEX";
@@ -420,6 +423,9 @@ elsif($species =~ /^hg19$/i){
     $ABRA_TARGETS = "$Bin/targets/abra/abra_target_regions_hg19.bed";
 }
 elsif($species =~ /hg19_mm10/i){
+
+    die "hg19 is no longer supported in the variants pipeline";
+
     $REF_SEQ = "$HG19_MM10_HYBRID_FASTA";
     $REF_FAI = "$HG19_MM10_HYBRID_FAI";
     $BWA_INDEX = "$HG19_MM10_HYBRID_BWA_INDEX";
@@ -433,8 +439,8 @@ elsif($species =~ /hg19_mm10/i){
     $COSMIC_HOTSPOTS = "$Bin/data/b37/dmp_cosmic_for_hotspots.vcf";
     $ABRA_TARGETS = "$Bin/targets/abra/abra_target_regions_hg19.bed";
 }
-elsif($species !~ /b37|hg19|hybrid|b37_mm10|hg19_mm10/){
-    die "ONLY SUPPORT FOR b37, hg19 or hybrd assemblies $!";
+elsif($species !~ /b37|hybrid|b37_mm10/){
+    die "ONLY SUPPORT FOR b37 or hybrd assemblies $!";
 }
 
 ### make sure all markdup bam files are there before proceeding

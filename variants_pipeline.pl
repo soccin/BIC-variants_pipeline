@@ -126,7 +126,7 @@ if(!$map || !$species || !$config || !$scheduler || !$targets || $help){
     USAGE: variants_pipeline.pl -wes -config CONFIG -species SPECIES -scheduler SCHEDULER -targets TARGETS
 	* MAP: file listing sample information for processing (REQUIRED)
 	* GROUP: file listing grouping of samples for realign/recal steps (REQUIRED, unless using -mdOnly flag)
-	* SPECIES: b37 (default: human), hg19, mm9, mm10 (default: mouse), hybrid (hg19+mm10), mm10_custom, species_custom and dm3 currently supported (REQUIRED)
+	* SPECIES: b37 (default: human), mm9, mm10 (default: mouse), hybrid (b37+mm10), mm10_custom, species_custom and dm3 currently supported (REQUIRED)
 	* TARGETS: name of targets assay; will search for targets/baits ilists and targets padded file in $Bin/targets/TARGETS unless given full path to targets directory (REQUIRED)
 	* CONFIG: file listing paths to programs needed for pipeline; full path to config file needed (REQUIRED)
         * REQUEST: file containing request information such as PI, investigator, etc. (REQUIRED)
@@ -844,8 +844,8 @@ sub processInputs {
 	$pre = "s_$pre";
     }
     
-    if($species !~ /human|b37|hg19|mouse|mm9|mm10|mm10_custom|species_custom|drosophila|dm3|hybrid/i){
-	die "Species must be human (b37|hg19), mouse (mm9|mm10|mm10_custom), species_custom or drosophila (dm3) $!";
+    if($species !~ /human|b37|mouse|mm9|mm10|mm10_custom|species_custom|drosophila|dm3|hybrid/i){
+	die "Species must be human (b37), mouse (mm9|mm10|mm10_custom), species_custom or drosophila (dm3) $!";
     }
     
     if($scheduler =~ /lsf/i){
@@ -863,6 +863,9 @@ sub processInputs {
 	$FP_TG = "$Bin/data/b37/Agilent51MBExome__b37__FP_tiling_genotypes.txt";
     }
     elsif($species =~ /hg19/i){
+
+	die "hg19 is no longer supported in the variants pipeline";
+
 	$species = 'hg19';
 	$REF_SEQ = "$HG19_FASTA";
 	$DB_SNP = "$Bin/data/hg19/dbsnp_138.hg19.vcf";
