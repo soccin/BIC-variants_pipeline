@@ -467,7 +467,14 @@ if(-d $targets){
     my $assay = pop @path;
     $targets_bed_padded = "$targets/$assay\_targets_plus5bp.bed";
     $target_design = "$targets/$assay\__DESIGN.berger";
-    $target_std_normals = "$targets/StdNormals/$assay\_norms";
+    if($abra)
+    {
+        $target_std_normals = "$targets/StdNormals/$assay\_abra_norms";
+    }
+    else
+    {
+        $target_std_normals = "$targets/StdNormals/$assay\_gatk_norms";
+    }
 }
 
 if(!-e "$targets_bed_padded"){
