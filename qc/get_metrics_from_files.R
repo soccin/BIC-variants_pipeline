@@ -118,6 +118,9 @@ get.md.metrics <- function(path,type){
     file = paste(path,filename,sep="/")
     if(!file.exists(file) || file.info(file)$size == 0){ return(NULL) }
     dat <- read.delim(file)
+    # This normalizes the sample names and removes the last __1
+    # which is the library number
+    dat$LIBRARY = sub("__1$", "", dat$LIBRARY)
     return(dat)
 }
 
@@ -579,10 +582,6 @@ get.detail.table <- function(path,type,id,user=NULL){
         samples = paste(title$Barcode,title$Sample_ID,sep=": ")
     } else {
         samples = as.vector(get.md.metrics(path,type)$LIBRARY)
-        ## this is a hacky way of normalizing sample names, since some
-        ## stats are run before library "_1" is appended to sample ID
-        ## and some are run afterwards in the pipeline
-        samples = sub("__1","",samples)                
     }
 
     detail = matrix("",nrow=length(samples),ncol=length(other)+length(mets))
@@ -594,12 +593,12 @@ get.detail.table <- function(path,type,id,user=NULL){
     majc = get.major.contamination(path,type)
     minc = get.minor.contamination(path,type)
     cov = get.coverage(path,type)
-    dup = get.duplication(path,type)
-    lib = get.library.size(path,type)
     cs = get.capture.specificity(path,type)
-    aln = get.alignment(path,type)
     is = get.is.peaks(path,type)
     tr = get.trimmed.reads(path,type)
+    dup = get.duplication(path,type)
+    lib = get.library.size(path,type)
+    aln = get.alignment(path,type)
 
     ## populate matrix
     detail[," "] = "2PASS"
@@ -621,9 +620,9 @@ get.detail.table <- function(path,type,id,user=NULL){
                 parts = unlist(strsplit(as.character(samp),"_")) 
                 bc = parts[length(parts)]
                 finalSamp = paste(bc,paste(parts[-length(parts)],collapse="_",sep=""),sep=": ")
-            } else {
-                finalSamp = sub("__1","",samp)
-            }
+            } #else {
+                #finalSamp = sub("__1","",samp)
+            #}
             detail[which(rownames(detail) == finalSamp),"Unexpected Match(es)"] = unms
             detail[which(rownames(detail) == finalSamp)," "] = "0FAIL"
         }
@@ -643,23 +642,23 @@ get.detail.table <- function(path,type,id,user=NULL){
                 parts = unlist(strsplit(as.character(samp),"_"))
                 bc = parts[length(parts)]
                 finalSamp = paste(bc,paste(parts[-length(parts)],collapse="_",sep=""),sep=": ")
-            } else {
-                finalSamp = sub("__1","",samp)
+            #} else {
+            #    finalSamp = sub("__1","",samp)
             }
             detail[which(rownames(detail) == finalSamp),"Unexpected Mismatch(es)"] = unmms
             detail[which(rownames(detail) == finalSamp)," "] = "0FAIL"
         }
       }
     }
-    if(!is.null(majc)){ detail[sub("__1","",majc[,1]),"Major Contamination"] = round(majc[,2],digits=2) }
-    if(!is.null(minc)){ detail[sub("__1","",minc[,1]),"Minor Contamination"] = round(minc[,2],digits=2) }
-    if(!is.null(cov)){ detail[sub("__1","",cov[,1]),"Coverage"] = round(cov[,2]) }
-    if(!is.null(dup)){ detail[sub("__1","",dup[,1]),"Duplication"] = signif(dup[,2]*100,digits=3) }
-    if(!is.null(lib)){ detail[sub("__1","",lib[,1]),"Library Size (millions)"] = round(lib[,2]/1000000) }
-    if(!is.null(cs)){ detail[sub("__1","",cs[,1]),"On Bait Bases (millions)"] = round(cs[,2]/1000000) }
-    if(!is.null(aln)){ detail[sub("__1","",aln[,1]),"Aligned Reads (millions)"] = round(aln[,2]/1000000) }
-    if(!is.null(is)){ detail[sub("__1","",is$Sample),"Insert Size Peak"] = is$Peak }  
-    if(!is.null(tr)){ detail[sub("__1","",tr[,1]),"Percentage Trimmed Reads"] = apply(tr[,c(2,3)],1,sum) }
+    if(!is.null(majc)){ detail[majc[,1],"Major Contamination"] = round(majc[,2],digits=2) }
+    if(!is.null(minc)){ detail[minc[,1],"Minor Contamination"] = round(minc[,2],digits=2) }
+    if(!is.null(cov)){ detail[cov[,1],"Coverage"] = round(cov[,2]) }
+    if(!is.null(dup)){ detail[dup[,1],"Duplication"] = signif(dup[,2]*100,digits=3) }
+    if(!is.null(lib)){ detail[lib[,1],"Library Size (millions)"] = round(lib[,2]/1000000) }
+    if(!is.null(cs)){ detail[cs[,1],"On Bait Bases (millions)"] = round(cs[,2]/1000000) }
+    if(!is.null(aln)){ detail[aln[,1],"Aligned Reads (millions)"] = round(aln[,2]/1000000) }
+    if(!is.null(is)){ detail[is$Sample,"Insert Size Peak"] = is$Peak }  
+    if(!is.null(tr)){ detail[tr[,1],"Percentage Trimmed Reads"] = apply(tr[,c(2,3)],1,sum) }
 
     ## assign status to each sample based on fixed thresholds
     detail[intersect(which(as.numeric(detail[,"Duplication"])>50),which(detail[,1]=="2PASS")),1] = "1WARN" ## warn high duplication
