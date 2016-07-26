@@ -973,12 +973,6 @@ sub processInputs {
 		die "grouping file $group missing sample $data[1] found in mapping file $map $!";
 	    }
 	}
-	
-	if($pair){
-	    if(!$pairing_samples{$data[1]}){
-		die "pairing file $pair missing sample $data[1] found in mapping file $map $!";
-	    }
-	}
     }
     close MA;
         
@@ -989,17 +983,21 @@ sub processInputs {
         open(PATIENT, "$patient") or die "Can't open patient file $patient $!";
         my $h = <PATIENT>;
         my @h = split(/\s+/, $h);
-        my ($sID_index) = grep {$h[$_] =~ /Sample_ID/} 0..$#h;
-
         my @mandatory_headers = ("Sample_ID", "Patient_ID", "Class", "Bait_version");
         foreach my $loopVal (@mandatory_headers){
             if(! grep(/^$loopVal$/, @h)) {
                 die "Missing header value $loopVal in patient file $patient $!";
             }
         }
+        my ($sID_index) = grep {$h[$_] =~ /Sample_ID/} 0..$#h;
+        my ($class_index) = grep {$h[$_] =~ /Class/} 0..$#h;
+
         while(<PATIENT>){
             my @line = split(/\s+/,$_);
             my $sid = $line[$sID_index];
+
+            $patient_samples{$sid}=1;
+
             if(!$mapping_samples{$sid}) {
                  die "mapping file $map missing sample $sid found in patient file $patient $!";
             }
@@ -1008,7 +1006,7 @@ sub processInputs {
                  die "grouping file $group missing sample $sid found in patient file $patient $!";
             }
 
-            if(!$pairing_samples{$sid}) {
+            if(!$pairing_samples{$sid} &&  $line[$class_index] ne "PoolNormal") {
                  die "pairing file $pair missing sample $sid found in patient file $patient $!";
             }
         }
@@ -1022,10 +1020,20 @@ sub processInputs {
 	    }
 	    
 	    if($pair){
+                # add this extra check because pooled normals do not have to be paired if all samples have
+                # matched normals
 		if(!$pairing_samples{$gro}){
-		    die "grouping file $group contains sample $gro that isn't in pairing file $pair $!";
-		}
-	    }
+                    if($patient){
+                        if( !$patient_samples{$gro} ){
+                            die "grouping file $group contains sample $gro that isn't in pairing file $pair or patient file $patient $!";
+                        }
+                    } elsif ($gro !~ /^s_Normal_Pooled/) {
+                        # If there is no patient file, just exit because we can't tell if the sample
+                        # is a pooled normal or not
+		        die "grouping file $group contains sample $gro that isn't in pairing file $pair $!";
+                   }  
+	       }
+           }
 	}
     }
 
@@ -1038,13 +1046,19 @@ sub processInputs {
 	    if(!$grouping_samples{$pai}){
 		die "pairing file $pair contains sample $pai that isn't in grouping file $group $!";
 	    }
-	}
+            if($patient){
+                if(!$patient_samples{$pai}){
+                    die "pairing file $pair contains sample $pai that is not found in patient file $patient $!";
+                }
+            }
+        }
     }
     
     if(!-e $targets_ilist || !-e $baits_ilist || !-e $targets_bed_padded){
 	die "directory $targets OR $Bin/targets/$targets MUST CONTAIN THE FOLLOWING FILES: $targets\_targets.ilist; $targets\_baits.ilist; $targets\_targets_plus5bp.bed $!";	
     }
 }
+
 
 sub getTime(){
 
@@ -1073,7 +1087,6 @@ sub getTime(){
 
     return(@timeData);
 }
-
 
 sub alignReads {
 
