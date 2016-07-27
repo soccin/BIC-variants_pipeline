@@ -620,9 +620,9 @@ get.detail.table <- function(path,type,id,user=NULL){
                 parts = unlist(strsplit(as.character(samp),"_")) 
                 bc = parts[length(parts)]
                 finalSamp = paste(bc,paste(parts[-length(parts)],collapse="_",sep=""),sep=": ")
-            } #else {
-                #finalSamp = sub("__1","",samp)
-            #}
+            } else {
+                finalSamp = samp
+            }
             detail[which(rownames(detail) == finalSamp),"Unexpected Match(es)"] = unms
             detail[which(rownames(detail) == finalSamp)," "] = "0FAIL"
         }
@@ -642,8 +642,8 @@ get.detail.table <- function(path,type,id,user=NULL){
                 parts = unlist(strsplit(as.character(samp),"_"))
                 bc = parts[length(parts)]
                 finalSamp = paste(bc,paste(parts[-length(parts)],collapse="_",sep=""),sep=": ")
-            #} else {
-            #    finalSamp = sub("__1","",samp)
+            } else {
+                finalSamp = samp
             }
             detail[which(rownames(detail) == finalSamp),"Unexpected Mismatch(es)"] = unmms
             detail[which(rownames(detail) == finalSamp)," "] = "0FAIL"
