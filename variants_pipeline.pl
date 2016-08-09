@@ -237,7 +237,6 @@ elsif(!$abra && !$indelrealigner){
 `/bin/mkdir -m 775 -p $output/metrics/fingerprint`;
 `/bin/mkdir -m 775 -p $output/alignments`;
 
-
 &verifyRequest($request);
 &verifyConfig($config);
 processInputs();
@@ -833,7 +832,7 @@ sub verifyRequest{
 	}
     }
  
-    `cp $request $output`;
+    `cp $request $output/`;
 }
 
 
@@ -922,7 +921,7 @@ sub processInputs {
 	    $grouping_samples{$data[0]} = 1;
 	}
 	close GROUP;
-	`cp $group $output`;
+	`cp $group $output/`;
     }
     else{
 	if(!$mdOnly || $chip){
@@ -945,7 +944,7 @@ sub processInputs {
 	    }
 	}
 	close PAIR;
-	`cp $pair $output`;
+	`cp $pair $output/`;
     }
     
     my %mapping_samples = ();
@@ -975,7 +974,7 @@ sub processInputs {
 	}
     }
     close MA;
-    `cp $map $output`;
+    `cp $map $output/`;
         
     # Check patient sample has fields needed
     # Patient file needs only "Sample_ID", "Patient_ID", "Class", and "Bait_version"
@@ -1012,7 +1011,7 @@ sub processInputs {
             }
         }
         close PATIENT;
-	`cp $patient $output`;
+	`cp $patient $output/`;
 
     }
  
