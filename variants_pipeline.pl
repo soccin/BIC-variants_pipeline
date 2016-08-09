@@ -229,6 +229,15 @@ elsif(!$abra && !$indelrealigner){
     $abra = 1;
 }
 
+### mkdir -p does not apply the -m permissions to the parent dir; only subdir
+`/bin/mkdir -m 775 -p $output`; 
+`/bin/mkdir -m 775 -p $output/intFiles`; 
+`/bin/mkdir -m 775 -p $output/progress`;
+`/bin/mkdir -m 775 -p $output/metrics`;
+`/bin/mkdir -m 775 -p $output/metrics/fingerprint`;
+`/bin/mkdir -m 775 -p $output/alignments`;
+
+
 &verifyRequest($request);
 &verifyConfig($config);
 processInputs();
@@ -245,15 +254,6 @@ open(LOG, ">$cd\_variants_pipeline.log") or die "can't write to output log";
 my @currentTime = &getTime();
 print LOG "$currentTime[2]:$currentTime[1]:$currentTime[0], $currentTime[3]\/$currentTime[4]\/$currentTime[5]\tSTARTING VARIANTS PIPELINE FOR $pre\n";
 print LOG "$currentTime[2]:$currentTime[1]:$currentTime[0], $currentTime[3]\/$currentTime[4]\/$currentTime[5]\tCOMMAND LINE: $commandLine\n";
-
-
-### mkdir -p does not apply the -m permissions to the parent dir; only subdir
-`/bin/mkdir -m 775 -p $output`; 
-`/bin/mkdir -m 775 -p $output/intFiles`; 
-`/bin/mkdir -m 775 -p $output/progress`;
-`/bin/mkdir -m 775 -p $output/metrics`;
-`/bin/mkdir -m 775 -p $output/metrics/fingerprint`;
-`/bin/mkdir -m 775 -p $output/alignments`;
 
 my $ran_sol = 0;
 ### NOTE: if a sample consists of both paired and single end runs, it will take the last one
