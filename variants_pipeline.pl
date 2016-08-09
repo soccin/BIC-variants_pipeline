@@ -823,19 +823,17 @@ sub verifyRequest{
         } 
 
     }
-
+    
     if( $origPi && $origInv){
         $delDir = "/ifs/solres/seq/$origPi/$origInv/$pid/";
-            my $x = sprintf("%03d", $runnum);
-            $delDir .= "r_$x";
-            if( -d  "$delDir"){
-                die "\nERROR: This project has a delivered directory with this rerun folder already present: $delDir \n\n";
-            }
-        }
+	my $x = sprintf("%03d", $runnum);
+	$delDir .= "r_$x";
+	if( -d  "$delDir"){
+	    die "\nERROR: This project has a delivered directory with this rerun folder already present: $delDir \n\n";
+	}
+    }
  
-
-
-    
+    `cp $request $output`;
 }
 
 
@@ -924,6 +922,7 @@ sub processInputs {
 	    $grouping_samples{$data[0]} = 1;
 	}
 	close GROUP;
+	`cp $group $output`;
     }
     else{
 	if(!$mdOnly || $chip){
@@ -946,6 +945,7 @@ sub processInputs {
 	    }
 	}
 	close PAIR;
+	`cp $pair $output`;
     }
     
     my %mapping_samples = ();
@@ -975,6 +975,7 @@ sub processInputs {
 	}
     }
     close MA;
+    `cp $map $output`;
         
     # Check patient sample has fields needed
     # Patient file needs only "Sample_ID", "Patient_ID", "Class", and "Bait_version"
@@ -1011,6 +1012,8 @@ sub processInputs {
             }
         }
         close PATIENT;
+	`cp $patient $output`;
+
     }
  
     if($group){
