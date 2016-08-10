@@ -1406,7 +1406,7 @@ sub mergeStats {
     
     my $isfiles = join(" ", @ism);
     my $isj = join(",", @is_jids);
-    if(!-e "$output/progress/$pre\_$uID\_MERGE_ISM.done" || $ran_is){
+    if(!-e "$output/progress/$pre\_$uID\_MERGE_ISM.done" && $ran_is) {
 	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_MERGE_ISM", job_hold => "$isj", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_MERGE_ISM.log");
 	my $standardParams = Schedule::queuing(%stdParams);
 	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/qc/mergePicardMetrics.pl $isfiles ">$output/metrics/$pre\_InsertSizeMetrics.txt"`;
@@ -1416,7 +1416,7 @@ sub mergeStats {
 	$ran_merge = 1;
     }
 
-    if(!-e "$output/progress/$pre\_$uID\_ISM_MATRIX.done" || $ran_merge_ism){    
+    if((!-e "$output/progress/$pre\_$uID\_ISM_MATRIX.done" || $ran_merge_ism) && $ran_is){    
 	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_ISM_MATRIX", job_hold => "$pre\_$uID\_MERGE_ISM", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_ISM_MATRIX.log");
 	my $standardParams = Schedule::queuing(%stdParams);
 	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PYTHON/python $Bin/qc/mergeInsertSizeHistograms.py $output/intFiles InsertSizeMetrics_*.txt $output/metrics/$pre\_InsertSizeMetrics_Histograms.txt`;
