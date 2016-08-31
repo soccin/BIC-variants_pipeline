@@ -630,6 +630,10 @@ sub FilterVcf {
 			}
 			$convertedSVchr2 = "23" if ( $svChr2 =~ /X/ );
 			$convertedSVchr2 = "24" if ( $svChr2 =~ /Y/ );
+                        if ($convertedSVchr !~ /^\d+$/ || $convertedSVchr2 !~ /^\d+$/) #remove those detected on unplaced contig, mouse genome for hybrid run, etc
+                        {
+                                next;
+                        }
 
 			#Get Connection Info
 			my ( $startCT, $endCT ) = split( "to", $connectionType );
