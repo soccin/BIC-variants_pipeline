@@ -31,7 +31,8 @@ if( !$blist && !$lowConf && !$ffpe ){
 }
 
 #check species
-if($species !~ /b37|hg19|human/i){
+#Hybrid is okay to run because we should only be looking at the human chrs
+if($species !~ /b37|hg19|human|hybrid/i){
     die "You cannot run any of these filters with this species";
 }
 

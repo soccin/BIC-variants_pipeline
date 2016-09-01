@@ -182,6 +182,12 @@ elsif($species =~ /human|^b37/i){
     $REF_FASTA = "$B37_FASTA";
     $NCBI_BUILD = "GRCh37";
     $VEP_SPECIES = "homo_sapiens";
+} # Hybrid is to be run as human, but with the same fasta it was run with before.
+elsif($species =~ /hybrid/i){
+    $species = 'b37';
+    $REF_FASTA = "$B37_MM10_HYBRID_FASTA";
+    $NCBI_BUILD = "GRCh37";
+    $VEP_SPECIES = "homo_sapiens";
 }
 elsif($species =~ /mouse|^mm10$/i){
     $species = 'mm10';

@@ -69,7 +69,7 @@ def validate_files(project_name, project_dir, stats, log_file):
 
 
 def load(species, chipseq, project_name, rerun_number, pi, investigator, tumor_type, pipeline, revision_number, project_dir, conn, log_file):
-    if species.lower() in ['human','hg18','hg19','b37','grch37']:
+    if species.lower() in ['human','hg18','hg19','hybrid','b37','grch37']:
         stats = load_exome_stats.human_stats.values()
         if chipseq:
             stats = load_exome_stats.human_chipseq_stats.values()
@@ -77,6 +77,8 @@ def load(species, chipseq, project_name, rerun_number, pi, investigator, tumor_t
         stats = load_exome_stats.mouse_stats.values()
         if chipseq:
             stats = load_exome_stats.mouse_chipseq_stats.values()
+    else:
+        log_helper.report_error_and_exit(log_file, "species is not recognized: '%s'" % (species))
 
     validate_files(project_name, project_dir, stats, log_file)
     # now load data 
@@ -113,8 +115,15 @@ def parse_request(request_file):
                 tumor_type = val
             elif key == 'Species':
                 species = val
+            elif key == 'Custom species':
+                custom_species = val
             #elif key == 'Pipelines':   ## exclude this for now because values in request file do not match possible values in database
-            #    pipeline = val              
+            #    pipeline = val     
+
+    # This is to handle hybrids
+    if species == 'custom':
+        species = custom_species
+ 
     return (project_id,rerun_number,pi,investigator,species,tumor_type,pipeline) 
 
 

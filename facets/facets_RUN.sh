@@ -11,20 +11,29 @@ C=$8
 
 x=3;
 
+if [ $GENOME == "hybrid" ]
+then
+    GENOME="hg19"
+fi
+
 while [ $x != 0 ]
 do
     echo "X: $x"
     echo "C: $C"
 
-    rm $DIR/*
+    for i in {1..10}
+    do
+        rm $DIR/*
 
-    $FACETS_SUITE/facets doFacets -D $DIR -t $TAG -f $FILE -g $GENOME -G T -pc $PC -c $C -r $FACETS_LIB
+        $FACETS_SUITE/facets doFacets -D $DIR -t $TAG -f $FILE -g $GENOME -G T -pc $PC -c $C -r $FACETS_LIB
      
-    if [ -e $DIR"/"$TAG"_hisens.CNCF.png" ]
-    then
-        x=1;
-        exit 0
-    fi
+        if [ -e $DIR"/"$TAG"_hisens.CNCF.png" ]
+        then
+            x=1;
+            exit 0
+        fi
+
+    done
 
     echo $DIR"/"$TAG"_hisens.CNCF.png";
 

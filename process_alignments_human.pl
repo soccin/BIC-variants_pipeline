@@ -800,14 +800,14 @@ if(!-e "$output/progress/$pre\_$uID\_HOTSPOTS_NORMALS.done" || $ran_ad){
 }
 
 my $allj = join(",", @all_jids);
-if(!-e "$output/progress/$pre\_$uID\_RSYNC_1.done" || $ran_ssf || $ran_mmqm || $ran_hn){
-    sleep(2);
-    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_RSYNC_1", job_hold => "$allj", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_RSYNC_1.log");
-    my $standardParams = Schedule::queuing(%stdParams);
-    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams /usr/bin/rsync -azvP --exclude 'intFiles' --exclude 'progress' --exclude 'variants' --exclude 'metrics' $curDir $rsync`;
-    push @all_jids, "$pre\_$uID\_RSYNC_1";
-    `/bin/touch $output/progress/$pre\_$uID\_RSYNC_1.done`;
-}
+#if(!-e "$output/progress/$pre\_$uID\_RSYNC_1.done" || $ran_ssf || $ran_mmqm || $ran_hn){
+sleep(2);
+my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_RSYNC_1", job_hold => "$allj", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_RSYNC_1.log");
+my $standardParams = Schedule::queuing(%stdParams);
+`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams /usr/bin/rsync -azvP --exclude 'intFiles' --exclude 'progress' --exclude 'variants' --exclude 'metrics' $curDir $rsync`;
+push @all_jids, "$pre\_$uID\_RSYNC_1";
+`/bin/touch $output/progress/$pre\_$uID\_RSYNC_1.done`;
+#}
 
 if($nosnps){
     exit(0);
@@ -1303,6 +1303,7 @@ if($pair){
 	
         `/bin/touch $output/progress/$pre\_$uID\_merge_facets_seg.done`;
         $facets_haplotect_jid = "$pre\_$uID\_merge_facets_seg";
+        $facets_run=1;
     }
 
     if($hasPair && (!-e "$output/progress/$pre\_$uID\_HAPLOTECT.done" || $ran_mutect_glob || $ran_ar_indel_hc)){
@@ -1381,7 +1382,8 @@ if($pair){
 	
 	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_DELLY", job_hold => "$ssfj", cpu => "1", mem => "10", cluster_out => "$output/progress/$pre\_$uID\_DELLY.log");
 	my $standardParams = Schedule::queuing(%stdParams);
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/RunStructuralVariantPipeline_Delly.pl -pre $pre -out $output/variants/structVar/delly -pair $pair -bam_list $output/intFiles/$pre\_sv_bam_list.txt -genome $species -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group`;
+        my $tempGenome = $species == "hybrid" ? "b37" : $species;
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/RunStructuralVariantPipeline_Delly.pl -pre $pre -out $output/variants/structVar/delly -pair $pair -bam_list $output/intFiles/$pre\_sv_bam_list.txt -genome $tempGenome -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group`;
 	`/bin/touch $output/progress/$pre\_$uID\_DELLY.done`;
 	$ran_strvar = 1;
     }
@@ -1431,6 +1433,7 @@ sub generateMaf{
     my @chr_maf_jids;
     # split and send each split thing to generate maf separately
     foreach my $c (@ref_chr){
+        next if($c =~ /^MM/);
         if(!-e "$output/progress/$pre\_$uID\_$jna\_$c\_MAF_UNPAIRED.done" || $ran_hc){
             if((! -e "$vcf.gz" || $ran_hc) && !$bgzipped){
                 $bgzipped = 1;

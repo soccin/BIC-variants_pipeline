@@ -890,7 +890,7 @@ sub processInputs {
 	$REF_SEQ = "$B37_MM10_HYBRID_FASTA";
 	$DB_SNP = "$Bin/data/b37/dbsnp_138.b37.vcf";
 	$FP_INT = "$Bin/data/b37/Agilent51MBExome__b37__FP_intervals.list";
-	$FP_TG = "$Bin/data/hg19/Agilent51MBExome__b37__FP_tiling_genotypes.txt";
+	$FP_TG = "$Bin/data/b37/Agilent51MBExome__b37__FP_tiling_genotypes.txt";
     }
     elsif($species =~ /species_custom/i){
 	$species = 'species_custom';
@@ -1345,7 +1345,7 @@ sub processBams {
 	}
 	push @cogm, "-metrics $output/intFiles/$pre\_CollectOxoGMetrics_$samp\.txt";
 
-	if($species =~ /b37|hg19/){
+	if($species =~ /b37|hg19|hybrid/){
             if(!-e "$output/progress/$pre\_$uID\_DOC_$samp\.done" || $ran_solexa{$samp} || $ran_samp_merge){
                 my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_DOC\_$samp", job_hold => "$rmj,$smsj,$lmsj", cpu => "1", mem => "4", cluster_out => "$output/progress/$pre\_$uID\_DOC_$samp\.log");
                 my $standardParams = Schedule::queuing(%stdParams);
@@ -1373,7 +1373,9 @@ sub mergeStats {
     my @qcpdf_jids = ();
 
     if(!$mdOnly && !$chip){
-        push @qcpdf_jids, "$pre\_$uID\_MERGE_MQ"; 
+        push @qcpdf_jids, "$pre\_$uID\_RSYNC_1"; 
+    }else{
+        push @qcpdf_jids, "$pre\_$uID\_RSYNC_2";
     }
 
     my $ran_merge = 0;
@@ -1460,7 +1462,7 @@ sub mergeStats {
        $ran_merge = 1;
     }
 
-    if($species =~ /b37|hg19/){
+    if($species =~ /b37|hg19|hybrid/){
         my $docFiles = join(" ", @docm);
         my $docj = join(",", @doc_jids);
         if(!-e "$output/progress/$pre\_$uID\_FINGERPRINTING.done" || $ran_doc){
@@ -1505,21 +1507,23 @@ sub mergeStats {
         `/bin/touch $output/progress/$pre\_$uID\_MERGE_CQS_LOGS.done`;
      }
 
+    my $ran_qcpdf = 0; 
     my $qcpdfj = join(",", @qcpdf_jids);
-    if(!-e "$output/progress/$pre\_$uID\_QCPDF.done" || $ran_merge){
-	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_QCPDF", job_hold => "$qcpdfj", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_QCPDF.log");
-	my $standardParams = Schedule::queuing(%stdParams);
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/qc/qcPDF.pl -path $output/metrics -pre $pre -config $config -request $request -log $output/progress/$pre\_$uID\_QCPDF_ERRORS.log -v $svnRev`;
-        `/bin/touch $output/progress/$pre\_$uID\_QCPDF.done`;
-        push @r3, "$pre\_$uID\_QCPDF";
-    }
+    #if(!-e "$output/progress/$pre\_$uID\_QCPDF.done" || $ran_merge){
+    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_QCPDF", job_hold => "$qcpdfj", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_QCPDF.log");
+    my $standardParams = Schedule::queuing(%stdParams);
+    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/qc/qcPDF.pl -path $output/metrics -pre $pre -config $config -request $request -log $output/progress/$pre\_$uID\_QCPDF_ERRORS.log -v $svnRev`;
+    `/bin/touch $output/progress/$pre\_$uID\_QCPDF.done`;
+    push @r3, "$pre\_$uID\_QCPDF";
+    $ran_qcpdf = 1;
+    #}
 
     my $qcdbj = join(",", @qcpdf_jids);
     my $chp = '';
     if($chip){
         $chp = '--chip';
     }
-    if(!-e "$output/progress/$pre\_$uID\_QCDB.done" || $ran_merge){
+    if(!-e "$output/progress/$pre\_$uID\_QCDB.done" || $ran_merge || $ran_qcpdf){
         my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_QCDB", job_hold => "$qcdbj", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_QCDB.log");
         my $standardParams = Schedule::queuing(%stdParams);
         `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PYTHON/python $Bin/qc/db/load_exome_project.py -o $output/progress/$pre\_$uID\_QCDB_LOG.log $chp $request $svnRev $output`;

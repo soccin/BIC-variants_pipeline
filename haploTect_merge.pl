@@ -55,7 +55,7 @@ HELP
 }
 
 ## Check species
-if($species !~ /hg19|b37|mm10/i){
+if($species !~ /hg19|b37|mm10|hybrid/i){
     print "Haplotect only works 100% with hg19/b37/mm10 for right now, otherwise we will print out the MAF before annotation and exit\n\n";
 }
 
@@ -295,6 +295,9 @@ my $REF_FASTA = $HG19_FASTA;
 my $ncbi = "GRCh37";
 if($species =~ /b37/i){
     $REF_FASTA = $B37_FASTA;
+}elsif($species =~ /hybrid/){
+    $species = "b37";
+    $REF_FASTA = $B37_MM10_HYBRID_FASTA;
 }elsif($species =~/mm10|mouse/i){
     $REF_FASTA = $MM10_FASTA;
     $ncbi = "GRCm38 --species mus_musculus";
@@ -454,7 +457,7 @@ if($force_run || ! -e "$progress/$pre\_merge_maf.done"){
 push @maf_header, "#version 2.4";
 push @maf_header, "#SVN Revision: $svnRev";
 
-if($species !~ /hg19|b37|mm10|mouse|human/i) { ###   |mm10|mouse/i) { uncomment later!
+if($species !~ /hg19|b37|mm10|mouse|human|hybrid/i) { ###   |mm10|mouse/i) { uncomment later!
     sleep(2);
     print "cut -f-34 $output/$pre\_merge_maf0.txt > $output/$pre\_haplotect_TCGA_MAF.txt\n\n";
     `cut -f-34 $output/$pre\_merge_maf0.txt > $output/$pre\_haplotect_TCGA_MAF.txt`;
@@ -542,7 +545,7 @@ if($patient && $bam_dir){
 if($force_run || ! -e "$progress/$pre\_bedtools_anno.done"){
     $force_run = 1;
     my $extraStuff = '';
-    if ($species =~ /hg19|human|b37/i){
+    if ($species =~ /hg19|human|b37|hybrid/i){
         $extraStuff =  " --target $Bin/targets/IMPACT410_$species/IMPACT410_$species\_targets_plus5bp.bed --targetname IMPACT_410";
     }
     print "$PERL/perl $Bin/maf/bedtools_annotations.pl --in_maf $output/$pre\_merge_maf0.VEP --species $species --output $output --config $config --fastq $extraStuff \n\n";
@@ -551,7 +554,7 @@ if($force_run || ! -e "$progress/$pre\_bedtools_anno.done"){
 }
 
 # exac annotate 
-if($species =~ /hg19|b37|human/i){
+if($species =~ /hg19|b37|human|hybrid/i){
     if($force_run || ! -e "$progress/$pre\_exac_anno.done"){
         $force_run = 1; 
         print "perl $Bin/maf/exact_annotate.pl --in_maf $output/$pre\_merge_maf0.VEP --species $species --output $output --config $config --data $Bin/data\n\n";
