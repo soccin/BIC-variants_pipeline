@@ -292,6 +292,7 @@ my @asm = ();
 my @mdm = ();
 my @cogm = ();
 my @docm = ();
+my @hfm = ();
 my $ran_hs = 0;
 my $ran_is = 0;
 my $ran_as = 0;
@@ -299,6 +300,7 @@ my $ran_md_glob = 0;
 my $ran_cog = 0;
 my $ran_doc = 0;
 my $ran_gcm = 0;
+my $ran_hf = 0;
 my @md_jids = ();
 my @hs_jids = ();
 my @is_jids = ();
@@ -306,6 +308,7 @@ my @as_jids = ();
 my @gc_jids = ();
 my @cog_jids = ();
 my @doc_jids = ();
+my @hf_jids = ();
 my %bamsggf = ();
 my @r3 = ();
 
@@ -1280,8 +1283,11 @@ sub processBams {
 	
 	my $rin = join(" ", @sBams);
 	my $bamForStats = '';
-	my $ran_samp_merge = 0;	
+	my $bamForHybridFilter = '';
+	my $ran_samp_merge = 0;
+	my $ran_samp_query_sort = 0;	
 	my @samp_merge_samp_jids = ();
+	my @samp_query_sort_jids = ();
 	my $lmsj = join(",", @lib_merge_samp_jids);
 	if(scalar(@sBams) == 1){
 	    my @bname = split(/=/, $sBams[0]);
@@ -1299,6 +1305,33 @@ sub processBams {
 	    }
 	    $bamForStats = "$output/intFiles/$samp/$samp\.bam";
 	}
+	
+	if($species =~ /hybrid/)
+	{
+		if(!-e "$output/progress/$pre\_$uID\_SAMP_QUERY_SORT_$samp\.done" || $ran_solexa{$samp}){
+                	my $lmsj = join(",", @lib_merge_samp_jids);
+                	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_SAMP_QUERY_SORT_$samp", job_hold => "$rmj,$lmsj", cpu => "24", mem => "90", cluster_out => "$output/progress/$pre\_$uID\_SAMP_QUERY_SORT_$samp\.log");
+                	my $standardParams = Schedule::queuing(%stdParams);
+                	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Djava.io.tmpdir=/scratch/$uID -jar $PICARD/picard.jar MergeSamFiles $rin O=$output/intFiles/$samp/$samp\_query_sort.bam SORT_ORDER=queryname VALIDATION_STRINGENCY=LENIENT TMP_DIR=/scratch/$uID USE_THREADING=false MAX_RECORDS_IN_RAM=5000000`;
+                	`/bin/touch $output/progress/$pre\_$uID\_SAMP_QUERY_SORT_$samp\.done`;
+                	push @samp_query_sort_jids, "$pre\_$uID\_SAMP_QUERY_SORT_$samp";
+                	$ran_samp_query_sort = 1;
+		}
+		$bamForHybridFilter = "$output/intFiles/$samp/$samp\_query_sort.bam";	
+
+
+	        my $sqsj = join(",", @samp_query_sort_jids);
+	        if((!-e "$output/progress/$pre\_$uID\_HYBRID_FILTER_$samp\.done" || $ran_solexa{$samp} || $ran_samp_query_sort) && !$chip){
+	            my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_HYBRID_FILTER\_$samp", job_hold => "$rmj,$sqsj,$lmsj", cpu => "1", mem => "5", cluster_out => "$output/progress/$pre\_$uID\_HYBRID_FILTER_$samp\.log");
+	            my $standardParams = Schedule::queuing(%stdParams);
+	            `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/qc/Bam2FastqFilterContamination --input $bamForHybridFilter ">$output/intFiles/$pre\_HybridFilter_$samp\.txt"`;
+	            `/bin/touch $output/progress/$pre\_$uID\_HYBRID_FILTER_$samp\.done`;
+	            push @hf_jids, "$pre\_$uID\_HYBRID_FILTER\_$samp";
+	            $ran_hf = 1;
+	        }
+	        push @hfm, "-metrics $output/intFiles/$pre\_HybridFilter_$samp\.txt";
+	}
+
 	
 	my $smsj = join(",", @samp_merge_samp_jids);
 	### HS will fail if seq dict of ref seq and bait/target intervals don't match
@@ -1394,7 +1427,19 @@ sub mergeStats {
 	    $ran_merge = 1;
 	}
     }
-    
+   
+    my $hffiles = join(" ", @hfm);
+    my $hfj = join(",", @hf_jids);
+    if((!-e "$output/progress/$pre\_$uID\_MERGE_HFM.done" || $ran_hf) && !$chip && $species =~ /hybrid/)
+    {
+        my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_MERGE_HFM", job_hold => "$hfj", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_MERGE_HFM.log");
+        my $standardParams = Schedule::queuing(%stdParams);
+        `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/qc/mergeHybridMetrics.pl $hffiles ">$output/metrics/$pre\_HybridMetrics.txt"`;
+        `/bin/touch $output/progress/$pre\_$uID\_MERGE_HFM.done`;
+        push @qcpdf_jids, "$pre\_$uID\_MERGE_HFM";
+        $ran_merge = 1;
+    }
+
     my $hsfiles = join(" ", @hsm);
     my $hsj = join(",", @hs_jids);
     if((!-e "$output/progress/$pre\_$uID\_MERGE_HSM.done" || $ran_hs) && !$chip){
