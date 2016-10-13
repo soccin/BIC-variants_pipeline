@@ -1151,16 +1151,32 @@ sub alignReads {
 		if($2 eq 'R1'){
 		    my $file_R2 = $file;
 		    $file_R2 =~ s/^(.*)R1(.*)$/$1R2$2/;
-		    
-		    if(-e "$file_R2"){
-			$seq_type{$data[1]} = "PE";
-			
-			print OUT "$file\t$file_R2\n";
+
+		    ### if PE or SE designation in mapping file, will assume that's what's wanted
+		    ### if it's not there, will determine it based on what's in reads dir
+		    if($data[4]){
+			if($data[4] =~ /pe/i){
+			    $seq_type{$data[1]} = "PE";
+			    print OUT "$file\t$file_R2\n";
+			}
+			elsif($data[4] =~ /se/i){
+			    $seq_type{$data[1]} = "SE";
+			    print OUT "$file\n";
+			}
+                        else{ 
+                            die "CAN'T DETERMINE WHETHER RUN IS PAIRED OR SINGLE ENDED for sample $data[1]\n"; 
+                        }	
 		    }
 		    else{
-			$seq_type{$data[1]} = "SE";
-			print OUT "$file\n";
-		    }			
+			if(-e "$file_R2"){
+			    $seq_type{$data[1]} = "PE";
+			    print OUT "$file\t$file_R2\n";
+			}
+			else{
+			    $seq_type{$data[1]} = "SE";
+			    print OUT "$file\n";
+			}
+		    }	
 		}
 	    }
 	}
