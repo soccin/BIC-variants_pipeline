@@ -319,7 +319,6 @@ my $REF_SEQ = "$MM10_FASTA";
 my $REF_FAI = "$MM10_FAI";
 my $BWA_INDEX = "$MM10_BWA_INDEX";
 my $DB_SNP = "$Bin/data/mm10/mm10_snp142.vcf";
-my $ABRA_TARGETS = "$Bin/targets/abra/abra_target_regions_mm10.bed";
 my $CHR_M = 'M'; #as of right now default to M. Once we add NCBI assemblies, we can chang it below.
 my $CHR_PREFIX = "chr"; #as of right now default to 'chr'. Once we add NCBI assemblies, we can change it below.
 
@@ -333,7 +332,6 @@ elsif($species =~ /mm9/i){
     $REF_FAI = "$MM9_FAI";
     $BWA_INDEX = "$MM9_BWA_INDEX";
     $DB_SNP = "";
-    $ABRA_TARGETS = '';
 }
 
 ### make sure all markdup bam files are there before proceeding
@@ -478,7 +476,7 @@ while(<IN>){
 		my $standardParams = Schedule::queuing(%stdParams);	    
 		my %addParams = (scheduler => "$scheduler", runtime => "500", priority_project=> "$priority_project", priority_group=> "$priority_group", rerun => "1", iounits => "4");
 		my $additionalParams = Schedule::additionalParams(%addParams);
-		`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/abra_wrapper.pl -inBams $aiBams -outBams $aoBams -refSeq $REF_SEQ -bwaRef $BWA_INDEX -targets $ABRA_TARGETS -working $output/intFiles/abra_$gpair[0]\_$c -config $config -log $output/progress/$pre\_$uID\_$gpair[0]\_$c\_ABRA_WRAPPER.log`;
+		`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/abra_wrapper.pl -inBams $aiBams -outBams $aoBams -refSeq $REF_SEQ -bwaRef $BWA_INDEX -targets $targets_bed_padded -working $output/intFiles/abra_$gpair[0]\_$c -config $config -log $output/progress/$pre\_$uID\_$gpair[0]\_$c\_ABRA_WRAPPER.log`;
 		
 		$abra_jid = "$pre\_$uID\_$gpair[0]\_$c\_ABRA";
 		`/bin/touch $output/progress/$pre\_$uID\_$gpair[0]\_$c\_ABRA.done`;

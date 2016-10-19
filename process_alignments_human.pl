@@ -376,7 +376,6 @@ my $OMNI_1000G = '';
 my $PHASE1_SNPS_1000G = '';
 my $COSMIC = '';
 my $COSMIC_HOTSPOTS = '';
-my $ABRA_TARGETS = '';
 if($species =~ /^b37$|human/i){
     $REF_SEQ = "$B37_FASTA";
     $REF_FAI = "$B37_FAI";
@@ -389,7 +388,6 @@ if($species =~ /^b37$|human/i){
     $PHASE1_SNPS_1000G = "$Bin/data/b37/1000G_phase1.snps.high_confidence.b37.vcf";
     $COSMIC = "$Bin/data/b37/CosmicCodingMuts_v67_b37_20131024__NDS.vcf";
     $COSMIC_HOTSPOTS = "$Bin/data/b37/dmp_cosmic_for_hotspots.vcf";
-    $ABRA_TARGETS = "$Bin/targets/abra/abra_target_regions_b37.bed";
 }
 elsif($species =~ /hybrid|b37_mm10/i){
     $REF_SEQ = "$B37_MM10_HYBRID_FASTA";
@@ -403,7 +401,6 @@ elsif($species =~ /hybrid|b37_mm10/i){
     $PHASE1_SNPS_1000G = "$Bin/data/b37/1000G_phase1.snps.high_confidence.b37.vcf";
     $COSMIC = "$Bin/data/b37/CosmicCodingMuts_v67_b37_20131024__NDS.vcf";
     $COSMIC_HOTSPOTS = "$Bin/data/b37/dmp_cosmic_for_hotspots.vcf";
-    $ABRA_TARGETS = "$Bin/targets/abra/abra_target_regions_b37.bed";
 }
 elsif($species =~ /^hg19$/i){
 
@@ -420,7 +417,6 @@ elsif($species =~ /^hg19$/i){
     $PHASE1_SNPS_1000G = "$Bin/data/hg19/1000G_phase1.snps.high_confidence.hg19.vcf";
     $COSMIC = "$Bin/data/hg19/CosmicCodingMuts_v67_20131024.vcf";
     $COSMIC_HOTSPOTS = "$Bin/data/b37/dmp_cosmic_for_hotspots.vcf";
-    $ABRA_TARGETS = "$Bin/targets/abra/abra_target_regions_hg19.bed";
 }
 elsif($species =~ /hg19_mm10/i){
 
@@ -437,7 +433,6 @@ elsif($species =~ /hg19_mm10/i){
     $PHASE1_SNPS_1000G = "$Bin/data/hg19/1000G_phase1.snps.high_confidence.hg19.vcf";
     $COSMIC = "$Bin/data/hg19/CosmicCodingMuts_v67_20131024.vcf";
     $COSMIC_HOTSPOTS = "$Bin/data/b37/dmp_cosmic_for_hotspots.vcf";
-    $ABRA_TARGETS = "$Bin/targets/abra/abra_target_regions_hg19.bed";
 }
 elsif($species !~ /b37|hybrid|b37_mm10/){
     die "ONLY SUPPORT FOR b37 or hybrd assemblies $!";
@@ -467,12 +462,10 @@ if(-d $targets){
     my $assay = pop @path;
     $targets_bed_padded = "$targets/$assay\_targets_plus5bp.bed";
     $target_design = "$targets/$assay\__DESIGN.berger";
-    if($abra)
-    {
+    if($abra){
         $target_std_normals = "$targets/StdNormals/$assay\_abra_norms";
     }
-    else
-    {
+    else{
         $target_std_normals = "$targets/StdNormals/$assay\_gatk_norms";
     }
 }
@@ -613,7 +606,7 @@ while(<IN>){
 		my %addParams = (scheduler => "$scheduler", runtime => "500", priority_project=> "$priority_project", priority_group=> "$priority_group", rerun => "1", iounits => "4");
 		my $additionalParams = Schedule::additionalParams(%addParams);
 		###`$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx100g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $ABRA/abra.jar --in $aiBams --out $aoBams --ref $REF_SEQ --bwa-ref $BWA_INDEX --targets $ABRA_TARGETS --working $output/intFiles/abra_$gpair[0] --threads 12`;
-		`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/abra_wrapper.pl -inBams $aiBams -outBams $aoBams -refSeq $REF_SEQ -bwaRef $BWA_INDEX -targets $ABRA_TARGETS -working $output/intFiles/abra_$gpair[0]\_$c -config $config -log $output/progress/$pre\_$uID\_$gpair[0]\_$c\_ABRA_WRAPPER.log`;
+		`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/abra_wrapper.pl -inBams $aiBams -outBams $aoBams -refSeq $REF_SEQ -bwaRef $BWA_INDEX -targets $targets_bed_padded -working $output/intFiles/abra_$gpair[0]\_$c -config $config -log $output/progress/$pre\_$uID\_$gpair[0]\_$c\_ABRA_WRAPPER.log`;
 		
 		$abra_jid = "$pre\_$uID\_$gpair[0]\_$c\_ABRA";
 		`/bin/touch $output/progress/$pre\_$uID\_$gpair[0]\_$c\_ABRA.done`;
@@ -1248,7 +1241,7 @@ if($pair){
             my $standardParams = Schedule::queuing(%stdParams);
             my %addParams_local = (scheduler => "$scheduler", runtime => "30", priority_project=> "$priority_project", priority_group=> "$priority_group", queues => "lau.q,lcg.q,nce.q", rerun => "1", iounits => "1");
             my $additionalParams_local = Schedule::additionalParams(%addParams_local);
-            print "additional params: $additionalParams\nLocal add params: $additionalParams_local";
+            #print "additional params: $additionalParams\nLocal add params: $additionalParams_local";
             `$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{job_hold} $standardParams->{cluster_out} $additionalParams_local $Bin/facets/bin/GetBaseCounts --thread 4 --filter_improper_pair 0 --sort_output --fasta $REF_SEQ --vcf $FACETS_DB_SNP --maq $MAPQ --baq $BASEQ --cov $MINCOV --bam $output/alignments/$pre\_indelRealigned_recal\_$data[1]\.bam --out $output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets/tmp/$pre\_indelRealigned_recal\_$data[1].dat`;
 	    
             %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$data[0]\_$data[1]\_facets_SETUP_N",  cpu => "4", mem => "5", job_hold => "$ssfj", cluster_out => "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_facets_SETUP_N.log");
@@ -1300,7 +1293,7 @@ if($pair){
 	
         `/bin/touch $output/progress/$pre\_$uID\_merge_facets_seg.done`;
         $facets_haplotect_jid = "$pre\_$uID\_merge_facets_seg";
-        $facets_run=1;
+        $facets_run = 1;
     }
 
     if($hasPair && (!-e "$output/progress/$pre\_$uID\_HAPLOTECT.done" || $ran_mutect_glob || $ran_ar_indel_hc)){
