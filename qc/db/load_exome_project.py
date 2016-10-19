@@ -68,7 +68,9 @@ def validate_files(project_name, project_dir, stats, log_file):
     #####
 
 
-def load(species, chipseq, project_name, rerun_number, pi, investigator, tumor_type, pipeline, revision_number, project_dir, conn, log_file):
+def load(species, chipseq, paired, project_name, rerun_number, pi, investigator, tumor_type, pipeline, revision_number, project_dir, conn, log_file):
+    stats = list()
+
     if species.lower() in ['human','hg18','hg19','hybrid','b37','grch37']:
         stats = load_exome_stats.human_stats.values()
         if chipseq:
@@ -80,6 +82,10 @@ def load(species, chipseq, project_name, rerun_number, pi, investigator, tumor_t
     else:
         log_helper.report_error_and_exit(log_file, "species is not recognized: '%s'" % (species))
 
+    ## If paired add the one PE dependent stat
+    if paired:
+        stats.extend(load_exome_stats.paired_end_stats.values())
+
     validate_files(project_name, project_dir, stats, log_file)
     # now load data 
     log_file.write("LOG: Loading title file\n")
@@ -87,44 +93,7 @@ def load(species, chipseq, project_name, rerun_number, pi, investigator, tumor_t
     for stat in stats:
         file_name = get_stat_file(project_name, project_dir, stat)
         log_file.write("LOG: Loading stat '%s' from '%s'\n" % (stat.name, file_name))
-        load_exome_stats.load(species, chipseq, stat.name, project_name, pi, investigator, rerun_number, revision_number, file_name, conn, log_file)
-
-def parse_request(request_file):
-    project_id = rerun_number = pi = investigator = species = None
-    tumor_type = 'unknown' ## default
-    pipeline = 'exome'     ## default - might change to 'variants'??
-    with open(request_file,'rU') as req:
-        for line in req:
-            pairs = line.strip('\n').split(': ')
-            if not len(pairs) == 2:
-                continue
-            key,val = pairs
-            if key == 'ProjectID':
-                project_id = val.replace('Proj_','')
-            elif key == 'RunNumber':
-                rerun_number = val
-            elif key == 'ORIG_PI':
-                pi = val.replace('@mskcc.org','')
-            elif not pi and key == 'PI':
-                pi = val.replace('@mskcc.org','')
-            elif key == 'ORIG_Investigator':
-                investigator = val.replace('@mskcc.org','')
-            elif not investigator and key == 'Investigator':
-                investigator = val.replace('@mskcc.org','') 
-            elif key == 'TumorType':
-                tumor_type = val
-            elif key == 'Species':
-                species = val
-            elif key == 'Custom species':
-                custom_species = val
-            #elif key == 'Pipelines':   ## exclude this for now because values in request file do not match possible values in database
-            #    pipeline = val     
-
-    # This is to handle hybrids
-    if species == 'custom':
-        species = custom_species
- 
-    return (project_id,rerun_number,pi,investigator,species,tumor_type,pipeline) 
+        load_exome_stats.load(species, chipseq, paired, stat.name, project_name, pi, investigator, rerun_number, revision_number, file_name, conn, log_file)
 
 
 if __name__ == "__main__":
@@ -133,20 +102,23 @@ if __name__ == "__main__":
         #print "\t./load_project.py -o Proj_4773_qc_db_load.log 4773 0 faginj knaufj THCA dmp 2207 /ifs/solres/seq/faginj/knaufj/Proj_4773/"
         #sys.exit()
 
-    if not len(sys.argv) in [4,5,6,7]:  # with or without '-o log.txt'
-        print "Usage: ./load_exome_project.py [-o log_file.log] [--chip] request_file revision_number project_dir"
+    if not len(sys.argv) in [4,5,6,7,8]:  # with or without '-o log.txt'
+        print "Usage: ./load_exome_project.py [-o log_file.log] [--chip] [--se] request_file revision_number project_dir"
         print "\t./load_exome_project.py -o Proj_4773_qc_db_load.log Proj_4773_request.txt 2207 /ifs/solres/seq/faginj/knaufj/Proj_4773/"
         sys.exit()
 
     log_file_name = "qc_db_scripts.%s.log" % (datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
-    opts, args = getopt.getopt(sys.argv[1:],"o:",["out","chip"])
+    opts, args = getopt.getopt(sys.argv[1:],"o:",["out","chip","se"])
     chipseq = False
+    paired = True
 
     for opt, arg in opts:
         if opt in("-o","--out"):
             log_file_name = arg
         elif opt == "--chip":
             chipseq = True
+        elif opt == "--se":
+             paired = False
 
     #project_id, rerun_number, pi, investigator, tumor_type, pipeline, revision_number, project_dir = args
     request_file, revision_number, project_dir = args
@@ -154,7 +126,7 @@ if __name__ == "__main__":
         print "ERROR: Can't find request file %s" %request_file
         sys.exit(-1)
 
-    project_id, rerun_number, pi, investigator, species, tumor_type, pipeline = parse_request(request_file)
+    project_id, rerun_number, pi, investigator, species, tumor_type, pipeline = load_exome_stats.parse_request(request_file)
 
     if not project_id or not rerun_number or not pi or not investigator:
         print "ERROR: Required info missing from request file"
@@ -181,7 +153,7 @@ if __name__ == "__main__":
             conn = mysql.connector.connect(**db_config.params)
 
             project_dir = os.path.abspath(project_dir)
-            load(species, chipseq, project_id, rerun_number, pi, investigator, tumor_type, pipeline, revision_number, project_dir, conn, log_file)
+            load(species, chipseq, paired, project_id, rerun_number, pi, investigator, tumor_type, pipeline, revision_number, project_dir, conn, log_file)
 
             conn.commit()
             conn.close() 

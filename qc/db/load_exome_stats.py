@@ -10,6 +10,7 @@ from mysql.connector.cursor import MySQLCursorPrepared
 import sys
 import os.path
 import re
+import datetime
 import mysql_helper
 import db_config
 import file_helper
@@ -414,7 +415,8 @@ def read_and_save_gc_bias(file_id, in_file_name, project_id, pipeline_run_id, co
                 stat_cursor.execute(stat_query, params)
 
 
-def load(species, chipseq, stat_type, project_name, pi, investigator, rerun_number, revision_number, in_file_name, conn, log_file):
+def load(species, chipseq, paired, stat_type, project_name, pi, investigator, rerun_number, revision_number, in_file_name, conn, log_file):
+    stats=dict()
     if species.lower() in ['human','hg18','hg19','hybrid','b37','grch37']:
         stats = human_stats
         if chipseq:
@@ -423,6 +425,10 @@ def load(species, chipseq, stat_type, project_name, pi, investigator, rerun_numb
         stats = mouse_stats
         if chipseq:
             stats = mouse_chipseq_stats
+
+    ## If paired add the one PE dependent stat
+    if paired:
+        stats.update(paired_end_stats)
 
     if stat_type not in stats:
         raise Exception ("Do not know sample type '%s'" % (stat_type))
@@ -484,6 +490,45 @@ def load(species, chipseq, stat_type, project_name, pi, investigator, rerun_numb
     sample_cursor.close()
     stat_cursor.close()
 
+def parse_request(request_file):
+    project_id = rerun_number = pi = investigator = species = None
+    tumor_type = 'unknown' ## default
+    pipeline = 'exome'     ## default - might change to 'variants'??
+    with open(request_file,'rU') as req:
+        for line in req:
+            pairs = line.strip('\n').split(': ')
+            if not len(pairs) == 2:
+                continue
+            key,val = pairs
+            if key == 'ProjectID':
+                project_id = val.replace('Proj_','')
+            elif key == 'RunNumber':
+                rerun_number = val
+            elif key == 'ORIG_PI':
+                pi = val.replace('@mskcc.org','')
+            elif not pi and key == 'PI':
+                pi = val.replace('@mskcc.org','')
+            elif key == 'ORIG_Investigator':
+                investigator = val.replace('@mskcc.org','')
+            elif not investigator and key == 'Investigator':
+                investigator = val.replace('@mskcc.org','')
+            elif key == 'TumorType':
+                tumor_type = val
+            elif key == 'Species':
+                species = val
+            elif key == 'Custom species':
+                custom_species = val
+            #elif key == 'Pipelines':   ## exclude this for now because values in request file do not match possible values in database
+            #    pipeline = val     
+
+    # This is to handle hybrids
+    if species == 'custom':
+        species = custom_species
+
+    return (project_id,rerun_number,pi,investigator,species,tumor_type,pipeline)
+
+
+
 '''
 stats = {
     # _ALL_GenotypePooledNormal.txt, _ALL_targetcoverage.txt, _ALL_tilingcoverage.txt no longer delivered to investigator
@@ -511,6 +556,11 @@ stats = {
 }
 '''
 
+# This stat will be extended to the species stats based on if fastq is paired or not
+paired_end_stats = {
+    "InsertSizeMetrics": Stat("InsertSizeMetrics", ["_InsertSizeMetrics_Histograms.txt"], read_and_save_insert_size_metrics)
+}
+
 human_stats = {
     "FPHet": Stat("FPHet", ["_MajorContamination.txt"], read_and_save_fp_het),
     "FPCSummary": Stat("FPCSummary", ["_DiscordantHomAlleleFractions.txt"], read_and_save_fpc_summary),
@@ -520,7 +570,6 @@ human_stats = {
     "FPCResultsUnMatch": Stat("FPCResultsUnMatch", ["_UnexpectedMatches.txt"], read_and_save_fpc_results_unmatch),
     "FPCResultsUnMismatch": Stat("FPCResultsUnMismatch", ["_UnexpectedMismatches.txt"], read_and_save_fpc_results_unmismatch),
     "HSMetrics": Stat("HSMetrics", ["_HsMetrics.txt"], read_and_save_hs_metrics),
-    "InsertSizeMetrics": Stat("InsertSizeMetrics", ["_InsertSizeMetrics_Histograms.txt"], read_and_save_insert_size_metrics),
     "OrgBaseQualities": Stat("OrgBaseQualities", ["_pre_recal_MeanQualityByCycle.txt"], read_and_save_org_base_qualities),
     "GCBias": Stat("GCBias", ["_GcBiasMetrics.txt"], read_and_save_gc_bias)
 }
@@ -532,47 +581,62 @@ human_chipseq_stats = {
     "FPSummary": Stat("FPSummary", ["_FingerprintSummary.txt"], read_and_save_fp_summary),
     "FPCResultsUnMatch": Stat("FPCResultsUnMatch", ["_UnexpectedMatches.txt"], read_and_save_fpc_results_unmatch),
     "FPCResultsUnMismatch": Stat("FPCResultsUnMismatch", ["_UnexpectedMismatches.txt"], read_and_save_fpc_results_unmismatch),
-    "InsertSizeMetrics": Stat("InsertSizeMetrics", ["_InsertSizeMetrics_Histograms.txt"], read_and_save_insert_size_metrics),
     "GCBias": Stat("GCBias", ["_GcBiasMetrics.txt"], read_and_save_gc_bias)
 }
 
 mouse_stats = {
     "BaseQualities": Stat("BaseQualities", ["_post_recal_MeanQualityByCycle.txt"], read_and_save_base_qualities),
     "HSMetrics": Stat("HSMetrics", ["_HsMetrics.txt"], read_and_save_hs_metrics),
-    "InsertSizeMetrics": Stat("InsertSizeMetrics", ["_InsertSizeMetrics_Histograms.txt"], read_and_save_insert_size_metrics),
     "OrgBaseQualities": Stat("OrgBaseQualities", ["_pre_recal_MeanQualityByCycle.txt"], read_and_save_org_base_qualities),
     "GCBias": Stat("GCBias", ["_GcBiasMetrics.txt"], read_and_save_gc_bias)
 }
 
 mouse_chipseq_stats = {
-    "InsertSizeMetrics": Stat("InsertSizeMetrics", ["_InsertSizeMetrics_Histograms.txt"], read_and_save_insert_size_metrics),
     "GCBias": Stat("GCBias", ["_GcBiasMetrics.txt"], read_and_save_gc_bias)
 }
 
 if __name__ == "__main__":
-    if len(sys.argv) < 6:
-        print "Usage: ./load_stats.py [-o log_file.log] stat_type project_id rerun_number revision_number infile.txt"    
+    if len(sys.argv) < 5:
+        print "Usage: ./load_stats.py [-o log_file.log] [--chip] [--se] stat_type request_file revision_number infile.txt"    
         print "\tWhere stat_type:"
         for stat in sorted(stats.keys()):
             print "\t\t-", stat 
-        print "\te.g. ./load_stats.py -o Proj_4773_qc_db_load.log FPHet Proj_4773 0 2207 /ifs/solres/seq/faginj/knaufj/Proj_4773/FinalReport/CompiledMetrics/Proj_4773_ALL_FPhet.txt"
+        print "\te.g. ./load_stats.py -o Proj_4773_qc_db_load.log FPHet Proj_4773_request.txt 2207 /ifs/solres/seq/faginj/knaufj/Proj_4773/FinalReport/CompiledMetrics/Proj_4773_ALL_FPhet.txt"
         sys.exit()
 
     log_file_name = "qc_db_scripts.%s.log" % (datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
-    opts, args = getopt.getopt(sys.argv[1:],"o:",["out"])
+    opts, args = getopt.getopt(sys.argv[1:],"o:",["out","chip","se"])
+    chipseq = False
+    paired = True
 
     for opt, arg in opts:
         if opt in("-o","--out"):
             log_file_name = arg
+        elif opt == "--chip":
+            chipseq = True
+        elif opt == "--se":
+             paired = False
 
-    stat_type, project_id, rerun_number, revision_number, in_file_name = args
+    stat_type, request_file, revision_number, in_file_name = args
+
+    if not os.path.exists(request_file):
+        print "ERROR: Can't find request file %s" %request_file
+        sys.exit(-1)
+
+    project_id, rerun_number, pi, investigator, species, tumor_type, pipeline = parse_request(request_file)
+
+    if not project_id or not rerun_number or not pi or not investigator:
+        print "ERROR: Required info missing from request file"
+        sys.exit(-1)
+
+
     conn = None
     with open(log_file_name, "w") as log_file:
         try:
             conn = mysql.connector.connect(**db_config.params)
     
             in_file_name = os.path.abspath(in_file_name)
-            load(stat_type, project_id, rerun_number, revision_number, in_file_name, conn, log_file)
+            load(species, chipseq, paired, stat_type, project_id, pi, investigator, rerun_number, revision_number, in_file_name, conn, log_file)
     
             conn.commit()
             conn.close() 
