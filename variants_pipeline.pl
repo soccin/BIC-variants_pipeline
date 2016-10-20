@@ -848,7 +848,7 @@ sub processInputs {
 	$pre = "s_$pre";
     }
     
-    if($species !~ /human|b37|mouse|mm9|mm10|mm10_custom|species_custom|drosophila|dm3|hybrid/i){
+    if($species !~ /human|b37|mouse|mm9|mm10|mm10_custom|species_custom|drosophila|dm3|hybrid|xenograft/i){
 	die "Species must be human (b37), mouse (mm9|mm10|mm10_custom), species_custom or drosophila (dm3) $!";
     }
     
@@ -891,7 +891,7 @@ sub processInputs {
 	$REF_SEQ = "$MM10_CUSTOM_FASTA";
 	$DB_SNP = "$Bin/data/mm10/mm10_snp142.vcf";
     }
-    elsif($species =~ /hybrid/i){
+    elsif($species =~ /hybrid|xenograft/i){
 	$species = 'hybrid';
 	$REF_SEQ = "$B37_MM10_HYBRID_FASTA";
 	$DB_SNP = "$Bin/data/b37/dbsnp_138.b37.vcf";
