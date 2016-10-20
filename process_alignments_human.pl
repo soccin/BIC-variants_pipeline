@@ -54,7 +54,7 @@ if(!$group || !$config || !$scheduler || !$targets || !$bamgroup || $help){
     USAGE: process_alignments_human.pl -group GROUP -bampgroup BAMBROUP -config CONFIG -scheduler SCHEDULER -targets TARGETS
 	* GROUP: file listing grouping of samples for realign/recal steps (REQUIRED)
 	* BAMGROUP: files listing bams to be processed together; every bam for each group on 1 line, comma-separated (required)
-	* SPECIES: b37, hybrid (b37_mm10)
+	* SPECIES: b37, hybrid|xenograft (b37_mm10)
 	* TARGETS: name of targets assay; will search for targets/baits ilists and targets padded file in $Bin/targets/TARGETS unless given full path to targets directory (REQUIRED)
 	* CONFIG: file listing paths to programs needed for pipeline; full path to config file needed (REQUIRED)
 	* SCHEDULER: currently support for SGE and LSF (REQUIRED)
@@ -284,7 +284,7 @@ while(<CONFIG>){
     }
     elsif($conf[0] =~ /b37_mm10_hybrid_fasta/i){
 	if(!-e "$conf[1]"){
-	    if($species =~ /hybrid|b37_mm10/i){
+	    if($species =~ /hybrid|xenograft|b37_mm10/i){
 		die "CAN'T FIND $conf[1] $!";
 	    }
 	}
@@ -292,7 +292,7 @@ while(<CONFIG>){
     }
     elsif($conf[0] =~ /b37_mm10_hybrid_fai/i){
 	if(!-e "$conf[1]"){
-	    if($species =~ /hybrid|b37_mm10/i){
+	    if($species =~ /hybrid|xenograft|b37_mm10/i){
 		die "CAN'T FIND $conf[1] $!";
 	    }
 	}
@@ -308,7 +308,7 @@ while(<CONFIG>){
     }
     elsif($conf[0] =~ /b37_mm10_hybrid_bwa_index/i){
 	if(!-e "$conf[1]\.bwt" || !-e "$conf[1]\.pac" || !-e "$conf[1]\.ann" || !-e "$conf[1]\.amb" || !-e "$conf[1]\.sa"){
-	    if($species =~ /hybrid|b37_mm10/i){
+	    if($species =~ /hybrid|xenograft|b37_mm10/i){
 		die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR b37-MM10 HYBRID WITH PREFIX $conf[1] $!";
 	    }
 	}
@@ -332,7 +332,7 @@ while(<CONFIG>){
     }
     elsif($conf[0] =~ /hg19_mm10_hybrid_fasta/i){
 	if(!-e "$conf[1]"){
-	    if($species =~ /hybrid|hg19_mm10/i){
+	    if($species =~ /hg19_mm10/i){
 		die "CAN'T FIND $conf[1] $!";
 	    }
 	}
@@ -340,7 +340,7 @@ while(<CONFIG>){
     }
     elsif($conf[0] =~ /hg19_mm10_hybrid_fai/i){
 	if(!-e "$conf[1]"){
-	    if($species =~ /hybrid|hg19_mm10/i){
+	    if($species =~ /hg19_mm10/i){
 		die "CAN'T FIND $conf[1] $!";
 	    }
 	}
@@ -356,7 +356,7 @@ while(<CONFIG>){
     }
     elsif($conf[0] =~ /hg19_mm10_hybrid_bwa_index/i){
 	if(!-e "$conf[1]\.bwt" || !-e "$conf[1]\.pac" || !-e "$conf[1]\.ann" || !-e "$conf[1]\.amb" || !-e "$conf[1]\.sa"){
-	    if($species =~ /hybrid|hg19_mm10/i){
+	    if($species =~ /hg19_mm10/i){
 		die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR HG19-MM10 HYBRID WITH PREFIX $conf[1] $!";
 	    }
 	}
@@ -389,7 +389,7 @@ if($species =~ /^b37$|human/i){
     $COSMIC = "$Bin/data/b37/CosmicCodingMuts_v67_b37_20131024__NDS.vcf";
     $COSMIC_HOTSPOTS = "$Bin/data/b37/dmp_cosmic_for_hotspots.vcf";
 }
-elsif($species =~ /hybrid|b37_mm10/i){
+elsif($species =~ /hybrid|xenograft|b37_mm10/i){
     $REF_SEQ = "$B37_MM10_HYBRID_FASTA";
     $REF_FAI = "$B37_MM10_HYBRID_FAI";
     $BWA_INDEX = "$B37_MM10_HYBRID_BWA_INDEX";
@@ -434,8 +434,8 @@ elsif($species =~ /hg19_mm10/i){
     $COSMIC = "$Bin/data/hg19/CosmicCodingMuts_v67_20131024.vcf";
     $COSMIC_HOTSPOTS = "$Bin/data/b37/dmp_cosmic_for_hotspots.vcf";
 }
-elsif($species !~ /b37|hybrid|b37_mm10/){
-    die "ONLY SUPPORT FOR b37 or hybrd assemblies $!";
+elsif($species !~ /b37|hybrid|xenograft|b37_mm10/){
+    die "ONLY SUPPORT FOR b37 or hybrd|xenograft assemblies $!";
 }
 
 ### make sure all markdup bam files are there before proceeding
