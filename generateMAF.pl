@@ -14,13 +14,14 @@ my $VEP_COLUMN_NAMES = "Center,Verification_Status,Validation_Status,Mutation_St
 ## to help with selective restarting
 my $force_run;
 
-my ($vcf, $pairing, $patient, $bam_dir, $species, $config, $caller, $normal_sample, $tumor_sample, $delete_temp);
+my ($vcf, $pairing, $patient, $bam_dir, $species, $config, $caller, $normal_sample, $tumor_sample, $delete_temp, $exac_vcf);
 GetOptions ('vcf=s' => \$vcf,
 	    'species=s' => \$species,
 	    'config=s' => \$config,
 	    'caller=s' => \$caller,
             'align_dir=s' => \$bam_dir,
             'patient=s' => \$patient,
+            'exac_vcf=s' => \$exac_vcf,
 	    'normal_sample=s' => \$normal_sample,
 	    'tumor_sample=s' => \$tumor_sample,
 	    'delete_temp' => \$delete_temp,
@@ -34,6 +35,12 @@ if(!$vcf){
 
 if(!-e $vcf){
     die "$vcf DOES NOT EXIST";
+}
+
+if($exac_vcf){
+    if( !-e $exac_vcf){
+        die "$exac_vcf DOES NOT EXIST";
+    }
 }
 
 if($pairing){
@@ -356,13 +363,16 @@ symlink("$REF_FASTA.fai", "$output/ref_$somatic/$ref_base.fai");
 
 if($force_run || !-e "$progress/" . basename("$vcf") . "_VEP.done"){
     $force_run = 1;
-    print "\n#######\n#######\nStarting VEP. \n";
-    print "\n$PERL/perl $VCF2MAF/maf2maf.pl --tmp-dir $output/tmp_$somatic --ref-fasta $output/ref_$somatic/$ref_base --ncbi-build $NCBI_BUILD --species $VEP_SPECIES --vep-forks 4 --vep-path $VEP --vep-data $VEP --retain-cols $VEP_COLUMN_NAMES --input-maf $vcf\_$somatic\_maf1.txt --output-maf $vcf\_$somatic\_maf1.VEP\n\n";
+    my $addOptions = '';
+    if($exac_vcf){
+        $addOptions = "--filter-vcf $exac_vcf";
+    }
 
-    `$PERL/perl $VCF2MAF/maf2maf.pl --tmp-dir $output/tmp_$somatic --ref-fasta $output/ref_$somatic/$ref_base --ncbi-build $NCBI_BUILD --species $VEP_SPECIES --vep-forks 4 --vep-path $VEP --vep-data $VEP --retain-cols $VEP_COLUMN_NAMES --input-maf $vcf\_$somatic\_maf1.txt --output-maf $vcf\_$somatic\_maf1.VEP > $vcf\_$somatic\_maf1.log 2>&1`;
-     if( -z "$vcf\_$somatic\_maf1.VEP") {
-         unlink("$vcf\_$somatic\_maf1.VEP");
-     }
+    print "\n#######\n#######\nStarting VEP. \n";
+    print "\n$PERL/perl $VCF2MAF/maf2maf.pl --tmp-dir $output/tmp_$somatic --ref-fasta $output/ref_$somatic/$ref_base --ncbi-build $NCBI_BUILD --species $VEP_SPECIES --vep-forks 4 --vep-path $VEP --vep-data $VEP --retain-cols $VEP_COLUMN_NAMES --input-maf $vcf\_$somatic\_maf1.txt --output-maf $vcf\_$somatic\_maf1.VEP $addOptions\n\n";
+
+    `$PERL/perl $VCF2MAF/maf2maf.pl --tmp-dir $output/tmp_$somatic --ref-fasta $output/ref_$somatic/$ref_base --ncbi-build $NCBI_BUILD --species $VEP_SPECIES --vep-forks 4 --vep-path $VEP --vep-data $VEP --retain-cols $VEP_COLUMN_NAMES --input-maf $vcf\_$somatic\_maf1.txt --output-maf $vcf\_$somatic\_maf1.VEP $addOptions > $vcf\_$somatic\_maf1.log 2>&1`;
+
      &checkResult($?, $progress, basename("$vcf") . "_VEP", "$vcf\_$somatic\_maf1.VEP");
 }
 
@@ -484,7 +494,7 @@ sub checkResult{
     my ($status, $progress, $filebase, $out_check) = @_;
 
     if($out_check){
-        if($status == 0 && -e "$out_check" ) 
+        if($status == 0 && -e "$out_check" && ! -z "$out_check" ) 
         { 
             `/bin/touch $progress/$filebase.done`;
         }

@@ -6,7 +6,7 @@ use FindBin qw($Bin);
 use File::Path qw(make_path);
 use File::Basename;
 
-my ($svnRev, $pairing, $hc_vcf, $help, $mutect_dir, $species, $bam_dir, $patient, $pre, $output, $delete_temp, $config);
+my ($svnRev, $pairing, $hc_vcf, $help, $mutect_dir, $species, $bam_dir, $patient, $pre, $output, $delete_temp, $config, $exac_vcf);
 
 # Default output = results/variants/FinalReport
 # get current directory
@@ -26,6 +26,7 @@ GetOptions ('pair=s' => \$pairing,
             'align_dir=s' => \$bam_dir,
             'patient=s' => \$patient,
             'pre=s' => \$pre,
+            'exac_vcf=s' => \$exac_vcf,
             'output=s' => \$output,
             'delete_temp' => \$delete_temp,
 	    'config=s' => \$config,
@@ -66,6 +67,13 @@ if( ! -e $hc_vcf || -z $hc_vcf){
 
 if($hc_vcf !~ /^\//){
     $hc_vcf = "$curDir/$hc_vcf";
+}
+
+## Checking exac vcf
+if($exac_vcf){
+    if( !-e $exac_vcf){
+        die "$exac_vcf DOES NOT EXIST";
+    }
 }
 
 ## Checking Mutect Directory
@@ -472,6 +480,12 @@ if($species !~ /hg19|b37|mm10|mouse|human|hybrid/i) { ###   |mm10|mouse/i) { unc
 print "\n#######\n#######\nStarting VEP. \n";
 if($force_run || ! -e "$progress/$pre\_run_vep.done"){
     $force_run = 1;
+
+    my $addOptions = '';
+    if($exac_vcf){
+        $addOptions = "--filter-vcf $exac_vcf";
+    }
+
     # these are names needed for the "retain-cols" option in VEP
     my $VEP_COLUMN_NAMES = "Center,Verification_Status,Validation_Status,Mutation_Status,Sequencing_Phase,Sequence_Source,Validation_Method,Score,BAM_file,Sequencer,Tumor_Sample_UUID,Matched_Norm_Sample_UUID,Caller";
 
@@ -492,9 +506,9 @@ if($force_run || ! -e "$progress/$pre\_run_vep.done"){
     symlink("$REF_FASTA.fai", "$output/ref/$ref_base.fai");
 
     ## vep-forks is at 4 because that is how many CPUs we ask for
-    print "\n$PERL/perl $VCF2MAF/maf2maf.pl --tmp-dir $output/tmp --ref-fasta $output/ref/$ref_base --ncbi-build $ncbi --vep-forks 4 --vep-path $VEP --vep-data $VEP --retain-cols $VEP_COLUMN_NAMES --input-maf $output/$pre\_merge_maf0.txt --output-maf $output/$pre\_merge_maf0.VEP\n\n";
+    print "\n$PERL/perl $VCF2MAF/maf2maf.pl --tmp-dir $output/tmp --ref-fasta $output/ref/$ref_base --ncbi-build $ncbi --vep-forks 4 --vep-path $VEP --vep-data $VEP --retain-cols $VEP_COLUMN_NAMES --input-maf $output/$pre\_merge_maf0.txt --output-maf $output/$pre\_merge_maf0.VEP $addOptions\n\n";
 
-    `$PERL/perl $VCF2MAF/maf2maf.pl --tmp-dir $output/tmp --ref-fasta $output/ref/$ref_base --ncbi-build $ncbi --vep-forks 4 --vep-path $VEP --vep-data $VEP --retain-cols $VEP_COLUMN_NAMES --input-maf $output/$pre\_merge_maf0.txt --output-maf $output/$pre\_merge_maf0.VEP > $output/$pre\_merge_maf0.log 2>&1`;
+    `$PERL/perl $VCF2MAF/maf2maf.pl --tmp-dir $output/tmp --ref-fasta $output/ref/$ref_base --ncbi-build $ncbi --vep-forks 4 --vep-path $VEP --vep-data $VEP --retain-cols $VEP_COLUMN_NAMES --input-maf $output/$pre\_merge_maf0.txt --output-maf $output/$pre\_merge_maf0.VEP $addOptions > $output/$pre\_merge_maf0.log 2>&1`;
     &checkResult($?, $progress, "$pre\_run_vep");
 }
 push @maf_header, "#VCF2MAF maf2maf.pl\tVEP: $VEP\tNCBI: $ncbi\tLOCATION: $VCF2MAF";
