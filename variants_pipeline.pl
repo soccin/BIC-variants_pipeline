@@ -80,7 +80,7 @@ chomp $uID;
 
 my $email = "$uID\@cbio.mskcc.org";
 my $rsync = "/ifs/solres/$uID";
-
+my $tempdir = "/scratch/$uID";
 
 GetOptions ('map=s' => \$map,
 	    'group=s' => \$group,
@@ -118,6 +118,7 @@ GetOptions ('map=s' => \$map,
 	    'varscan' => \$varscan,
 	    'virmid' => \$virmid,
 	    'email' => \$email,
+ 	    'tempdir=s' => \$tempdir,
             'request=s' => \$request) or exit(1);
 
 if(!$map || !$species || !$config || !$scheduler || !$targets || $help){
@@ -137,6 +138,7 @@ if(!$map || !$species || !$config || !$scheduler || !$targets || $help){
 	* PRE: output prefix (default: TEMP)
 	* OUTPUT: output results directory (default: results)
 	* RSYNC:  path to rsync data for archive (default: /ifs/solres/$uID)
+	* TEMPDIR:  temp directory (default: /scratch/$uID)
 	* PRIORITY_PROJECT: sge notion of priority assigned to projects (default: ngs)
 	* PRIORITY_GROUP: lsf notion of priority assigned to groups (default: Pipeline)
 	* -wes: run pipeline as whole exome (must use either -wes or -impact)
@@ -229,8 +231,17 @@ elsif(!$abra && !$indelrealigner){
     $abra = 1;
 }
 
-### mkdir -p does not apply the -m permissions to the parent dir; only subdir
-`/bin/mkdir -m 775 -p $output`; 
+if(-d $output){
+    die "output directory already exists $!";
+}
+else{
+    mkdir("$output", 0775) or die "Can't make $output";
+}
+
+if(!-d $tempdir){
+    mkdir("$tempdir", 0775) or die "Can't make $tempdir";
+}
+
 
 &verifyRequest($request);
 &verifyConfig($config);
@@ -249,11 +260,11 @@ my @currentTime = &getTime();
 print LOG "$currentTime[2]:$currentTime[1]:$currentTime[0], $currentTime[3]\/$currentTime[4]\/$currentTime[5]\tSTARTING VARIANTS PIPELINE FOR $pre\n";
 print LOG "$currentTime[2]:$currentTime[1]:$currentTime[0], $currentTime[3]\/$currentTime[4]\/$currentTime[5]\tCOMMAND LINE: $commandLine\n";
 
-`/bin/mkdir -m 775 -p $output/intFiles`; 
-`/bin/mkdir -m 775 -p $output/progress`;
-`/bin/mkdir -m 775 -p $output/metrics`;
-`/bin/mkdir -m 775 -p $output/metrics/fingerprint`;
-`/bin/mkdir -m 775 -p $output/alignments`;
+mkdir("$output/intFiles", 0775) or die "Can't make $output/intFiles";
+mkdir("$output/progress", 0775) or die "Can't make $output/progress";
+mkdir("$output/metrics", 0775) or die "Can't make $output/metrics";
+mkdir("$output/metrics/fingerprint", 0775) or die "Can't make $output/metrics/fingerprint";
+mkdir("$output/alignments", 0775) or die "Can't make $output/alignments";
 
 my $ran_sol = 0;
 ### NOTE: if a sample consists of both paired and single end runs, it will take the last one
@@ -1129,9 +1140,10 @@ sub alignReads {
 	    print LOG "WRITING INSTEAD TO $data[1]\/$data[0]\/$data[2]\n";
 	}
 	
-	`/bin/mkdir -m 775 -p $output/intFiles/$data[1]`;
-	`/bin/mkdir -m 775 -p $output/intFiles/$data[1]/$data[0]`;
-	`/bin/mkdir -m 775 -p $output/intFiles/$data[1]/$data[0]/$data[2]`;
+	mkdir("$output/intFiles/$data[1]", 0775) or die "Can't make $output/intFiles/$data[1]";
+	mkdir("$output/intFiles/$data[1]/$data[0]", 0775) or die "Can't make $output/intFiles/$data[1]/$data[0]";
+	mkdir("$output/intFiles/$data[1]/$data[0]/$data[2]", 0775) or die "Can't make $output/intFiles/$data[1]/$data[0]/$data[2]";
+
 	$samp_libs_run{$data[1]}{$data[0]}{$data[2]} = 1;	
 	
 	`ln -s $data[3]/* $output/intFiles/$data[1]/$data[0]/$data[2]/`;
@@ -1234,7 +1246,7 @@ sub processBams {
 		    if(!-e "$output/progress/$pre\_$uID\_$samp\_$lib\_MARKDUPS.done" || $ran_solexa{$samp}){
 			my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$samp\_$lib\_MARKDUPS", job_hold => "$rmj", cpu => "3", mem => "30", cluster_out => "$output/progress/$pre\_$uID\_$samp\_$lib\_MARKDUPS.log");
 			my $standardParams = Schedule::queuing(%stdParams);
-			`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Djava.io.tmpdir=/scratch/$uID -jar $PICARD/picard.jar MarkDuplicates $fin OUTPUT=$output/intFiles/$samp/$lib/$samp\_$lib\_MD.bam METRICS_FILE=$output/intFiles/$samp/$lib/$samp\_$lib\_markDuplicatesMetrics.txt TMP_DIR=/scratch/$uID VALIDATION_STRINGENCY=LENIENT REMOVE_DUPLICATES=$rmdups CREATE_INDEX=true MAX_RECORDS_IN_RAM=5000000`;
+			`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Djava.io.tmpdir=$tempdir -jar $PICARD/picard.jar MarkDuplicates $fin OUTPUT=$output/intFiles/$samp/$lib/$samp\_$lib\_MD.bam METRICS_FILE=$output/intFiles/$samp/$lib/$samp\_$lib\_markDuplicatesMetrics.txt TMP_DIR=$tempdir VALIDATION_STRINGENCY=LENIENT REMOVE_DUPLICATES=$rmdups CREATE_INDEX=true MAX_RECORDS_IN_RAM=5000000`;
 			
 			`/bin/touch $output/progress/$pre\_$uID\_$samp\_$lib\_MARKDUPS.done`;
 			push @md_jids, "$pre\_$uID\_$samp\_$lib\_MARKDUPS";
@@ -1249,7 +1261,7 @@ sub processBams {
 		if(!-e "$output/progress/$pre\_$uID\_LIB_MERGE_$samp\_$lib\.done" || $ran_solexa{$samp}){
 		    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_LIB_MERGE_$samp\_$lib", job_hold => "$rmj", cpu => "24", mem => "90", cluster_out => "$output/progress/$pre\_$uID\_LIB_MERGE_$samp\_$lib\.log");
 		    my $standardParams = Schedule::queuing(%stdParams);
-		    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Djava.io.tmpdir=/scratch/$uID -jar $PICARD/picard.jar MergeSamFiles $fin O=$output/intFiles/$samp/$lib/$samp\_$lib\.bam SORT_ORDER=coordinate VALIDATION_STRINGENCY=LENIENT TMP_DIR=/scratch/$uID CREATE_INDEX=true USE_THREADING=false MAX_RECORDS_IN_RAM=5000000`;
+		    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Djava.io.tmpdir=$tempdir -jar $PICARD/picard.jar MergeSamFiles $fin O=$output/intFiles/$samp/$lib/$samp\_$lib\.bam SORT_ORDER=coordinate VALIDATION_STRINGENCY=LENIENT TMP_DIR=$tempdir CREATE_INDEX=true USE_THREADING=false MAX_RECORDS_IN_RAM=5000000`;
 
 		    `/bin/touch $output/progress/$pre\_$uID\_LIB_MERGE_$samp\_$lib\.done`;
 		    $ran_lb_merge = 1;
@@ -1270,7 +1282,7 @@ sub processBams {
 			
 			my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$samp\_$lib\_MARKDUPS", job_hold => "$lb_merge_hold", cpu => "3", mem => "30", cluster_out => "$output/progress/$pre\_$uID\_$samp\_$lib\_MARKDUPS.log");
 			my $standardParams = Schedule::queuing(%stdParams);
-			`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Djava.io.tmpdir=/scratch/$uID -jar $PICARD/picard.jar MarkDuplicates INPUT=$output/intFiles/$samp/$lib/$samp\_$lib\.bam OUTPUT=$output/intFiles/$samp/$lib/$samp\_$lib\_MD.bam METRICS_FILE=$output/intFiles/$samp/$lib/$samp\_$lib\_markDuplicatesMetrics.txt TMP_DIR=/scratch/$uID VALIDATION_STRINGENCY=LENIENT REMOVE_DUPLICATES=$rmdups CREATE_INDEX=true MAX_RECORDS_IN_RAM=5000000`;
+			`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Djava.io.tmpdir=$tempdir -jar $PICARD/picard.jar MarkDuplicates INPUT=$output/intFiles/$samp/$lib/$samp\_$lib\.bam OUTPUT=$output/intFiles/$samp/$lib/$samp\_$lib\_MD.bam METRICS_FILE=$output/intFiles/$samp/$lib/$samp\_$lib\_markDuplicatesMetrics.txt TMP_DIR=$tempdir VALIDATION_STRINGENCY=LENIENT REMOVE_DUPLICATES=$rmdups CREATE_INDEX=true MAX_RECORDS_IN_RAM=5000000`;
 			
 			`/bin/touch $output/progress/$pre\_$uID\_$samp\_$lib\_MARKDUPS.done`;
 			push @md_jids, "$pre\_$uID\_$samp\_$lib\_MARKDUPS";
@@ -1291,7 +1303,7 @@ sub processBams {
 		my $mdj = join(",", @md_jids);
 		my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_SAMP_MD_MERGE_$samp", job_hold => "$mdj", cpu => "24", mem => "90", cluster_out => "$output/progress/$pre\_$uID\_SAMP_MD_MERGE_$samp\.log");
 		my $standardParams = Schedule::queuing(%stdParams);
-		`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Djava.io.tmpdir=/scratch/$uID -jar $PICARD/picard.jar MergeSamFiles $mdb O=$output/alignments/$pre\_$samp\.bam SORT_ORDER=coordinate VALIDATION_STRINGENCY=LENIENT TMP_DIR=/scratch/$uID CREATE_INDEX=true USE_THREADING=false MAX_RECORDS_IN_RAM=5000000`;
+		`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Djava.io.tmpdir=$tempdir -jar $PICARD/picard.jar MergeSamFiles $mdb O=$output/alignments/$pre\_$samp\.bam SORT_ORDER=coordinate VALIDATION_STRINGENCY=LENIENT TMP_DIR=$tempdir CREATE_INDEX=true USE_THREADING=false MAX_RECORDS_IN_RAM=5000000`;
 		`/bin/touch $output/progress/$pre\_$uID\_SAMP_MD_MERGE_$samp\.done`;
                 push @r3, "$pre\_$uID\_SAMP_MD_MERGE_$samp";
 	    }
@@ -1314,7 +1326,7 @@ sub processBams {
 		my $lmsj = join(",", @lib_merge_samp_jids);
 		my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_SAMP_MERGE_$samp", job_hold => "$rmj,$lmsj", cpu => "24", mem => "90", cluster_out => "$output/progress/$pre\_$uID\_SAMP_MERGE_$samp\.log");
 		my $standardParams = Schedule::queuing(%stdParams);
-		`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Djava.io.tmpdir=/scratch/$uID -jar $PICARD/picard.jar MergeSamFiles $rin O=$output/intFiles/$samp/$samp\.bam SORT_ORDER=coordinate VALIDATION_STRINGENCY=LENIENT TMP_DIR=/scratch/$uID CREATE_INDEX=true USE_THREADING=false MAX_RECORDS_IN_RAM=5000000`;
+		`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Djava.io.tmpdir=$tempdir -jar $PICARD/picard.jar MergeSamFiles $rin O=$output/intFiles/$samp/$samp\.bam SORT_ORDER=coordinate VALIDATION_STRINGENCY=LENIENT TMP_DIR=$tempdir CREATE_INDEX=true USE_THREADING=false MAX_RECORDS_IN_RAM=5000000`;
 		`/bin/touch $output/progress/$pre\_$uID\_SAMP_MERGE_$samp\.done`;
 		push @samp_merge_samp_jids, "$pre\_$uID\_SAMP_MERGE_$samp";
 		$ran_samp_merge = 1;
@@ -1328,7 +1340,7 @@ sub processBams {
                 	my $lmsj = join(",", @lib_merge_samp_jids);
                 	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_SAMP_QUERY_SORT_$samp", job_hold => "$rmj,$lmsj", cpu => "24", mem => "90", cluster_out => "$output/progress/$pre\_$uID\_SAMP_QUERY_SORT_$samp\.log");
                 	my $standardParams = Schedule::queuing(%stdParams);
-                	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Djava.io.tmpdir=/scratch/$uID -jar $PICARD/picard.jar MergeSamFiles $rin O=$output/intFiles/$samp/$samp\_query_sort.bam SORT_ORDER=queryname VALIDATION_STRINGENCY=LENIENT TMP_DIR=/scratch/$uID USE_THREADING=false MAX_RECORDS_IN_RAM=5000000`;
+                	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Djava.io.tmpdir=$tempdir -jar $PICARD/picard.jar MergeSamFiles $rin O=$output/intFiles/$samp/$samp\_query_sort.bam SORT_ORDER=queryname VALIDATION_STRINGENCY=LENIENT TMP_DIR=$tempdir USE_THREADING=false MAX_RECORDS_IN_RAM=5000000`;
                 	`/bin/touch $output/progress/$pre\_$uID\_SAMP_QUERY_SORT_$samp\.done`;
                 	push @samp_query_sort_jids, "$pre\_$uID\_SAMP_QUERY_SORT_$samp";
                 	$ran_samp_query_sort = 1;
@@ -1354,7 +1366,7 @@ sub processBams {
         if((!-e "$output/progress/$pre\_$uID\_HS_METRICS_$samp\.done" || $ran_solexa{$samp} || $ran_samp_merge) && !$chip){
 	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_HS_METRICS\_$samp", job_hold => "$rmj,$smsj,$lmsj", cpu => "1", mem => "10", cluster_out => "$output/progress/$pre\_$uID\_HS_METRICS_$samp\.log");
 	    my $standardParams = Schedule::queuing(%stdParams);
-	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Djava.io.tmpdir=/scratch/$uID -jar $PICARD/picard.jar CalculateHsMetrics INPUT=$bamForStats OUTPUT=$output/intFiles/$pre\_HsMetrics_$samp\.txt REFERENCE_SEQUENCE=$REF_SEQ METRIC_ACCUMULATION_LEVEL=null METRIC_ACCUMULATION_LEVEL=SAMPLE BAIT_INTERVALS=$baits_ilist BAIT_SET_NAME=$assay TARGET_INTERVALS=$targets_ilist VALIDATION_STRINGENCY=LENIENT`;
+	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Djava.io.tmpdir=$tempdir -jar $PICARD/picard.jar CalculateHsMetrics INPUT=$bamForStats OUTPUT=$output/intFiles/$pre\_HsMetrics_$samp\.txt REFERENCE_SEQUENCE=$REF_SEQ METRIC_ACCUMULATION_LEVEL=null METRIC_ACCUMULATION_LEVEL=SAMPLE BAIT_INTERVALS=$baits_ilist BAIT_SET_NAME=$assay TARGET_INTERVALS=$targets_ilist VALIDATION_STRINGENCY=LENIENT`;
 	    `/bin/touch $output/progress/$pre\_$uID\_HS_METRICS_$samp\.done`;
 	    push @hs_jids, "$pre\_$uID\_HS_METRICS\_$samp";
 	    $ran_hs = 1;
@@ -1366,7 +1378,7 @@ sub processBams {
 	    if(!-e "$output/progress/$pre\_$uID\_IS_METRICS_$samp\.done" || $ran_solexa{$samp} || $ran_samp_merge){
 		my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_IS_METRICS\_$samp", job_hold => "$rmj,$smsj,$lmsj", cpu => "1", mem => "10", cluster_out => "$output/progress/$pre\_$uID\_IS_METRICS_$samp\.log");
 		my $standardParams = Schedule::queuing(%stdParams);
-		`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Djava.io.tmpdir=/scratch/$uID -jar $PICARD/picard.jar CollectInsertSizeMetrics INPUT=$bamForStats OUTPUT=$output/intFiles/$pre\_InsertSizeMetrics_$samp\.txt REFERENCE_SEQUENCE=$REF_SEQ METRIC_ACCUMULATION_LEVEL=null METRIC_ACCUMULATION_LEVEL=SAMPLE HISTOGRAM_FILE=$output/intFiles/$pre\_InsertSizeMetrics_Histogram_$samp\.txt VALIDATION_STRINGENCY=LENIENT`;
+		`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Djava.io.tmpdir=$tempdir -jar $PICARD/picard.jar CollectInsertSizeMetrics INPUT=$bamForStats OUTPUT=$output/intFiles/$pre\_InsertSizeMetrics_$samp\.txt REFERENCE_SEQUENCE=$REF_SEQ METRIC_ACCUMULATION_LEVEL=null METRIC_ACCUMULATION_LEVEL=SAMPLE HISTOGRAM_FILE=$output/intFiles/$pre\_InsertSizeMetrics_Histogram_$samp\.txt VALIDATION_STRINGENCY=LENIENT`;
 		`/bin/touch $output/progress/$pre\_$uID\_IS_METRICS_$samp\.done`;
 		push @is_jids, "$pre\_$uID\_IS_METRICS\_$samp";
 		$ran_is = 1;
@@ -1377,7 +1389,7 @@ sub processBams {
 	if(!-e "$output/progress/$pre\_$uID\_AS_METRICS_$samp\.done" || $ran_solexa{$samp} || $ran_samp_merge){
 	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_AS_METRICS\_$samp", job_hold => "$rmj,$smsj,$lmsj", cpu => "1", mem => "10", cluster_out => "$output/progress/$pre\_$uID\_AS_METRICS_$samp\.log");
 	    my $standardParams = Schedule::queuing(%stdParams);
-	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Djava.io.tmpdir=/scratch/$uID -jar $PICARD/picard.jar CollectAlignmentSummaryMetrics INPUT=$bamForStats OUTPUT=$output/intFiles/$pre\_AlignmentSummaryMetrics_$samp\.txt REFERENCE_SEQUENCE=$REF_SEQ METRIC_ACCUMULATION_LEVEL=null METRIC_ACCUMULATION_LEVEL=SAMPLE VALIDATION_STRINGENCY=LENIENT`;
+	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Djava.io.tmpdir=$tempdir -jar $PICARD/picard.jar CollectAlignmentSummaryMetrics INPUT=$bamForStats OUTPUT=$output/intFiles/$pre\_AlignmentSummaryMetrics_$samp\.txt REFERENCE_SEQUENCE=$REF_SEQ METRIC_ACCUMULATION_LEVEL=null METRIC_ACCUMULATION_LEVEL=SAMPLE VALIDATION_STRINGENCY=LENIENT`;
 	    `/bin/touch $output/progress/$pre\_$uID\_AS_METRICS_$samp\.done`;
 	    push @as_jids, "$pre\_$uID\_AS_METRICS\_$samp";
 	    $ran_as = 1;
@@ -1387,7 +1399,7 @@ sub processBams {
 	if(!-e "$output/progress/$pre\_$uID\_COG_METRICS_$samp\.done" || $ran_solexa{$samp} || $ran_samp_merge){
 	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_COG_METRICS\_$samp", job_hold => "$rmj,$smsj,$lmsj", cpu => "1", mem => "10", cluster_out => "$output/progress/$pre\_$uID\_COG_METRICS_$samp\.log");
 	    my $standardParams = Schedule::queuing(%stdParams);
-	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Djava.io.tmpdir=/scratch/$uID -jar $PICARD/picard.jar CollectOxoGMetrics INPUT=$bamForStats OUTPUT=$output/intFiles/$pre\_CollectOxoGMetrics_$samp\.txt REFERENCE_SEQUENCE=$REF_SEQ DB_SNP=$DB_SNP VALIDATION_STRINGENCY=LENIENT`;
+	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Djava.io.tmpdir=$tempdir -jar $PICARD/picard.jar CollectOxoGMetrics INPUT=$bamForStats OUTPUT=$output/intFiles/$pre\_CollectOxoGMetrics_$samp\.txt REFERENCE_SEQUENCE=$REF_SEQ DB_SNP=$DB_SNP VALIDATION_STRINGENCY=LENIENT`;
 	    `/bin/touch $output/progress/$pre\_$uID\_COG_METRICS_$samp\.done`;
 	    push @cog_jids, "$pre\_$uID\_COG_METRICS\_$samp";
 	    $ran_cog = 1;
@@ -1398,7 +1410,7 @@ sub processBams {
             if(!-e "$output/progress/$pre\_$uID\_DOC_$samp\.done" || $ran_solexa{$samp} || $ran_samp_merge){
                 my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_DOC\_$samp", job_hold => "$rmj,$smsj,$lmsj", cpu => "1", mem => "4", cluster_out => "$output/progress/$pre\_$uID\_DOC_$samp\.log");
                 my $standardParams = Schedule::queuing(%stdParams);
-                `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T DepthOfCoverage -I $bamForStats -R $REF_SEQ -o $bamForStats\_FP_base_counts\.txt -L $FP_INT -rf BadCigar -mmq 20 -mbq 0 -omitLocusTable -omitSampleSummary -baseCounts --includeRefNSites -omitIntervals`;
+                `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Djava.io.tmpdir=$tempdir -jar $GATK/GenomeAnalysisTK.jar -T DepthOfCoverage -I $bamForStats -R $REF_SEQ -o $bamForStats\_FP_base_counts\.txt -L $FP_INT -rf BadCigar -mmq 20 -mbq 0 -omitLocusTable -omitSampleSummary -baseCounts --includeRefNSites -omitIntervals`;
                 `/bin/touch $output/progress/$pre\_$uID\_DOC_$samp\.done`;
                 push @doc_jids, "$pre\_$uID\_DOC\_$samp";
                 $ran_doc = 1;
@@ -1409,7 +1421,7 @@ sub processBams {
         if(!-e "$output/progress/$pre\_$uID\_GC_METRICS_$samp\.done" || $ran_solexa{$samp} || $ran_samp_merge){
             my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_GC_METRICS\_$samp", job_hold => "$rmj,$smsj,$lmsj", cpu => "1", mem => "10", cluster_out => "$output/progress/$pre\_$uID\_GC_METRICS_$samp\.log");
             my $standardParams = Schedule::queuing(%stdParams);
-            `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Djava.io.tmpdir=/scratch/$uID -jar $PICARD/picard.jar CollectGcBiasMetrics INPUT=$bamForStats OUTPUT=$output/intFiles/$pre\_GcBiasMetrics_$samp\.txt REFERENCE_SEQUENCE=$REF_SEQ SUMMARY_OUTPUT=$output/intFiles/$pre\_gcbias_$samp\_summary_tmp.txt CHART_OUTPUT=$output/intFiles/$pre\_gcbias_$samp\_tmp.pdf`;
+            `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Djava.io.tmpdir=$tempdir -jar $PICARD/picard.jar CollectGcBiasMetrics INPUT=$bamForStats OUTPUT=$output/intFiles/$pre\_GcBiasMetrics_$samp\.txt REFERENCE_SEQUENCE=$REF_SEQ SUMMARY_OUTPUT=$output/intFiles/$pre\_gcbias_$samp\_summary_tmp.txt CHART_OUTPUT=$output/intFiles/$pre\_gcbias_$samp\_tmp.pdf`;
             `/bin/touch $output/progress/$pre\_$uID\_GC_METRICS_$samp\.done`;
             push @gc_jids, "$pre\_$uID\_GC_METRICS\_$samp";
             $ran_gcm = 1;

@@ -30,6 +30,10 @@ my $r1adaptor = 'AGATCGGAAGAGCACACGTCT';
 my $r2adaptor = 'AGATCGGAAGAGCGTCGTGTA';
 my $bqTrim = '3';
 
+my $uID = `/usr/bin/id -u -n`;
+chomp $uID;
+my $tempdir = "/scratch/$uID";
+
 GetOptions ('file=s' => \$file,
 	    'pre=s' => \$pre,
 	    'species=s' => \$species,
@@ -44,6 +48,7 @@ GetOptions ('file=s' => \$file,
 	    'bqTrim=s' => \$bqTrim,
 	    'noTrim' => \$noTrim,
 	    'defaultbwa|defaultBWA' => \$defaultBWA,
+ 	    'tempdir=s' => \$tempdir,
 	    'readgroup=s' => \$readgroup) or exit(1);
 
 if(!$file || !$config || !$species || !$scheduler || $help){
@@ -64,6 +69,7 @@ if(!$file || !$config || !$species || !$scheduler || $help){
 	* BASEQTRIM: base quality to trim in reads (default: 3)
 	* NOTRIM: no quality trimming of reads
 	* DEFAULTBWA: runs bwa with default parameters; useful for chipseq when -PM causes issues for peakcallers like MACS; -PM is default otherwise
+	* TEMPDIR:  temp directory (default: /scratch/$uID)
 	* READGROUP: string containing information for ID, PL, PU, LB, and SM e.g. '\@RG\\tID:s_CH_20__1_LOLA_1018_PE\\tPL:Illumina\\tPU:s_CH_20__1_LOLA_1018\\tLB:s_CH_20__1\\t SM:s_CH_20'; WARNING: INCOMPLETE INFORMATION WILL CAUSE GATK ISSSUES (default: '\@RG\\tID:TEMP_ID\\tPL:Illumina\\tPU:TEMP_PU\\tLB:TEMP_LB\\tSM:TEMP_SM')
 HELP
 exit;
@@ -72,9 +78,6 @@ exit;
 my @raw = ();
 my $count = 0;
 $readgroup =~ s/\s+/\\t/g;
-
-my $uID = `/usr/bin/id -u -n`;
-chomp $uID;
 
 my $bwaDB = '';
 my $B37_BWA_INDEX = '';
@@ -223,7 +226,8 @@ else{
     die "SPECIES $species ISN'T CURRENTLY SUPPORTED; ONLY SUPPORT FOR b37, mm9|mm10|mm10_custom, and species_custom\n";
 }
 
-`/bin/mkdir -m 775 -p progress`;
+mkdir("progress", 0775) or die "Can't make progress";
+
 open(IN, "$file") or die "Can't open $file file listing fastqs $!";
 open(MISS, ">$file\_MISSING_READS.txt") or die "Can't write $file\_MISSING_READS.txt file listing fastqs $!";
 
@@ -271,7 +275,7 @@ while (<IN>){
 
     $count++;
 
-    `/bin/mkdir -m 775 -p $count`;
+    mkdir("$count", 0775) or die "Can't make $count";
     my $ran_zcatR1 = 0;
     my $zcatR1_jid = '';
     if(!-e "progress/$pre\_$uID\_ZCAT_$nameR1[0]\.done"){
@@ -414,6 +418,6 @@ if(!-e "progress/$pre\_$uID\_$run\_MERGE.done" || $ran_bwa){
     sleep(2);
     my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$run\_MERGE", job_hold => "$bwa_holds", cpu => "8", mem => "30", cluster_out => "progress/$pre\_$uID\_$run\_MERGE.log");
     my $standardParams = Schedule::queuing(%stdParams);
-    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx30g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $PICARD/picard.jar MergeSamFiles $inputRaw O=$run\.bam SORT_ORDER=coordinate VALIDATION_STRINGENCY=LENIENT TMP_DIR=/scratch/$uID CREATE_INDEX=true USE_THREADING=false MAX_RECORDS_IN_RAM=5000000`;
+    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx30g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=$tempdir -jar $PICARD/picard.jar MergeSamFiles $inputRaw O=$run\.bam SORT_ORDER=coordinate VALIDATION_STRINGENCY=LENIENT TMP_DIR=$tempdir CREATE_INDEX=true USE_THREADING=false MAX_RECORDS_IN_RAM=5000000`;
     `/bin/touch progress/$pre\_$uID\_$run\_MERGE.done`;
 }
