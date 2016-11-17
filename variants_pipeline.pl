@@ -231,17 +231,13 @@ elsif(!$abra && !$indelrealigner){
     $abra = 1;
 }
 
-if(-d $output){
-    die "output directory already exists $!";
-}
-else{
+if(!-d $output){
     mkdir("$output", 0775) or die "Can't make $output";
 }
 
 if(!-d $tempdir){
     mkdir("$tempdir", 0775) or die "Can't make $tempdir";
 }
-
 
 &verifyRequest($request);
 &verifyConfig($config);
