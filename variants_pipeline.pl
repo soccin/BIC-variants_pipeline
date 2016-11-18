@@ -256,11 +256,21 @@ my @currentTime = &getTime();
 print LOG "$currentTime[2]:$currentTime[1]:$currentTime[0], $currentTime[3]\/$currentTime[4]\/$currentTime[5]\tSTARTING VARIANTS PIPELINE FOR $pre\n";
 print LOG "$currentTime[2]:$currentTime[1]:$currentTime[0], $currentTime[3]\/$currentTime[4]\/$currentTime[5]\tCOMMAND LINE: $commandLine\n";
 
-mkdir("$output/intFiles", 0775) or die "Can't make $output/intFiles";
-mkdir("$output/progress", 0775) or die "Can't make $output/progress";
-mkdir("$output/metrics", 0775) or die "Can't make $output/metrics";
-mkdir("$output/metrics/fingerprint", 0775) or die "Can't make $output/metrics/fingerprint";
-mkdir("$output/alignments", 0775) or die "Can't make $output/alignments";
+if(!-d "$output/intFiles"){
+    mkdir("$output/intFiles", 0775) or die "Can't make $output/intFiles";
+}
+if(!-d "$output/progress"){
+    mkdir("$output/progress", 0775) or die "Can't make $output/progress";
+}
+if(!-d "$output/metrics"){
+    mkdir("$output/metrics", 0775) or die "Can't make $output/metrics";
+}
+if(!-d "$output/metrics/fingerprint"){
+    mkdir("$output/metrics/fingerprint", 0775) or die "Can't make $output/metrics/fingerprint";
+}
+if(!-d "$output/alignments"){
+    mkdir("$output/alignments", 0775) or die "Can't make $output/alignments";
+}
 
 my $ran_sol = 0;
 ### NOTE: if a sample consists of both paired and single end runs, it will take the last one

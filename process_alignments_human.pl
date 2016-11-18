@@ -839,9 +839,15 @@ if($nosnps){
     exit(0);
 }
 
-mkdir("$output/variants", 0775) or die "Can't make $output/variants";
-mkdir("$output/variants/snpsIndels", 0775) or die "Can't make $output/variants/snpsIndels";
-mkdir("$output/variants/snpsIndels/haplotypecaller", 0775) or die "Can't make $output/variants/snpsIndels/haplotypecaller";
+if(!-d "$output/variants"){
+    mkdir("$output/variants", 0775) or die "Can't make $output/variants";
+}
+if(!-d "$output/variants/snpsIndels"){
+    mkdir("$output/variants/snpsIndels", 0775) or die "Can't make $output/variants/snpsIndels";
+}
+if(!-d "$output/variants/snpsIndels/haplotypecaller"){
+    mkdir("$output/variants/snpsIndels/haplotypecaller", 0775) or die "Can't make $output/variants/snpsIndels/haplotypecaller";
+}
 
 my @ugVariants = ();
 my @hcVariants = ();
@@ -964,7 +970,9 @@ sleep(2);
 &generateMaf("$output/variants/snpsIndels/haplotypecaller/$pre\_HaplotypeCaller.vcf", 'haplotypecaller', "$arihcj,$ssfj", $ran_ar_indel_hc);
 
 if($ug){
-    mkdir("$output/variants/snpsIndels/unifiedgenotyper", 0775) or die "Can't make $output/variants/snpsIndels/unifiedgenotyper";
+    if(!-d "$output/variants/snpsIndels/unifiedgenotyper"){
+	mkdir("$output/variants/snpsIndels/unifiedgenotyper", 0775) or die "Can't make $output/variants/snpsIndels/unifiedgenotyper";
+    }
     my $ugVars = join(" " , @ugVariants);
     my $ran_cv_ug = 0;
     my $cvugj = '';
@@ -1037,11 +1045,18 @@ my $hasPair = 0;
 
 if($pair){
 
-
-    mkdir("$output/variants/snpsIndels/haplotect", 0775) or die "Can't make $output/variants/snpsIndels/haplotect";
-    mkdir("$output/variants/copyNumber", 0775) or die "Can't make $output/variants/copyNumber";
-    mkdir("$output/variants/copyNumber/facets", 0775) or die "Can't make $output/variants/copyNumber/facets";
-    mkdir("$output/variants/structVar", 0775) or die "Can't make $output/variants/structVar";
+    if(!-d "$output/variants/snpsIndels/haplotect"){
+	mkdir("$output/variants/snpsIndels/haplotect", 0775) or die "Can't make $output/variants/snpsIndels/haplotect";
+    }
+    if(!-d "$output/variants/copyNumber"){
+	mkdir("$output/variants/copyNumber", 0775) or die "Can't make $output/variants/copyNumber";
+    }
+    if(!-d "$output/variants/copyNumber/facets"){
+	mkdir("$output/variants/copyNumber/facets", 0775) or die "Can't make $output/variants/copyNumber/facets";
+    }
+    if(!-d "$output/variants/structVar"){
+	mkdir("$output/variants/structVar", 0775) or die "Can't make $output/variants/structVar";
+    }
 
     `/bin/echo "Tumor_Sample_Barcode\tRdata_filename" > $output/variants/copyNumber/facets/facets_mapping.txt `;
     ###mkdir("$output/variants/varscan", 0775) or die "Can't make $output/variants/varscan";
@@ -1072,7 +1087,9 @@ if($pair){
 
 	###       WILL RUN SOMATIC ANALYSIS FOR ALL SAMPLE PAIRS
 	###       IF JUST ONE SAMPLE HAD ITS BAM MODIFIED
-	mkdir("$output/variants/snpsIndels/mutect", 0775) or die "Can't make $output/variants/snpsIndels/mutect";
+	if(!-d "$output/variants/snpsIndels/mutect"){
+	    mkdir("$output/variants/snpsIndels/mutect", 0775) or die "Can't make $output/variants/snpsIndels/mutect";
+	}
 	my $ran_mutect = 0;
 	my $mutectj = '';
 	### MUTECT will fail if order of ref seq contigs and vcf don't match
@@ -1095,7 +1112,9 @@ if($pair){
 	###}
 
 	if($somaticsniper){
-	    mkdir("$output/variants/snpsIndels/somaticsniper", 0775) or die "Can't make $output/variants/snpsIndels/somaticsniper";
+	    if(!-d "$output/variants/snpsIndels/somaticsniper"){
+		mkdir("$output/variants/snpsIndels/somaticsniper", 0775) or die "Can't make $output/variants/snpsIndels/somaticsniper";
+	    }
 	    my $ran_somatic_sniper = 0;
 	    my $ssj = '';
 	    if(!-e "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_SOMATIC_SNIPER.done" || $ran_ssf){  
@@ -1154,7 +1173,7 @@ if($pair){
 		if(-d "$output/variants/snpsIndels/virmid/$data[0]\_$data[1]\_virmid"){
 		    `/bin/rm -rf $output/variants/snpsIndels/virmid/$data[0]\_$data[1]\_virmid`;
 		}
-		mkdir("$output/variants/snpsIndels/virmid/$data[0]\_$data[1]\_virmid", 0775) or die "Can't make $output/variants/snpsIndels/virmid/$data[0]\_$data[1]\_virmid";
+		###mkdir("$output/variants/snpsIndels/virmid/$data[0]\_$data[1]\_virmid", 0775) or die "Can't make $output/variants/snpsIndels/virmid/$data[0]\_$data[1]\_virmid";
 		my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$data[0]\_$data[1]\_VIRMID", job_hold => "$ssfj", cpu => "4", mem => "12", cluster_out => "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_VIRMID.log");
 		my $standardParams = Schedule::queuing(%stdParams);
 		`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx12g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=$tempdir -jar $VIRMID/Virmid.jar -R $REF_SEQ -D $output/alignments/$pre\_indelRealigned_recal\_$data[1]\.bam -N $output/alignments/$pre\_indelRealigned_recal\_$data[0]\.bam -t 4 -o $pre\_$data[0]\_$data[1]\_virmid -w $output/variants/snpsIndels/virmid/$data[0]\_$data[1]\_virmid`;
@@ -1246,7 +1265,10 @@ if($pair){
 	    my $ran_scalpel = 0;
 	    if(!-e "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_SCALPEL.done" || $ran_ssf){
 		sleep(2);
-		mkdir("$output/variants/snpsIndels/scalpel/$data[0]\_$data[1]\_scalpel", 0775) or die "Can't make $output/variants/snpsIndels/scalpel/$data[0]\_$data[1]\_scalpel";
+
+		if(!-d "$output/variants/snpsIndels/scalpel/$data[0]\_$data[1]\_scalpel"){
+		    mkdir("$output/variants/snpsIndels/scalpel/$data[0]\_$data[1]\_scalpel", 0775) or die "Can't make $output/variants/snpsIndels/scalpel/$data[0]\_$data[1]\_scalpel";
+		}
 		my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$data[0]\_$data[1]\_SCALPEL", job_hold => "$ssfj", cpu => "24", mem => "90", cluster_out => "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_SCALPEL.log");
 		my $standardParams = Schedule::queuing(%stdParams);
 		`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $SCALPEL/scalpel --somatic --normal $output/alignments/$pre\_indelRealigned_recal\_$data[0]\.bam --tumor $output/alignments/$pre\_indelRealigned_recal\_$data[1]\.bam --bed $targets_bed_padded --ref $REF_SEQ --dir $output/variants/snpsIndels/scalpel/$data[0]\_$data[1]\_scalpel --numprocs 24`;
@@ -1271,8 +1293,12 @@ if($pair){
         my $MAPQ=15;
 	
         ## Set up tumor and normal counts
-	mkdir("$output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets", 0775) or die "Can't make $output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets";
-	mkdir("$output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets/tmp", 0775) or die "Can't make $output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets/tmp";
+	if(!-d "$output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets"){
+	    mkdir("$output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets", 0775) or die "Can't make $output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets";
+	}
+	if(!-d "$output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets/tmp"){
+	    mkdir("$output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets/tmp", 0775) or die "Can't make $output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets/tmp";
+	}
         my $facetsSETUP_jid = '';
         my $facets_setup = 0;
         if($hasPair && (! -e "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_facets_SETUP.done" || $ssfj )) {
@@ -1483,8 +1509,10 @@ sub generateMaf{
             if($ExAC_VCF){
                 $addOptions = "-exac_vcf $ExAC_VCF";
             }
-
-	    mkdir("$vcf_dir/chrom_$c", 0775) or die "Can't make $vcf_dir/chrom_$c";
+	    
+	    if(!-d "$vcf_dir/chrom_$c"){
+		mkdir("$vcf_dir/chrom_$c", 0775) or die "Can't make $vcf_dir/chrom_$c";
+	    }
             my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$jna\_split_CHR_$c", job_hold => $bgz_jid, cpu => "1", mem => "5", cluster_out => "$output/progress/$pre\_$uID\_$jna\_split_$c.log");
             my $standardParams = Schedule::queuing(%stdParams);
             `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $BCFTOOLS/bcftools filter -r $c $vcf.gz -O v -o $vcf_dir/chrom_$c/$jna\_$c.vcf`;

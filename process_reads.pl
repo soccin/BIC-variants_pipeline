@@ -226,7 +226,9 @@ else{
     die "SPECIES $species ISN'T CURRENTLY SUPPORTED; ONLY SUPPORT FOR b37, mm9|mm10|mm10_custom, and species_custom\n";
 }
 
-mkdir("progress", 0775) or die "Can't make progress";
+if(!-d "progress"){
+    mkdir("progress", 0775) or die "Can't make progress";
+}
 
 open(IN, "$file") or die "Can't open $file file listing fastqs $!";
 open(MISS, ">$file\_MISSING_READS.txt") or die "Can't write $file\_MISSING_READS.txt file listing fastqs $!";
@@ -275,7 +277,9 @@ while (<IN>){
 
     $count++;
 
-    mkdir("$count", 0775) or die "Can't make $count";
+    if(!-d "$count"){
+	mkdir("$count", 0775) or die "Can't make $count";
+    }
     my $ran_zcatR1 = 0;
     my $zcatR1_jid = '';
     if(!-e "progress/$pre\_$uID\_ZCAT_$nameR1[0]\.done"){
