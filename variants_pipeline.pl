@@ -1136,9 +1136,17 @@ sub alignReads {
 	    print LOG "WRITING INSTEAD TO $data[1]\/$data[0]\/$data[2]\n";
 	}
 	
-	mkdir("$output/intFiles/$data[1]", 0775) or die "Can't make $output/intFiles/$data[1]";
-	mkdir("$output/intFiles/$data[1]/$data[0]", 0775) or die "Can't make $output/intFiles/$data[1]/$data[0]";
-	mkdir("$output/intFiles/$data[1]/$data[0]/$data[2]", 0775) or die "Can't make $output/intFiles/$data[1]/$data[0]/$data[2]";
+	if(!-d "$output/intFiles/$data[1]"){
+	    mkdir("$output/intFiles/$data[1]", 0775) or die "Can't make $output/intFiles/$data[1]";
+	}
+
+	if(!-d "$output/intFiles/$data[1]/$data[0]"){
+	    mkdir("$output/intFiles/$data[1]/$data[0]", 0775) or die "Can't make $output/intFiles/$data[1]/$data[0]";
+	}
+
+	if(!-d "$output/intFiles/$data[1]/$data[0]/$data[2]"){
+	    mkdir("$output/intFiles/$data[1]/$data[0]/$data[2]", 0775) or die "Can't make $output/intFiles/$data[1]/$data[0]/$data[2]";
+	}
 
 	$samp_libs_run{$data[1]}{$data[0]}{$data[2]} = 1;	
 	
