@@ -650,15 +650,15 @@ get.detail.table <- function(path,type,id,user=NULL){
         }
       }
     }
-    if(!is.null(majc)){ detail[majc[,1],"Major Contamination"] = round(majc[,2],digits=2) }
-    if(!is.null(minc)){ detail[minc[,1],"Minor Contamination"] = round(minc[,2],digits=2) }
-    if(!is.null(cov)){ detail[cov[,1],"Coverage"] = round(cov[,2]) }
-    if(!is.null(dup)){ detail[dup[,1],"Duplication"] = signif(dup[,2]*100,digits=3) }
-    if(!is.null(lib)){ detail[lib[,1],"Library Size (millions)"] = round(lib[,2]/1000000) }
-    if(!is.null(cs)){ detail[cs[,1],"On Bait Bases (millions)"] = round(cs[,2]/1000000) }
-    if(!is.null(aln)){ detail[aln[,1],"Aligned Reads (millions)"] = round(aln[,2]/1000000) }
-    if(!is.null(is)){ detail[is$Sample,"Insert Size Peak"] = is$Peak }  
-    if(!is.null(tr)){ detail[tr[,1],"Percentage Trimmed Reads"] = apply(tr[,c(2,3)],1,sum) }
+    if(!is.null(majc)){ detail[match(majc$Sample, row.names(detail)), "Major Contamination"] = round(majc[,2],digits=2) }
+    if(!is.null(minc)){ detail[match(minc$Sample, row.names(detail)), "Minor Contamination"] = round(minc[,2],digits=2) }
+    if(!is.null(cov)){ detail[match(cov$Sample, row.names(detail)), "Coverage"] = round(cov[,2]) }
+    if(!is.null(dup)){ detail[match(dup$Sample, row.names(detail)),"Duplication"] = signif(dup[,2]*100,digits=3) }
+    if(!is.null(lib)){ detail[match(lib$Sample, row.names(detail)),"Library Size (millions)"] = round(lib[,2]/1000000) }
+    if(!is.null(cs)){ detail[match(cs$Sample, row.names(detail)),"On Bait Bases (millions)"] = round(cs[,2]/1000000) }
+    if(!is.null(aln)){ detail[match(aln$Sample, row.names(detail)),"Aligned Reads (millions)"] = round(aln[,2]/1000000) }
+    if(!is.null(is)){ detail[match(is$Sample, row.names(detail)),"Insert Size Peak"] = is$Peak }  
+    if(!is.null(tr)){ detail[match(tr$Sample, row.names(detail)),"Percentage Trimmed Reads"] = apply(tr[,c(2,3)],1,sum) }
 
     ## assign status to each sample based on fixed thresholds
     detail[intersect(which(as.numeric(detail[,"Duplication"])>50),which(detail[,1]=="2PASS")),1] = "1WARN" ## warn high duplication
