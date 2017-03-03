@@ -292,6 +292,7 @@ plot.alignment.percentage <- function(alignment,sort.by='name'){
 
 plot.insert.size.distribution <- function(is.metrics){
     if(is.null(is.metrics)){ return(NULL) }
+    is.metrics = as.data.frame(is.metrics)
     insert_label <- colnames(is.metrics)[2:ncol(is.metrics)]
     insert.m <- melt(is.metrics, id.vars="insert_size")
     insert.m$insert_size <- as.integer(as.character(insert.m$insert_size))
@@ -316,7 +317,7 @@ plot.insert.size.distribution <- function(is.metrics){
 
 plot.insert.peaks <- function(is.metrics){
     if(is.null(is.metrics)){ return(NULL) }
-    peaks <- as.data.frame(t(apply(is.metrics[,2:ncol(is.metrics)],2,which.max)))
+    peaks <- as.data.frame(t(apply(as.matrix(is.metrics[,2:ncol(is.metrics)]),2,which.max)))
     peaks_label <- colnames(peaks)
     peaks.m <- melt(peaks)
     levels(peaks.m$variable) <- peaks_label

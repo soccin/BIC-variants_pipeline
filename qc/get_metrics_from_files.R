@@ -75,13 +75,13 @@ get.is.metrics <- function(path,type){
     ### exome IS file has one row for every insert size existing in data
     if(nrow(is)>500){ is = is[1:500,] }
 
-    return(is)
+    return(as.matrix(is))
 }
 
 get.is.peaks <- function(path,type){
     is = get.is.metrics(path,type)
     if(is.null(is)){ return(NULL) }
-    peaks = as.data.frame(apply(is[,2:ncol(is)],2,which.max))
+    peaks = as.data.frame(apply(as.matrix(is[,2:ncol(is)]),2,which.max))
     p = data.frame(Sample=rownames(peaks),Peak=peaks[,1])
     return(p)
 }
