@@ -884,7 +884,14 @@ foreach my $c (@ref_chr){
 	my $standardParams = Schedule::queuing(%stdParams);
 	my %addParams = (scheduler => "$scheduler", runtime => "500", priority_project=> "$priority_project", priority_group=> "$priority_group", rerun => "1", iounits => "7");
 	my $additionalParams = Schedule::additionalParams(%addParams);
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx90g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=$tempdir -jar $GATK/GenomeAnalysisTK.jar -T HaplotypeCaller -R $REF_SEQ -L $c $multipleTargets --dbsnp $DB_SNP --downsampling_type NONE --annotation AlleleBalanceBySample --annotation ClippingRankSumTest --read_filter BadCigar --num_cpu_threads_per_data_thread 30 --out $output/intFiles/$pre\_$c\_HaplotypeCaller.vcf $irBams2`;
+	my $response = "";
+        my $HC_submission_num = 0;
+        while($response !~ /is submitted to default queue/ && $HC_submission_num < 10){
+            $HC_submission_num++;
+            print "HC Chromosome $c attempt number $HC_submission_num\n"; 
+            $response = `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx90g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=$tempdir -jar $GATK/GenomeAnalysisTK.jar -T HaplotypeCaller -R $REF_SEQ -L $c $multipleTargets --dbsnp $DB_SNP --downsampling_type NONE --annotation AlleleBalanceBySample --annotation ClippingRankSumTest --read_filter BadCigar --num_cpu_threads_per_data_thread 30 --out $output/intFiles/$pre\_$c\_HaplotypeCaller.vcf $irBams2`;
+            print "Response: $response\n";
+        }
 	`/bin/touch $output/progress/$pre\_$uID\_$c\_HC.done`;
 	push @hc_jids, "$pre\_$uID\_$c\_HC";
 	$ran_hc = 1;
@@ -967,7 +974,7 @@ if(!-e "$output/progress/$pre\_$uID\_AR_INDEL_HC.done" || $ran_vr_indel_hc){
 
 # This runs regardless because it has a .done check in the function
 sleep(2);
-&generateMaf("$output/variants/snpsIndels/haplotypecaller/$pre\_HaplotypeCaller.vcf", 'haplotypecaller', "$arihcj,$ssfj", $ran_ar_indel_hc);
+&generateMaf("$output/variants/snpsIndels/haplotypecaller/$pre\_HaplotypeCaller.vcf", 'HaplotypeCaller', "$arihcj,$ssfj", $ran_ar_indel_hc);
 
 if($ug){
     if(!-d "$output/variants/snpsIndels/unifiedgenotyper"){
@@ -1459,6 +1466,9 @@ if($pair){
 	push @all_jids, "$pre\_$uID\_CDNA_CONTAM";
     }
 }
+
+# FOR TESTING
+#die;
 
 my $allj2 = join(",", @all_jids);
 my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_RSYNC_2", job_hold => "$allj2", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_RSYNC_2.log");

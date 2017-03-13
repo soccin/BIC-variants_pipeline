@@ -3,6 +3,7 @@
 use strict;
 use Getopt::Long qw(GetOptions);
 use FindBin qw($Bin);
+use File::Basename;
 
 my ($facets_dir, $seg_output);
 
@@ -32,12 +33,24 @@ if( -f "$seg_output"){
     unlink("$seg_output");
 }
 
-my @sampleDirs = `ls -d $facets_dir/*`;
+my $facetsFilename = "$facets_dir/facets_mapping.txt";
+if(! -e $facetsFilename){
+    die "Cannot find the facets mapping file. $!";
+}
 
-foreach my $sample (@sampleDirs){
-    chomp $sample;
-    #skip everything except directories
-    next if(! -d "$sample");
+open(my $fh, '<', $facetsFilename) or die "Cannot up file $facetsFilename: $!";
+
+while (my $line = <$fh>){
+    chomp $line;
+
+    my $sDir = (split("\t", $line))[1];
+    next if( $sDir eq "Rdata_filename");
+
+    my $sample = dirname($sDir);
+
+    if(! -d "$sample"){
+        die "Directory $sample is not a real directory: $!";
+    }
 
     opendir(my $dh, $sample);
     my @files = grep {/hisens.seg$/ } readdir $dh;

@@ -3,6 +3,8 @@ import os
 import csv
 import sys
 import argparse
+from itertools import dropwhile
+
 
 def checkFile(afile):
     if not os.path.isfile(afile):
@@ -22,25 +24,26 @@ checkFile(args.fields)
 flds=open(args.fields).read().strip().split()
 
 headerCount=0
+outf = open(args.outFile, 'w')
 with open(args.inputFile, 'r') as f:
     for line in f:
-        if not line.startswith("#"):
-            break
-        headerCount += 1
+        if line.startswith("#"):
+            outf.write(line)
     f.seek(0)
-    for x in range(headerCount):
-        f.next()
-        
-    cin=csv.DictReader(f,delimiter="\t")
-    outf = open(args.outFile, 'w')
+    
+    start = dropwhile(lambda L: L.lower().lstrip().startswith('#'),f)
+    cin=csv.DictReader(start,delimiter="\t")
 
     outf.write("\t".join(flds) + "\n")
+
+    print "FIELDNAMES: " + "\t".join(cin.fieldnames)
 
     for rec in cin:
         out=[str(rec[x]) for x in flds]
         outf.write("\t".join(out) + "\n")
 
     outf.close()
+
 
 
 

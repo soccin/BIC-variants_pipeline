@@ -218,10 +218,12 @@ if($allSomatic){
     $virmid = 1;
 }
 
-if($wes && $impact){
-    die "Cannot run as both a wes and an impact. Please select -wes OR -impact";
-}elsif(!$wes && !$impact){
-    die "Must specify to run the project as either -wes or -impact";
+if($wes && ($impact || $chip)){
+    die "Cannot run as wes and impact/chip. Please select -chip OR -wes OR -impact";
+} elsif($impact && $chip){
+    die "Cannot run as impact and chip. Please select -chip OR -wes OR -impact";
+}elsif(!$wes && !$impact && !$chip){
+    die "Must specify to run the project as either -chip, -wes or -impact";
 }
 
 if($abra && $indelrealigner){
@@ -1687,7 +1689,7 @@ sub callSNPS {
     my $wesImpact = '';
     if($wes){
         $wesImpact = '-wes';
-    }else{
+    } else {
         $wesImpact = '-impact';
     }
 

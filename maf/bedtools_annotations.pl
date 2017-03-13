@@ -176,7 +176,7 @@ if($target){
     foreach my $line (@lines){
         my @parts = split("\t", $line);
         my $start = $parts[1] + 1;
-        print $out_temp "$parts[0]:$start-$parts[2]\n";
+        print $out_temp "$parts[0]:$start-$parts[2]";
     }
 
     close $in_temp;

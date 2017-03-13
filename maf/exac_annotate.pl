@@ -196,4 +196,4 @@ my $strippedFiles = join(" INPUT=", glob("$output/xtra$somatic/*.vcf_stripped.vc
 
 
 ## for right now, just move the vcf to the main output. LATER, I will add to this script to give an intermediate file.
-`mv $output/xtra$somatic/exac.vcf $output/exact.vcf`;
+`mv $output/xtra$somatic/exac.vcf $output/exac.vcf`;

@@ -4,9 +4,19 @@ from lib import *
 import csv
 import os.path
 import sys
+from itertools import ifilter,dropwhile
+## ifilter is not being used yet. If you want to save the comments, you need to pull them and store them with ifilter
 
 validCallers=["hc", "haplotypecaller", "mt", "mutect", "haplotect"] # haplotect is special.  INDELs == haplotype caller, SNPS == muTect (untill I fix)
 validSpOptions=["hg19", "b37", "mm10"]
+
+class Struct:
+    def __init__(self, **entries):
+        self.__dict__.update(entries)
+"""
+FILTER SNPEFF_EFFECT SNPEFF_FUNCTIONAL_CLASS SNPEFF_IMPACT
+"""
+
 
 def validFile(filename):
     if not os.path.exists(filename):
@@ -52,21 +62,24 @@ def populatePatientInfo(PATIENTFILE):
 # fillouts, the tumor seq allele1 will ALWAYS be the reference sequence.
 def populateOriginalMafInfo(mafFile):
     origMafInfo=dict()
-    with open(mafFile) as fp:
-        cin=csv.DictReader(fp,delimiter="\t")
-        for rec in bunchStream(cin):
-            tum=rec.Tumor_Sample_Barcode
-            norm=rec.Matched_Norm_Sample_Barcode
-            chr=rec.Chromosome
-            start=rec.Start_Position
-            end=rec.End_Position
-            varType=rec.Variant_Type
-            ref=rec.Reference_Allele
-            tumor1=rec.Tumor_Seq_Allele1
-            tumor2=rec.Tumor_Seq_Allele2
+    fp = open(mafFile)
+    start=dropwhile(lambda L: L.lower().lstrip().startswith('#'), fp)
+    cin=csv.DictReader(start,delimiter="\t")
+    for rec in cin:
+        rec=Struct(**rec)
+        tum=rec.Tumor_Sample_Barcode
+        norm=rec.Matched_Norm_Sample_Barcode
+        chr=rec.Chromosome
+        start=rec.Start_Position
+        end=rec.End_Position
+        varType=rec.Variant_Type
+        ref=rec.Reference_Allele
+        tumor1=rec.Tumor_Seq_Allele1
+        tumor2=rec.Tumor_Seq_Allele2
         
-            origMafInfo["-".join([tum,norm,chr,start,end,varType,ref,tumor2])]=tumor1
+        origMafInfo["-".join([tum,norm,chr,start,end,varType,ref,tumor2])]=tumor1
             
+    fp.close()
     return origMafInfo
     
 def generatePatientGroups(sampleDb):

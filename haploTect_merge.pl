@@ -29,7 +29,7 @@ GetOptions ('pair=s' => \$pairing,
             'exac_vcf=s' => \$exac_vcf,
             'output=s' => \$output,
             'delete_temp' => \$delete_temp,
-	    'config=s' => \$config,
+	        'config=s' => \$config,
             'species=s' => \$species,
             'svnRev=s' => \$svnRev,
             'help|h' => \$help ) or exit(1);
@@ -128,7 +128,6 @@ if($bam_dir){
     }
 }
 
-
 ## Grab mutect vcf files from mutect dir
 opendir(DIR, $mutect_dir);
 my @mutect_vcfs = grep(/\.vcf$/,readdir(DIR));
@@ -187,6 +186,8 @@ my $PYTHON = '';
 my $PERL = '';
 my $VEP = '';
 my $HG19_FASTA = '';
+my $FIXMULTIINDEL = '';
+my $VCFTOOLS = '';
 my $VCF2MAF = '';
 my $B37_FASTA = '';
 my $B37_MM10_HYBRID_FASTA = '';
@@ -198,89 +199,100 @@ while(<CONFIG>){
 
     my @conf = split(/\s+/, $_);
     if($conf[0] =~ /python/i){
-	if(!-e "$conf[1]/python"){
-	    die "CAN'T FIND python IN $conf[1] $!";
-	}
+        if(!-e "$conf[1]/python"){
+            die "CAN'T FIND python IN $conf[1] $!";
+        }
 	$PYTHON = $conf[1];
-    }
-    elsif($conf[0] =~ /facets/i){
+    } elsif($conf[0] =~ /facets/i){
         if(!-e "$conf[1]/facets"){
             die "CAN'T FIND facets IN $conf[1] $!";
         }
         $FACETS = $conf[1];
-    }
-    elsif($conf[0] =~ /^perl/i){
-	if(!-e "$conf[1]/perl"){
-	    die "CAN'T FIND perl IN $conf[1] $!";
-	}
-	$PERL = $conf[1];
-    }
-    elsif($conf[0] =~ /^r$/i){
+    }elsif($conf[0] =~/fixmultiindel/i){
+        if(!-e "$conf[1]/fixMultiInDel.sh"){
+            die "CAN'T FIND fixMultiInDel in $conf[1] $!";
+        }
+        $FIXMULTIINDEL = $conf[1];
+    } elsif($conf[0] =~ /^perl/i){
+        if(!-e "$conf[1]/perl"){
+            die "CAN'T FIND perl IN $conf[1] $!";
+        }
+	    $PERL = $conf[1];
+    } elsif($conf[0] =~ /^r$/i){
         if(!-e "$conf[1]/R"){
             die "CAN'T FIND R IN $conf[1] $!";
         }
         my $path_tmp = $ENV{'PATH'};
         $ENV{'PATH'} = "$conf[1]:$path_tmp";
-    }
-    elsif($conf[0] =~ /b37_fasta/i){
+    } elsif($conf[0] =~ /b37_fasta/i){
         if(!-e "$conf[1]"){
             if($species =~ /human|^b37$/i){
                 die "CAN'T FIND $conf[1] $!";
             }
         }
         $B37_FASTA = $conf[1];
-    }
-    elsif($conf[0] =~ /b37_mm10_hybrid_fasta/i){
+    } elsif($conf[0] =~ /b37_mm10_hybrid_fasta/i){
         if(!-e "$conf[1]"){
             if($species =~ /hybrid|b37_mm10/i){
                 die "CAN'T FIND $conf[1] $!";
             }
         }
         $B37_MM10_HYBRID_FASTA = $conf[1];
-    }
-    elsif($conf[0] =~ /mm10_fasta/i){
+    } elsif($conf[0] =~ /mm10_fasta/i){
         if(!-e "$conf[1]"){
             if($species =~ /mouse|mm10/i){
                 die "CAN'T FIND $conf[1] $!";
             }
         }
         $MM10_FASTA = $conf[1];
-    }
-    elsif($conf[0] =~ /mm9_fasta/i){
+    } elsif($conf[0] =~ /mm9_fasta/i){
         if(!-e "$conf[1]"){
             if($species =~ /mm9/i){
                 die "CAN'T FIND $conf[1] $!";
             }
         }
         $MM9_FASTA = $conf[1];
-    }
-    elsif($conf[0] =~ /^vep/i){
+    } elsif($conf[0] =~ /^vep/i){
         if(!-e "$conf[1]/variant_effect_predictor.pl"){
             die "CAN'T FIND VEP IN $conf[1] $!";
         }
         $VEP = $conf[1];
-    }
-    elsif($conf[0] =~/vcf2maf/i){
-        if(!-e "$conf[1]/maf2maf.pl"){
-            die "CAN'T FIND maf2maf.pl in $conf[1] $!";
+    } elsif($conf[0] =~/vcf2maf/i){
+        if(!-e "$conf[1]/vcf2maf.pl"){
+            die "CAN'T FIND vcf2maf.pl in $conf[1] $!";
         }
         $VCF2MAF = $conf[1];
+    } elsif($conf[0] =~/vcftools/i){
+        if(!-e "$conf[1]/vcftools"){
+            die "CAN'T FIND vcftools in $conf[1] $!";
+        }
+        $VCFTOOLS = $conf[1];
+    } elsif($conf[0] =~ /bcftools/i){
+        if(!-e "$conf[1]/bcftools"){
+            die "CAN'T FIND bcftools IN $conf[1] $!";
+        }
+        my $path_tmp = $ENV{'PATH'};
+        $ENV{'PATH'} = "$conf[1]:$path_tmp";
     }
-    elsif($conf[0] =~ /samtools/i){
+    elsif($conf[0] =~ /bedtools/i){
+        if(!-e "$conf[1]/bedtools"){
+            die "CAN'T FIND bedtools IN $conf[1] $!";
+        }
+        my $path_tmp = $ENV{'PATH'};
+        $ENV{'PATH'} = "$conf[1]:$path_tmp";
+    } elsif($conf[0] =~ /samtools/i){
         if(!-e "$conf[1]/samtools"){
             die "CAN'T FIND samtools IN $conf[1] $!";
         }
         my $path_tmp = $ENV{'PATH'};
         $ENV{'PATH'} = "$conf[1]:$path_tmp";
-     }
-     elsif($conf[0] =~ /tabix/i){
+     } elsif($conf[0] =~ /tabix/i){
         if(!-e "$conf[1]/tabix"){
             die "CAN'T FIND tabix IN $conf[1] $!";
         }
         my $path_tmp = $ENV{'PATH'};
         $ENV{'PATH'} = "$conf[1]:$path_tmp";
-     } 
-     elsif($conf[0] =~ /hg19_fasta/i){
+     } elsif($conf[0] =~ /hg19_fasta/i){
         if(!-e "$conf[1]"){
             die "CAN'T FIND $conf[1] $!";
         }
@@ -351,97 +363,156 @@ if (! -d "$progress"){
 
 
 # Beginning of commands
+# Do the paired part of the analysis from the generate maf for haplotect. 
+# Then follow up and do the mutect stuff too.
 
-if($force_run || ! -e "$progress/" . basename("$hc_vcf") . "_vcf2maf0.done"){
-    $force_run = 1;
-    ##
-    ##
-    ## Get Indels from Haplotype Caller
-    ##
-    ## vcf2maf - Change HC output to maf format
-    if($pairing){
-        print "$PYTHON/python $Bin/maf/vcf2maf0.py -i $hc_vcf -c haplotypecaller -o $hc_vcf\_HC.maf0 -p $pairing\n\n";
-        `$PYTHON/python $Bin/maf/vcf2maf0.py -i $hc_vcf -c haplotypecaller -o $hc_vcf\_HC.maf0 -p $pairing`;
-    }
-    else{
-        print "$PYTHON/python $Bin/maf/vcf2maf0.py -i $hc_vcf -c haplotypecaller -o $hc_vcf\_HC.maf0\n\n";
-        `$PYTHON/python $Bin/maf/vcf2maf0.py -i $hc_vcf -c haplotypecaller -o $hc_vcf\_HC.maf0`;
-    }
-    &checkResult($?, $progress,  basename("$hc_vcf") . "_vcf2maf0");
+# To use vcf2maf we first have to split the vcf to pairs. This will be output in $output/tmp
+if( ! -d "$output/tmp/" ){
+    print "$output/tmp/ does not exist. Will create it now\n";
+    mkdir("$output/tmp", 0755) or die "Making tmp dir didn't work $!";
 }
+    
+my @indv_mafs;
+my @mutect_mafs;
 
-if($force_run || ! -e "$progress/" . basename("$hc_vcf") . "_pAqSomHC.done"){
-    $force_run = 1;
-    ## Quality Filtering for haplotype caller 
-    print "$PYTHON/python $Bin/maf/pA_qSomHC.py < $hc_vcf\_HC.maf0 > $hc_vcf\_HC.maf1\n\n";
-    `$PYTHON/python $Bin/maf/pA_qSomHC.py < $hc_vcf\_HC.maf0 > $hc_vcf\_HC.maf1`;
-    &checkResult($?, $progress,  basename("$hc_vcf") . "_pAqSomHC");
-}
+## Haplotype Caller pre processing. Split and select for indels!!
+print "$FIXMULTIINDEL/fixMultiInDel.sh  $hc_vcf $hc_vcf\_split.vcf";
+`$FIXMULTIINDEL/fixMultiInDel.sh  $hc_vcf $hc_vcf\_split.vcf`;
 
-if($force_run || ! -e "$progress/" . basename("$hc_vcf") . "_oldMaf2tcgaMaf.done"){
-    $force_run = 1;
-    ## Convert to TCGA MAF format
-    print "$PYTHON/python $Bin/maf/oldMAF2tcgaMAF.py $species $hc_vcf\_HC.maf1 $hc_vcf\_HC.maf2\n\n";
-    `$PYTHON/python $Bin/maf/oldMAF2tcgaMAF.py $species $hc_vcf\_HC.maf1 $hc_vcf\_HC.maf2`;
-    &checkResult($?, $progress,  basename("$hc_vcf") . "_oldMaf2tcgaMaf");
-}
-
-if($force_run || ! -e "$progress/" . basename("$hc_vcf") . "_indelOnly.done"){
-    $force_run = 1;
-    ## Select for Indels Only
-    print "$PYTHON/python $Bin/maf/indelOnly.py < $hc_vcf\_HC.maf2 > $hc_vcf\_qSomHC_InDels_TCGA_MAF.txt\n\n";
-    `$PYTHON/python $Bin/maf/indelOnly.py < $hc_vcf\_HC.maf2 > $hc_vcf\_qSomHC_InDels_TCGA_MAF.txt`;
-    &checkResult($?, $progress,  basename("$hc_vcf") . "_indelOnly");
-}
-
-
-##
-##
-## Get DMP re-filtered MAF from MuTect
-##
+$hc_vcf = "$hc_vcf\_split.vcf";
 
 foreach my $line (@pair_lines) {
     my($normal,$tumor) = split(/\s+/, $line);
     next if ($tumor eq 'na' || $normal eq 'na');
+
+    ###
+    ### HAPLOTYPE CALLER PART 1 (pair wise running)
+    ###
+
+    ## split vcf into paired vcfs     
+    my $split_vcf_prefix = "$output/tmp/" . basename($hc_vcf) . "_$tumor\_$normal";  
+    if($force_run || !-e "$progress/" . basename("$hc_vcf") . "_$tumor\_$normal\_vcf.done"){
+        $force_run = 1;
+        &splitVcf($hc_vcf, $split_vcf_prefix, $tumor, $normal, "$progress/",  basename("$hc_vcf") . "_$tumor\_$normal\_vcf", $split_vcf_prefix . ".recode.vcf");    
+    }
+
+    ## Filtering for actual variants (since we are splitting a vcf and the vcftools puts all records in vcf output)
+    if($force_run || !-e "$progress/" . basename("$hc_vcf") . "_$tumor\_$normal\_vcf_filterNonVars.done"){
+        $force_run = 1;
+        print "$PYTHON/python $Bin/maf/filter_nonVars_vcf.py -v $split_vcf_prefix\.recode.vcf -t $tumor -n $normal --somatic -o $split_vcf_prefix\_vars.vcf \n";
+        `$PYTHON/python $Bin/maf/filter_nonVars_vcf.py -v $split_vcf_prefix\.recode.vcf -t $tumor -n $normal --somatic -o $split_vcf_prefix\_vars.vcf`;
+        &checkResult($?, $progress, basename("$hc_vcf") . "_$tumor\_$normal\_vcf_filterNonVars")
+    }
+    ## run vcf2maf
+    if($force_run || !-e "$progress/" . basename("$hc_vcf") . "_$tumor\_$normal\_vcf2maf.done"){
+        $force_run = 1;
+        &run_vcf_2_maf("$split_vcf_prefix\_vars.vcf", $split_vcf_prefix . ".maf", $tumor, $normal,  basename("$hc_vcf") . "_$tumor\_$normal\_vcf2maf");
+    }
+
+    # TODO: Instead of just assuming the correct column is $10, find it first, then use it
+    
+    # should this be in the regular folder, or in the tmp folder
+    my $indel_maf = $split_vcf_prefix . "_indel_MAF.txt";
+    if($force_run || !-e "$progress/" . basename("$split_vcf_prefix") . "_combine_MAF.done"){
+        $force_run = 1;
+         print "grep -e ^# -e ^Hugo_Symbol $split_vcf_prefix\.maf > $indel_maf\n";
+         `grep -e ^# -e ^Hugo_Symbol $split_vcf_prefix\.maf > $indel_maf`;
+         `awk 'BEGIN{FS="\t"} \$10=="INS" || \$10=="DEL" ' $split_vcf_prefix\.maf >> $indel_maf `;
+         
+         &checkResult($?, $progress,  basename("$split_vcf_prefix") . "_combine_MAF");
+           
+    }
+    push(@indv_mafs, $indel_maf); 
+        
+    ###
+    ### MUTECT PART
+    ###
+    
     my @vcfIndex = indices("$normal\_$tumor\_mutect", @mutect_vcfs);
     
     my $vcf = $mutect_vcfs[$vcfIndex[0]];
     my $linked_vcf = "$output/$vcf";
     my $linked_txt = $linked_vcf;
     $linked_txt =~ s/vcf$/txt/g;
+    
+    # Do resuce of failed mutect stuff
 
-    if($force_run || ! -e "$progress/" . basename("$vcf") . "_vcf2maf0.done"){
-        $force_run = 1;
-        ## Change vcf to maf, using the extra .txt file
-        print "$PYTHON/python $Bin/maf/vcf2maf0.py -i $linked_vcf -aF $linked_txt -c mutect -o $linked_vcf\_maf0.txt -p $pairing -n $normal -t $tumor\n\n";
-        `$PYTHON/python $Bin/maf/vcf2maf0.py -i $linked_vcf -aF $linked_txt -c mutect -o $linked_vcf\_maf0.txt -p $pairing -n $normal -t $tumor`;
-        &checkResult($?, $progress,  basename("$vcf") . "_vcf2maf0"); 
-    }
-
-    if($force_run || ! -e "$progress/" . basename("$vcf") . "_DMP_rescue.done"){
+    if($force_run || ! -e "$progress/$vcf\_DMP_rescue.done"){
         $force_run = 1;
         ## rescue 
-        print "$PYTHON/python $Bin/rescue/DMP_rescue.py  < $linked_vcf\_maf0.txt > $linked_vcf\_maf1.txt 2> $linked_vcf\_maf_rescue.log\n\n";
-        `$PYTHON/python $Bin/rescue/DMP_rescue.py  < $linked_vcf\_maf0.txt > $linked_vcf\_maf1.txt 2> $linked_vcf\_maf_rescue.log `;
-        &checkResult($?, $progress,  basename("$vcf") . "_DMP_rescue");
+        # TODO: Does this script add "caller"? If not then it should!
+        print "$PYTHON/python $Bin/rescue/DMP_rescue.py  -v $linked_vcf --txt $linked_txt -t $tumor -n $normal -o $output/tmp/$vcf\_rescued.vcf 2> $output/tmp/$vcf\_maf_rescue.log\n\n";
+        `$PYTHON/python $Bin/rescue/DMP_rescue.py  -v $linked_vcf --txt $linked_txt -t $tumor -n $normal -o $output/tmp/$vcf\_rescued.vcf 2> $output/tmp/$vcf\_maf_rescue.log `;
+        &checkResult($?, $progress,  "$vcf\_DMP_rescue");
     }
-
-    if($force_run || ! -e "$progress/" . basename("$vcf") . "_oldMaf2tcgaMaf.done"){
-        $force_run = 1;
-        ## Change to tcga maf
-        print "$PYTHON/python $Bin/maf/oldMAF2tcgaMAF.py $species $linked_vcf\_maf1.txt $linked_vcf\_maf2.txt\n\n";
-        `$PYTHON/python $Bin/maf/oldMAF2tcgaMAF.py $species $linked_vcf\_maf1.txt $linked_vcf\_maf2.txt`;
-        &checkResult($?, $progress,  basename("$vcf") . "_oldMaf2tcgaMaf");   
     
-
-        ## Select for passing variants
-        print "awk -F\"\\t\" '\$40==\"FILTER\"||\$40==\"PASS\"{print \$0}' $linked_vcf\_maf2.txt > $linked_vcf\_DMPFilter_TCGA_MAF.txt\n\n";
-        `awk -F"\t" '\$40=="FILTER"||\$40=="PASS"{print \$0}' $linked_vcf\_maf2.txt > $linked_vcf\_DMPFilter_TCGA_MAF.txt`;
-        &checkResult($?, $progress,  basename("$vcf") . "_oldMaf2tcgaMaf");
-    } 
+    # vcf2maf
+    ## run vcf2maf
+    if($force_run || !-e "$progress/$vcf\_$tumor\_$normal\_mutect_vcf2maf.done"){
+        $force_run = 1;
+        &run_vcf_2_maf("$output/tmp/$vcf\_rescued.vcf",  "$output/tmp/$vcf\_mutect.maf", $tumor, $normal,  "$vcf\_$tumor\_$normal\_mutect_vcf2maf");
+    }
+    
+    # TODO: The same as before, make sure that $40 is really "FILTER", always.
+    
+    # now only save passing variants (pass or rescue)
+    my $passing_maf = "$output/tmp/$vcf\_mutect_passed.maf";
+    if($force_run || !-e "$progress/$vcf\_$tumor\_$normal\_mutect_rm_failed.done"){
+    	`grep -e ^# -e ^Hugo_Symbol $output/tmp/$vcf\_mutect.maf > $passing_maf`;
+        my $filter_index = `grep ^Hugo_Symbol $output/tmp/$vcf\_mutect.maf | tr "\t" "\n" | grep -n "^FILTER\$" | cut -d ":" -f 1`;
+        chomp $filter_index;
+        if($filter_index eq ""){
+            die "Cannot find FILTER column in maf $output/tmp/$vcf\_mutect.maf $!";
+        }
+        ` awk 'BEGIN{FS="\t"} \$$filter_index == "PASS" || \$$filter_index == "RESCUE" ' $output/tmp/$vcf\_mutect.maf >> $passing_maf\_temp `;
+        ` awk 'BEGIN{FS="\t"} {if(\$$filter_index == "FILTER") { print \$0"\tCaller" } else if (\$$filter_index == "RESCUE") {print \$0"\tmutect.Rescue"} else if(\$$filter_index == "PASS") {print \$0"\tmutect"} else {print \$0}} ' $passing_maf\_temp > $passing_maf`;
+    	&checkResult($?, $progress,  "$vcf\_$tumor\_$normal\_mutect_rm_failed");
+    }
+    push(@mutect_mafs, $passing_maf);
 }
 
-##
+###
+### Pairs are done! Now Merge both Haplotype caller together (then filter) and combine that and mutect
+###
+
+#COMBINE SNP FILES
+my $mut_maf = "$output/$pre\_mutect_SNPs.maf";
+if($force_run || !-e "$progress/$pre\_combine_SNPS.done"){
+    $force_run = 1;
+    my $mafs = join(" ", @mutect_mafs);
+    print "grep -e ^# -e ^Hugo_Symbol $indv_mafs[0] > $mut_maf\n";
+    print "cat $mafs | grep -v -e ^# -e ^Hugo_Symbol >> $mut_maf\n";
+    `grep -e ^# -e ^Hugo_Symbol $indv_mafs[0] > $mut_maf`;
+    `cat $mafs | grep -v -e ^# -e ^Hugo_Symbol >> $mut_maf`;
+    
+    &checkResult($?, $progress,  "$pre\_combine_SNPS");
+}
+
+#COMBINE INDEL FILES
+my $raw_maf = "$output/$pre\_haplotect_RAW_INDEL.maf";
+if($force_run || !-e "$progress/$pre\_combine_INDELS.done"){
+    $force_run = 1;
+    # Take array of all tumor/normal pairs, and add them together.
+    my $mafs = join(" ", @indv_mafs);
+    
+    print 'grep -e ^# -e ^Hugo_Symbol $indv_mafs[0] > $raw_maf\n';
+    print "cat $mafs | grep -v -e ^# -e ^Hugo_Symbol >> $raw_maf\n";
+    `grep -e ^# -e ^Hugo_Symbol $indv_mafs[0] > $raw_maf`;
+    `cat $mafs | grep -v -e ^# -e ^Hugo_Symbol >> $raw_maf`;
+
+     &checkResult($?, $progress,  "$pre\_combine_INDELS");
+}
+
+# then filter INDELS based on somatic contraints
+if($force_run || ! -e "$progress/$pre\_haplotect_pA_qFiltersHC.done"){
+    $force_run=1;
+        
+    print "$PYTHON/python $Bin/maf/pA_qFiltersHC.py -m $raw_maf -s -c HaplotypeCaller -o $output/$pre\_haplotect_BIC_INDELS.maf";
+    `$PYTHON/python $Bin/maf/pA_qFiltersHC.py -m $raw_maf -s -c HaplotypeCaller -o $output/$pre\_haplotect_BIC_INDELS.maf`;
+    &checkResult($?, $progress, "$pre\_haplotect_pA_qFiltersHC");
+}
+
+
 ##
 ## Merge and Annotate?
 ##
@@ -449,17 +520,15 @@ foreach my $line (@pair_lines) {
 if($force_run || ! -e "$progress/$pre\_merge_maf.done"){
     $force_run = 1;
     ## Get the first 39 fields of HC 
-    print "cut -f-39 $hc_vcf\_qSomHC_InDels_TCGA_MAF.txt > $output/merge_maf0.txt\n\n";
-    `cut -f-39 $hc_vcf\_qSomHC_InDels_TCGA_MAF.txt > $output/$pre\_merge_maf0.txt`;
+    print "cp $output/$pre\_haplotect_BIC_INDELS.maf $output/merge_maf0.txt\n\n";
+    `cp $output/$pre\_haplotect_BIC_INDELS.maf $output/$pre\_merge_maf0.txt`;
     &checkResult($?, $progress, "$pre\_merge_maf");
 
-    ## For each mutect result, get all results except for the header
-    for my $vcf (@mutect_vcfs){
-        my $linked_vcf = "$output/$vcf";
-        print "tail -n +2 $linked_vcf\_DMPFilter_TCGA_MAF.txt >> $output/$pre\_merge_maf0.txt\n\n";
-        `tail -n +2 $linked_vcf\_DMPFilter_TCGA_MAF.txt >> $output/$pre\_merge_maf0.txt`;
-        &checkResult($?, $progress, "$pre\_merge_maf");
-    }
+    # Now get the mutect
+    print "grep -v -e ^# -e ^Hugo_Symbol $mut_maf >> $output/$pre\_merge_maf0.txt\n\n";
+    `grep -v -e ^# -e ^Hugo_Symbol $mut_maf >> $output/$pre\_merge_maf0.txt`;
+    &checkResult($?, $progress, "$pre\_merge_maf");
+
 } 
 
 push @maf_header, "#version 2.4";
@@ -467,8 +536,8 @@ push @maf_header, "#SVN Revision: $svnRev";
 
 if($species !~ /hg19|b37|mm10|mouse|human|hybrid/i) { ###   |mm10|mouse/i) { uncomment later!
     sleep(2);
-    print "cut -f-34 $output/$pre\_merge_maf0.txt > $output/$pre\_haplotect_TCGA_MAF.txt\n\n";
-    `cut -f-34 $output/$pre\_merge_maf0.txt > $output/$pre\_haplotect_TCGA_MAF.txt`;
+    print "$PYTHON/python $Bin/maf/pA_reSortCols.py -i $output/$pre\_merge_maf0.txt -f $Bin/maf/TCGA_MAF_fields.txt -o $output/$pre\_haplotect_TCGA_MAF.txt\n\n";
+    `$PYTHON/python $Bin/maf/pA_reSortCols.py -i $output/$pre\_merge_maf0.txt -f $Bin/maf/TCGA_MAF_fields.txt -o $output/$pre\_haplotect_TCGA_MAF.txt`;
     print "Must be human or mouse(mm10 )species to continue.\n";
     &addHeader;
     if($delete_temp){
@@ -477,54 +546,19 @@ if($species !~ /hg19|b37|mm10|mouse|human|hybrid/i) { ###   |mm10|mouse/i) { unc
     exit 0;
 }
 
-print "\n#######\n#######\nStarting VEP. \n";
-if($force_run || ! -e "$progress/$pre\_run_vep.done"){
-    $force_run = 1;
-
-    my $addOptions = '';
-    if($exac_vcf){
-        $addOptions = "--filter-vcf $exac_vcf";
-    }
-
-    # these are names needed for the "retain-cols" option in VEP
-    my $VEP_COLUMN_NAMES = "Center,Verification_Status,Validation_Status,Mutation_Status,Sequencing_Phase,Sequence_Source,Validation_Method,Score,BAM_file,Sequencer,Tumor_Sample_UUID,Matched_Norm_Sample_UUID,Caller";
-
-    ## Create tmp and ref directory. Delete these later*
-    if( ! -d "$output/tmp/" ){
-        print "$output/tmp/ does not exist. Will create it now\n";
-        mkdir("$output/tmp", 0755) or die "Making tmp didn't work $!";
-    }
-    if( ! -d "$output/ref/" ){
-        print "$output/ref/ does not exist. Will create it now\n";
-        mkdir("$output/ref", 0755) or die "Making tmp didn't work $!";
-    }
-
-    my $ref_base = basename($REF_FASTA);
-
-    # softlink reference
-    symlink($REF_FASTA, "$output/ref/$ref_base");
-    symlink("$REF_FASTA.fai", "$output/ref/$ref_base.fai");
-
-    ## vep-forks is at 4 because that is how many CPUs we ask for
-    print "\n$PERL/perl $VCF2MAF/maf2maf.pl --tmp-dir $output/tmp --ref-fasta $output/ref/$ref_base --ncbi-build $ncbi --vep-forks 4 --vep-path $VEP --vep-data $VEP --retain-cols $VEP_COLUMN_NAMES --input-maf $output/$pre\_merge_maf0.txt --output-maf $output/$pre\_merge_maf0.VEP $addOptions\n\n";
-
-    `$PERL/perl $VCF2MAF/maf2maf.pl --tmp-dir $output/tmp --ref-fasta $output/ref/$ref_base --ncbi-build $ncbi --vep-forks 4 --vep-path $VEP --vep-data $VEP --retain-cols $VEP_COLUMN_NAMES --input-maf $output/$pre\_merge_maf0.txt --output-maf $output/$pre\_merge_maf0.VEP $addOptions > $output/$pre\_merge_maf0.log 2>&1`;
-    &checkResult($?, $progress, "$pre\_run_vep");
-}
-push @maf_header, "#VCF2MAF maf2maf.pl\tVEP: $VEP\tNCBI: $ncbi\tLOCATION: $VCF2MAF";
-
 
 if($force_run || ! -e "$progress/$pre\_tcgaMaf_portalMaf.done"){
     $force_run = 1;
     #This removes any records that don't have a gene name at the front
-    #`grep -v ^Unknown $output/$pre\_merge_maf0.VEP > $output/$pre\_merge_maf0.VEP`;
+    #`grep -v ^Unknown $output/$pre\_merge_maf0.txt > $output/$pre\_merge_maf0.txt`;
     #&checkResult($?, $progress,  basename("$vcf") . "_tcgaMaf_portalMaf");
-    `cut -f-34 $output/$pre\_merge_maf0.VEP > $output/$pre\_haplotect_TCGA_MAF.txt`;
+    print "$PYTHON/python $Bin/maf/pA_reSortCols.py -i $output/$pre\_merge_maf0.txt -f $Bin/maf/TCGA_MAF_fields.txt -o $output/$pre\_haplotect_TCGA_MAF.txt\n\n";
+    `$PYTHON/python $Bin/maf/pA_reSortCols.py -i $output/$pre\_merge_maf0.txt -f $Bin/maf/TCGA_MAF_fields.txt -o $output/$pre\_haplotect_TCGA_MAF.txt`;
     &checkResult($?, $progress, "$pre\_tcgaMaf_portalMaf");
 
     ## creating MAF for cbio portal submission
-    print "$PYTHON/python $Bin/maf/pA_reSortCols.py -i $output/$pre\_merge_maf0.VEP -f $Bin/maf/finalCols_PORTAL.txt -o $output/$pre\_haplotect_TCGA_PORTAL_MAF.txt\n\n";
-    `$PYTHON/python $Bin/maf/pA_reSortCols.py -i $output/$pre\_merge_maf0.VEP -f $Bin/maf/finalCols_PORTAL.txt -o $output/$pre\_haplotect_TCGA_PORTAL_MAF.txt`;
+    print "$PYTHON/python $Bin/maf/pA_reSortCols.py -i $output/$pre\_merge_maf0.txt -f $Bin/maf/finalCols_PORTAL.txt -o $output/$pre\_haplotect_TCGA_PORTAL_MAF.txt\n\n";
+    `$PYTHON/python $Bin/maf/pA_reSortCols.py -i $output/$pre\_merge_maf0.txt -f $Bin/maf/finalCols_PORTAL.txt -o $output/$pre\_haplotect_TCGA_PORTAL_MAF.txt`;
     &checkResult($?, $progress, "$pre\_tcgaMaf_portalMaf");
 }
 
@@ -562,8 +596,8 @@ if($force_run || ! -e "$progress/$pre\_bedtools_anno.done"){
     if ($species =~ /hg19|human|b37|hybrid/i){
         $extraStuff =  " --target $Bin/targets/IMPACT410_$species/IMPACT410_$species\_targets_plus5bp.bed --targetname IMPACT_410";
     }
-    print "$PERL/perl $Bin/maf/bedtools_annotations.pl --in_maf $output/$pre\_merge_maf0.VEP --species $species --output $output --config $config --fastq $extraStuff \n\n";
-    `$PERL/perl $Bin/maf/bedtools_annotations.pl --in_maf $output/$pre\_merge_maf0.VEP --species $species --output $output --config $config --fastq $extraStuff`;
+    print "$PERL/perl $Bin/maf/bedtools_annotations.pl --in_maf $output/$pre\_merge_maf0.txt --species $species --output $output --config $config --fastq $extraStuff \n\n";
+    `$PERL/perl $Bin/maf/bedtools_annotations.pl --in_maf $output/$pre\_merge_maf0.txt --species $species --output $output --config $config --fastq $extraStuff`;
     &checkResult($?, $progress, "$pre\_bedtools_anno");
 }
 
@@ -571,8 +605,8 @@ if($force_run || ! -e "$progress/$pre\_bedtools_anno.done"){
 if($species =~ /hg19|b37|human|hybrid/i){
     if($force_run || ! -e "$progress/$pre\_exac_anno.done"){
         $force_run = 1; 
-        print "perl $Bin/maf/exact_annotate.pl --in_maf $output/$pre\_merge_maf0.VEP --species $species --output $output --config $config --data $Bin/data\n\n";
-        `$PERL/perl $Bin/maf/exact_annotate.pl --in_maf $output/$pre\_merge_maf0.VEP --species $species --output $output --config $config --data $Bin/data`;
+        print "perl $Bin/maf/exac_annotate.pl --in_maf $output/$pre\_merge_maf0.txt --species $species --output $output --config $config --data $Bin/data\n\n";
+        `$PERL/perl $Bin/maf/exac_annotate.pl --in_maf $output/$pre\_merge_maf0.txt --species $species --output $output --config $config --data $Bin/data`;
         &checkResult($?, $progress, "$pre\_exac_anno");
     }
 
@@ -582,8 +616,8 @@ if($species =~ /hg19|b37|human|hybrid/i){
 ##
     if($force_run || ! -e "$progress/$pre\_merge_cols.done"){
         $force_run = 1;
-        print "$PYTHON/python $Bin/maf/mergeExtraCols.py --triNuc $output/TriNuc.txt --targeted $output/maf_targets.IMPACT_410 --exac $output/exact.vcf --maf $output/$pre\_merge_maf0.VEP > $output/$pre\_haplotect_VEP_MAF.txt\n\n";
-        `$PYTHON/python $Bin/maf/mergeExtraCols.py --triNuc $output/TriNuc.txt --targeted $output/maf_targets.IMPACT_410 --exac $output/exact.vcf --maf $output/$pre\_merge_maf0.VEP > $output/$pre\_haplotect_VEP_MAF.txt`;
+        print "$PYTHON/python $Bin/maf/mergeExtraCols.py --triNuc $output/TriNuc.txt --targeted $output/maf_targets.IMPACT_410 --exac $output/exac.vcf --maf $output/$pre\_merge_maf0.txt > $output/$pre\_haplotect_VEP_MAF.txt\n\n";
+        `$PYTHON/python $Bin/maf/mergeExtraCols.py --triNuc $output/TriNuc.txt --targeted $output/maf_targets.IMPACT_410 --exac $output/exac.vcf --maf $output/$pre\_merge_maf0.txt > $output/$pre\_haplotect_VEP_MAF.txt`;
         &checkResult($?, $progress, "$pre\_merge_cols");
     }
 
@@ -591,8 +625,8 @@ if($species =~ /hg19|b37|human|hybrid/i){
     if($force_run || ! -e "$progress/$pre\_merge_cols.done"){
         $force_run = 1;
         `/bin/touch $output/blank`;
-        print "$PYTHON/python $Bin/maf/mergeExtraCols.py --triNuc $output/TriNuc.txt --maf $output/$pre\_merge_maf0.VEP > $output/$pre\_haplotect_VEP_MAF.txt\n\n";
-        `$PYTHON/python $Bin/maf/mergeExtraCols.py --triNuc $output/TriNuc.txt --maf $output/$pre\_merge_maf0.VEP > $output/$pre\_haplotect_VEP_MAF.txt`;
+        print "$PYTHON/python $Bin/maf/mergeExtraCols.py --triNuc $output/TriNuc.txt --maf $output/$pre\_merge_maf0.txt > $output/$pre\_haplotect_VEP_MAF.txt\n\n";
+        `$PYTHON/python $Bin/maf/mergeExtraCols.py --triNuc $output/TriNuc.txt --maf $output/$pre\_merge_maf0.txt > $output/$pre\_haplotect_VEP_MAF.txt`;
         &checkResult($?, $progress, "$pre\_merge_cols");
     }
 }
@@ -659,7 +693,7 @@ sub cleanUp{
         print "Removing: $fname \n";
         unlink($fname);
     }
-    @files = glob ("$output/exact.vcf $output/header.txt $output/maf_targets.* $output/TriNuc.txt $output/*mutect_calls* $output/blank $output/*Haplotype* $output/*maf2.txt* $output/ref $output/tmp $output/*basecounts.txt $output/$pre\_merge_maf0.VEP");
+    @files = glob ("$output/exac.vcf $output/header.txt $output/maf_targets.* $output/TriNuc.txt $output/*mutect_calls* $output/blank $output/*Haplotype* $output/*maf2.txt* $output/ref $output/tmp $output/*basecounts.txt $output/$pre\_merge_maf0.txt");
 
 
     for my $fname (@files) {
@@ -667,6 +701,38 @@ sub cleanUp{
         unlink($fname);
     }
     `rm -r $output/xtra $output/bed $output/ref $output/tmp $progress`;
+}
+
+sub splitVcf{
+    my ($inVCF, $outPrefix, $tumor, $normal, $progress, $doneFile, $checkFile) = @_;
+    #Now I have to use vcftools to separate the paired stuff
+    print "$VCFTOOLS/vcftools --indv $tumor --indv $normal --vcf $inVCF --out $outPrefix --recode\n";
+    `$VCFTOOLS/vcftools --indv $tumor --indv $normal --vcf $inVCF --out $outPrefix --recode`;
+    &checkResult($?, $progress, $doneFile, $checkFile);
+}
+
+sub run_vcf_2_maf{
+    my ($in_vcf, $out_maf, $tumor, $normal, $doneFile) = @_;
+    
+    if( ! -d "$output/ref/" ){
+        print "$output/ref/ does not exist. Will create it now\n";
+        mkdir("$output/ref", 0755) or die "Making ref didn't work $!";
+    }
+    my $ref_base = basename($REF_FASTA);
+    
+    # softlink reference
+    symlink($REF_FASTA, "$output/ref/$ref_base");
+    symlink("$REF_FASTA.fai", "$output/ref/$ref_base.fai");
+    my $addOptions = '';
+    if($exac_vcf){
+        $addOptions = "--filter-vcf $exac_vcf";
+    }
+    
+    print "\n#######\n#######\nStarting VEP. \n";
+    print "$PERL/perl $VCF2MAF/vcf2maf.pl --input-vcf $in_vcf --output-maf $out_maf --ref-fasta $output/ref/$ref_base --tmp-dir $output/tmp/ --ncbi $ncbi --vep-forks 4 --vep-path $VEP --vep-data $VEP $addOptions --tumor-id $tumor --normal-id $normal \n";
+    `$PERL/perl $VCF2MAF/vcf2maf.pl --input-vcf $in_vcf --output-maf $out_maf --ref-fasta $output/ref/$ref_base --tmp-dir $output/tmp/ --ncbi $ncbi --vep-forks 4 --vep-path $VEP --vep-data $VEP $addOptions --tumor-id $tumor --normal-id $normal`;
+
+    &checkResult($?, $progress, $doneFile, $out_maf);
 }
 
 sub indices {
@@ -683,4 +749,6 @@ sub indices {
 
   return @results;
 }
+
+
 
