@@ -1197,7 +1197,9 @@ sub generateMaf{
 		
 		$bgz_jid = "$pre\_$uID\_$jna\_bgzip,$pre\_$uID\_$jna\_bgzip_index";
             }
-	    mkdir("$vcf_dir/chrom_$c", 0775) or die "Can't make $vcf_dir/chrom_$c";
+	    if(!-d "$vcf_dir/chrom_$c"){
+                mkdir("$vcf_dir/chrom_$c", 0775) or die "Can't make $vcf_dir/chrom_$c";
+            }
             my $addOptions = "";
             if($ExAC_VCF){
                 $addOptions = "-exac_vcf $ExAC_VCF";
