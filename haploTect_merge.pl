@@ -729,8 +729,8 @@ sub run_vcf_2_maf{
     }
     
     print "\n#######\n#######\nStarting VEP. \n";
-    print "$PERL/perl $VCF2MAF/vcf2maf.pl --input-vcf $in_vcf --species $species --output-maf $out_maf --ref-fasta $output/ref/$ref_base --tmp-dir $output/tmp/ --ncbi $ncbi --vep-forks 4 --vep-path $VEP --vep-data $VEP $addOptions --tumor-id $tumor --normal-id $normal \n";
-    `$PERL/perl $VCF2MAF/vcf2maf.pl --input-vcf $in_vcf --species $species --output-maf $out_maf --ref-fasta $output/ref/$ref_base --tmp-dir $output/tmp/ --ncbi $ncbi --vep-forks 4 --vep-path $VEP --vep-data $VEP $addOptions --tumor-id $tumor --normal-id $normal`;
+    print "$PERL/perl $VCF2MAF/vcf2maf.pl --input-vcf $in_vcf --output-maf $out_maf --ref-fasta $output/ref/$ref_base --tmp-dir $output/tmp/ --ncbi $ncbi --vep-forks 4 --vep-path $VEP --vep-data $VEP $addOptions --tumor-id $tumor --normal-id $normal \n";
+    `$PERL/perl $VCF2MAF/vcf2maf.pl --input-vcf $in_vcf --output-maf $out_maf --ref-fasta $output/ref/$ref_base --tmp-dir $output/tmp/ --ncbi $ncbi --vep-forks 4 --vep-path $VEP --vep-data $VEP $addOptions --tumor-id $tumor --normal-id $normal`;
 
     &checkResult($?, $progress, $doneFile, $out_maf);
 }
