@@ -8,7 +8,7 @@ use Schedule;
 use Cluster;
 use File::Basename;
 
-my ($patient, $impact, $wes, $svnRev, $pair, $group, $bamgroup, $config, $nosnps, $targets, $ug, $scheduler, $priority_project, $priority_group, $abra, $indelrealigner, $help, $step1, $allSomatic, $scalpel, $somaticsniper, $strelka, $varscan, $virmid);
+my ($patient, $email, $impact, $wes, $svnRev, $pair, $group, $bamgroup, $config, $nosnps, $targets, $ug, $scheduler, $priority_project, $priority_group, $abra, $indelrealigner, $help, $step1, $allSomatic, $scalpel, $somaticsniper, $strelka, $varscan, $virmid);
 
 my $pre = 'TEMP';
 my $output = "results";
@@ -19,7 +19,8 @@ chomp $uID;
 my $rsync = "/ifs/solres/$uID";
 my $tempdir = "/scratch/$uID";
 
-GetOptions ('pre=s' => \$pre,
+GetOptions ('email=s' => \$email,
+            'pre=s' => \$pre,
 	    'pair=s' => \$pair,
 	    'patient=s' => \$patient,
             'group=s' => \$group,
@@ -882,16 +883,23 @@ foreach my $c (@ref_chr){
     if(!-e "$output/progress/$pre\_$uID\_$c\_HC.done" || $ran_pr_glob{"$c"}){
 	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$c\_HC", job_hold => "$prgj", cpu => "30", mem => "90", cluster_out => "$output/progress/$pre\_$uID\_$c\_HC.log");
 	my $standardParams = Schedule::queuing(%stdParams);
-	my %addParams = (scheduler => "$scheduler", runtime => "500", priority_project=> "$priority_project", priority_group=> "$priority_group", rerun => "1", iounits => "7");
+	my %addParams = (scheduler => "$scheduler", runtime => "500", priority_project=> "$priority_project", priority_group=> "TEST", rerun => "1", iounits => "7");
 	my $additionalParams = Schedule::additionalParams(%addParams);
 	my $response = "";
-        my $HC_submission_num = 0;
-        while($response !~ /is submitted to default queue/ && $HC_submission_num < 10){
-            $HC_submission_num++;
-            print "HC Chromosome $c attempt number $HC_submission_num\n"; 
-            $response = `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx90g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=$tempdir -jar $GATK/GenomeAnalysisTK.jar -T HaplotypeCaller -R $REF_SEQ -L $c $multipleTargets --dbsnp $DB_SNP --downsampling_type NONE --annotation AlleleBalanceBySample --annotation ClippingRankSumTest --read_filter BadCigar --num_cpu_threads_per_data_thread 30 --out $output/intFiles/$pre\_$c\_HaplotypeCaller.vcf $irBams2`;
-            print "Response: $response\n";
+    my $HC_submission_num = 0;
+    while($response !~ /is submitted to default queue/ && $HC_submission_num < 10){
+        my $time = 60 * $HC_submission_num;
+        `sleep $time `;
+        $HC_submission_num++;
+        my $stamp = localtime(time);
+        print "$stamp : HC Chromosome $c attempt number $HC_submission_num.\n"; 
+        print "Command: $standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx90g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=$tempdir -jar $GATK/GenomeAnalysisTK.jar -T HaplotypeCaller -R $REF_SEQ -L $c $multipleTargets --dbsnp $DB_SNP --downsampling_type NONE --annotation AlleleBalanceBySample --annotation ClippingRankSumTest --read_filter BadCigar --num_cpu_threads_per_data_thread 30 --out $output/intFiles/$pre\_$c\_HaplotypeCaller.vcf $irBams2\n";
+        $response = `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx90g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=$tempdir -jar $GATK/GenomeAnalysisTK.jar -T HaplotypeCaller -R $REF_SEQ -L $c $multipleTargets --dbsnp $DB_SNP --downsampling_type NONE --annotation AlleleBalanceBySample --annotation ClippingRankSumTest --read_filter BadCigar --num_cpu_threads_per_data_thread 30 --out $output/intFiles/$pre\_$c\_HaplotypeCaller.vcf $irBams2        2>&1`;
+        print "Response: $response\n";
+        if($response !~ /is submitted to default queue/ && $HC_submission_num == 10 && $c eq '1'){
+            `mail -s "HaplotypeCaller Job Not Working" $email <<< "This is an e-mail letting you know that your variants pipeline run for $pre is not submitting HC jobs to the cluster. Please remove all .done files for haplotype caller and rerun the pipeline."  `;
         }
+    }
 	`/bin/touch $output/progress/$pre\_$uID\_$c\_HC.done`;
 	push @hc_jids, "$pre\_$uID\_$c\_HC";
 	$ran_hc = 1;
@@ -1337,7 +1345,7 @@ if($pair){
 
             my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$data[0]\_$data[1]\_facets_RUN",  cpu => "3", mem => "2", job_hold => "$facetsSETUP_jid", cluster_out => "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_facets_RUN.log");
             my $standardParams = Schedule::queuing(%stdParams);
-            my %addParams = (runtime => "10");
+            my %addParams = (runtime => "10", priority_project=> "$priority_project", priority_group=> "$priority_group");
             my $additionalParams = Schedule::additionalParams(%addParams);
             `$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{job_hold} $standardParams->{cluster_out} $additionalParams $Bin/facets/facets_RUN.sh $FACETS_SUITE $FACETS_LIB $output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets $data[0]\_$data[1] $output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets/tmp/$pre\_countsMerged_$data[0]\_$data[1].dat $sub_species $pcval $cval`;
 	    push @facets_jid, "$pre\_$uID\_$data[0]\_$data[1]\_facets_RUN" ;

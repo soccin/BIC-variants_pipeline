@@ -8,7 +8,7 @@ use lib "$Bin/lib";
 use Schedule;
 use Cluster;
 
-my ($pair, $svnRev, $patient, $group, $bamgroup, $config, $nosnps, $targets, $ug, $scheduler, $priority_project, $priority_group, $abra, $help, $step1, $DB_SNP, $allSomatic, $scalpel, $somaticsniper, $strelka, $varscan, $virmid);
+my ($pair, $svnRev, $email $patient, $group, $bamgroup, $config, $nosnps, $targets, $ug, $scheduler, $priority_project, $priority_group, $abra, $help, $step1, $DB_SNP, $allSomatic, $scalpel, $somaticsniper, $strelka, $varscan, $virmid);
 
 my $pre = 'TEMP';
 my $output = "results";
@@ -19,7 +19,8 @@ chomp $uID;
 my $rsync = "/ifs/solres/$uID";
 my $tempdir = "/scratch/$uID";
 
-GetOptions ('pre=s' => \$pre,
+GetOptions ( 'email=s' => \$email,
+        'pre=s' => \$pre,
 	    'pair=s' => \$pair,
             'patient=s'=> \$patient,
 	    'group=s' => \$group,
@@ -515,7 +516,20 @@ if(!-e "$output/progress/$pre\_$uID\_HC.done" || $ran_pr_glob){
     my $standardParams = Schedule::queuing(%stdParams);
 	my %addParams = (scheduler => "$scheduler", runtime => "500", priority_project=> "$priority_project", priority_group=> "$priority_group", rerun => "1", iounits => "7");
 	my $additionalParams = Schedule::additionalParams(%addParams);
-    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx90g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T HaplotypeCaller -R $REF_SEQ $multipleTargets --dbsnp $DB_SNP --downsampling_type NONE --annotation AlleleBalanceBySample --annotation ClippingRankSumTest --read_filter BadCigar --num_cpu_threads_per_data_thread 30 --out $output/variants/snpsIndels/haplotypecaller/$pre\_HaplotypeCaller.vcf $irBams2`;
+    my $response = "";
+    my $HC_submission_num = 0;
+    while($response !~ /is submitted to default queue/ && $HC_submission_num < 10){
+        my $time = 60 * $HC_submission_num;
+        `sleep $time `;
+        $HC_submission_num++;
+        print "HC attempt number $HC_submission_num\n"; 
+        print "Command: $standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx90g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T HaplotypeCaller -R $REF_SEQ $multipleTargets --dbsnp $DB_SNP --downsampling_type NONE --annotation AlleleBalanceBySample --annotation ClippingRankSumTest --read_filter BadCigar --num_cpu_threads_per_data_thread 30 --out $output/variants/snpsIndels/haplotypecaller/$pre\_HaplotypeCaller.vcf $irBams2";
+        $response = `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx90g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T HaplotypeCaller -R $REF_SEQ $multipleTargets --dbsnp $DB_SNP --downsampling_type NONE --annotation AlleleBalanceBySample --annotation ClippingRankSumTest --read_filter BadCigar --num_cpu_threads_per_data_thread 30 --out $output/variants/snpsIndels/haplotypecaller/$pre\_HaplotypeCaller.vcf $irBams2       2>&1`;
+        print "Response: $response\n";
+        if($response !~ /is submitted to default queue/ && $HC_submission_num == 10){
+            `mail -s "HaplotypeCaller Job Not Working" $email <<< "This is an e-mail letting you know that your variants pipeline run for $pre is not submitting HC jobs to the cluster. Please remove all .done files for haplotype caller and rerun the pipeline."  `;
+        }
+    }
     `/bin/touch $output/progress/$pre\_$uID\_HC.done`;
     $hcj = "$pre\_$uID\_HC";
     $ran_hc = 1;
