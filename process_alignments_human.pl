@@ -883,7 +883,7 @@ foreach my $c (@ref_chr){
     if(!-e "$output/progress/$pre\_$uID\_$c\_HC.done" || $ran_pr_glob{"$c"}){
 	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$c\_HC", job_hold => "$prgj", cpu => "30", mem => "90", cluster_out => "$output/progress/$pre\_$uID\_$c\_HC.log");
 	my $standardParams = Schedule::queuing(%stdParams);
-	my %addParams = (scheduler => "$scheduler", runtime => "500", priority_project=> "$priority_project", priority_group=> "TEST", rerun => "1", iounits => "7");
+	my %addParams = (scheduler => "$scheduler", runtime => "500", priority_project=> "$priority_project", priority_group=> "$priority_group", rerun => "1", iounits => "7");
 	my $additionalParams = Schedule::additionalParams(%addParams);
 	my $response = "";
     my $HC_submission_num = 0;
