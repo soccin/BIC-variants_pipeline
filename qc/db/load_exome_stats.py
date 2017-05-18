@@ -417,7 +417,7 @@ def read_and_save_gc_bias(file_id, in_file_name, project_id, pipeline_run_id, co
 
 def load(species, chipseq, paired, stat_type, project_name, pi, investigator, rerun_number, revision_number, in_file_name, conn, log_file):
     stats=dict()
-    if species.lower() in ['human','hg18','hg19','hybrid','b37','grch37']:
+    if species.lower() in ['human','hg18','hg19','hybrid','b37','grch37','xenograft']:
         stats = human_stats
         if chipseq:
             stats = human_chipseq_stats

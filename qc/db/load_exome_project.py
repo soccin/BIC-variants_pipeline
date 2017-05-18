@@ -71,7 +71,7 @@ def validate_files(project_name, project_dir, stats, log_file):
 def load(species, chipseq, paired, project_name, rerun_number, pi, investigator, tumor_type, pipeline, revision_number, project_dir, conn, log_file):
     stats = list()
 
-    if species.lower() in ['human','hg18','hg19','hybrid','b37','grch37']:
+    if species.lower() in ['human','hg18','hg19','hybrid','b37','grch37','xenograft']:
         stats = load_exome_stats.human_stats.values()
         if chipseq:
             stats = load_exome_stats.human_chipseq_stats.values()
