@@ -30,11 +30,9 @@ WES_FILTER		/opt/common/CentOS_6/wes-filter/wes-filters-1.1.3
 B37_BWA_INDEX		/ifs/depot/assemblies/H.sapiens/b37/index/bwa/0.7.12/b37.fasta
 B37_FASTA		/ifs/depot/assemblies/H.sapiens/b37/b37.fasta		
 B37_FAI		/ifs/depot/assemblies/H.sapiens/b37/b37.fasta.fai
-B37_FFPE_POOL_DIR		/ifs/res/share/soccin/Case_201601/Proj_06049_Pool/r_001
 B37_MM10_HYBRID_BWA_INDEX	/ifs/depot/assemblies/hybrids/H.sapiens_M.musculus/b37_mm10/index/bwa/0.7.12/b37_mm10.fasta
 B37_MM10_HYBRID_FASTA		/ifs/depot/assemblies/hybrids/H.sapiens_M.musculus/b37_mm10/b37_mm10.fasta
 B37_MM10_HYBRID_FAI	/ifs/depot/assemblies/hybrids/H.sapiens_M.musculus/b37_mm10/b37_mm10.fasta.fai
-B37_NORMAL_PANEL	/ifs/res/share/pwg/NormalCohort/SetA/CuratedBAMsSetA
 HG19_BWA_INDEX		/ifs/depot/assemblies/H.sapiens/hg19/index/bwa/0.7.4-r385/hg19.fasta
 HG19_FASTA		/ifs/depot/assemblies/H.sapiens/hg19/hg19.fasta
 HG19_FAI		/ifs/depot/assemblies/H.sapiens/hg19/hg19.fasta.fai
