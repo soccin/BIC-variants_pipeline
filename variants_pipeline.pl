@@ -251,7 +251,7 @@ chomp $svnRev;
 my %samp_libs_run = ();
 my $slr_count = 0;
 my %ran_solexa = ();
-
+my $projectHasParedEndSamp = 0;
 
 open(LOG, ">$cd\_variants_pipeline.log") or die "can't write to output log";
 my @currentTime = &getTime();
@@ -1391,6 +1391,7 @@ sub processBams {
 	
 	### NOTE: will only run if the sample is paired end
 	if($seq_type{$samp} eq "PE"){
+            $projectHasParedEndSamp=1;
 	    if(!-e "$output/progress/$pre\_$uID\_IS_METRICS_$samp\.done" || $ran_solexa{$samp} || $ran_samp_merge){
 		my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_IS_METRICS\_$samp", job_hold => "$rmj,$smsj,$lmsj", cpu => "1", mem => "10", cluster_out => "$output/progress/$pre\_$uID\_IS_METRICS_$samp\.log");
 		my $standardParams = Schedule::queuing(%stdParams);
@@ -1499,7 +1500,7 @@ sub mergeStats {
     
     my $isfiles = join(" ", @ism);
     my $isj = join(",", @is_jids);
-    if(!-e "$output/progress/$pre\_$uID\_MERGE_ISM.done" && $ran_is) {
+    if(!-e "$output/progress/$pre\_$uID\_MERGE_ISM.done" && $projectHasParedEndSamp || $ran_is) {
 	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_MERGE_ISM", job_hold => "$isj", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_MERGE_ISM.log");
 	my $standardParams = Schedule::queuing(%stdParams);
 	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/qc/mergePicardMetrics.pl $isfiles ">$output/metrics/$pre\_InsertSizeMetrics.txt"`;
@@ -1509,7 +1510,7 @@ sub mergeStats {
 	$ran_merge = 1;
     }
 
-    if((!-e "$output/progress/$pre\_$uID\_ISM_MATRIX.done" || $ran_merge_ism) && $ran_is){    
+    if((!-e "$output/progress/$pre\_$uID\_ISM_MATRIX.done" || $ran_merge_ism) && $projectHasParedEndSamp){    
 	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_ISM_MATRIX", job_hold => "$pre\_$uID\_MERGE_ISM", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_ISM_MATRIX.log");
 	my $standardParams = Schedule::queuing(%stdParams);
 	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PYTHON/python $Bin/qc/mergeInsertSizeHistograms.py $output/intFiles InsertSizeMetrics_*.txt $output/metrics/$pre\_InsertSizeMetrics_Histograms.txt`;
