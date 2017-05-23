@@ -83,6 +83,7 @@ my $MM10_CUSTOM_FASTA = '';
 my $B37_FASTA = '';
 my $B37_MM10_HYBRID_FASTA = '';
 my $FIXMULTIINDEL = '';
+my $HG19_MM10_HYBRID_FASTA='';
 
 open(CONFIG, "$config") or warn "CAN'T OPEN CONFIG FILE $config SO USING DEFAULT SETTINGS";
 while(<CONFIG>){
@@ -132,6 +133,14 @@ while(<CONFIG>){
             }
         }
         $B37_MM10_HYBRID_FASTA = $conf[1];
+    }
+    elsif($conf[0] =~ /hg19_mm10_hybrid_fasta/i){
+        if(!-e "$conf[1]"){
+            if($species =~ /hg19_mm10/i){
+                die "CAN'T FIND $conf[1] $!";
+            }
+        }
+        $HG19_MM10_HYBRID_FASTA = $conf[1];
     }
     elsif($conf[0] =~ /^perl/i){
         if(!-e "$conf[1]/perl"){
@@ -211,6 +220,12 @@ my $VEP_SPECIES = '';
 if($species =~ /hg19/i){
     $species = 'hg19';
     $REF_FASTA = "$HG19_FASTA";
+    $NCBI_BUILD = "GRCh37";
+    $VEP_SPECIES = "homo_sapiens";
+}
+elsif($species =~ /hg19_mm10/i){
+   $species = 'hg19';
+    $REF_FASTA = "$HG19_MM10_HYBRID_FASTA";
     $NCBI_BUILD = "GRCh37";
     $VEP_SPECIES = "homo_sapiens";
 }
