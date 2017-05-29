@@ -1,6 +1,6 @@
 ## Usage: /opt/common/CentOS_6/R-3.2.0/bin/Rscript qc_images.R "pre='$PRE'" "bin='$BIN'" "path='$PATH_TO_METRICS'" "logfile='$LOGFILE'"
 
-options(echo = FALSE)
+#options(echo = FALSE)
 
 type = "exome"
 
