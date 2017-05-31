@@ -49,11 +49,6 @@ while(<CONFIG>){
 }
 close CONFIG;
 
-## R-3.1.2 stopped working for some reason
-## Changing here temporarily until we have time to 
-## figure it out or upgrade all R calls to new version
-$R = "/opt/common/CentOS_6/R/R-3.3.2/bin";
-
 ## generate a PDF file for each plot, a project summary text file and a sample summary text file
 print "$R/R CMD BATCH \"--args path='$path' pre='$pre' bin='$Bin' logfile='$log'\" $Bin/qc_summary.R\n";
 `$R/R CMD BATCH \"--args path='$path' pre='$pre' bin='$Bin' logfile='$log'\" $Bin/qc_summary.R`;
