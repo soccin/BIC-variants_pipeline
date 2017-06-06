@@ -33,7 +33,7 @@
 
 using namespace std;
 
-const string VERSION = "ParseRefseqGene 1.3.0";
+const string VERSION = "ParseRefseqGene 1.3.1";
 
 string input_refseq_file;
 string input_refseq_canonical_file;
@@ -377,6 +377,22 @@ int compare_overlap(const int& start1, const int& end1, const int& start2, const
     return 0;
 }
 
+int check_merge(const Interval& lhs, const Interval& rhs)
+{
+    if(lhs.chrom < rhs.chrom)
+        return -1;
+    if(lhs.chrom > rhs.chrom)
+        return 1;
+    if(lhs.end < rhs.start - 1)
+        return -1;
+    if(lhs.start > rhs.end + 1)
+        return 1;
+    return 0;
+
+}
+
+
+
 bool is_number(const string& s)
 {
     string::const_iterator it = s.begin();
@@ -540,9 +556,7 @@ public:
             vector<string> index_items;
             split(line, '\t', index_items);
             string chrom_name = index_items[0];
-            if(chrom_name.substr(0,3) == "chr")
-		chrom_name = chrom_name.substr(3);  // for hg19 genome, remove chr from chromosome name
-	    int chrom_len = atoi(index_items[1].c_str());
+            int chrom_len = atoi(index_items[1].c_str());
             long long int chrom_offset = atoll(index_items[2].c_str());
             int base_per_line = atoi(index_items[3].c_str());
             int byte_per_line = atoi(index_items[4].c_str());
@@ -1172,22 +1186,6 @@ public:
             exit(1);
         }
 
-        string output_file_chr = output_file + ".chr.list";
-        ofstream output_fs_chr(output_file_chr.c_str());
-        if(!output_fs_chr)
-        {
-            cerr << "[ERROR]: Failed to open output gene interval file: " << output_file_chr << endl;
-            exit(1);
-        }
-
-        string output_annotated_file_chr = output_annotated_file + ".chr.list";
-        ofstream output_annotated_fs_chr(output_annotated_file_chr.c_str());
-        if(!output_annotated_fs_chr)
-        {
-            cerr << "[ERROR]: Failed to open output gene interval annotated file: " << output_annotated_file_chr << endl;
-            exit(1);
-        }
-
         vector<Interval> gene_vec; //add custom gene interval
         string line;
         if(!custom_only)
@@ -1222,7 +1220,7 @@ public:
             {
                 if(gene_vec[src_index].deleted)
                     continue;
-                if(compare_overlap(gene_vec[dest_index], gene_vec[src_index]) == 0) //overlap
+                if(check_merge(gene_vec[dest_index], gene_vec[src_index]) == 0) // need to be merged
                 {
                     MergeOverlapInterval(gene_vec[dest_index], gene_vec[src_index], true);
                 }
@@ -1239,15 +1237,11 @@ public:
             {
                 output_fs << gene_vec[i].chrom << ":" << gene_vec[i].start << "-" << gene_vec[i].end << endl;
                 output_annotated_fs << gene_vec[i].chrom << ":" << gene_vec[i].start << "-" << gene_vec[i].end << "\t" << gene_vec[i].cytoband << "\t" << gene_vec[i].annotation << endl;
-                output_fs_chr << "chr" << gene_vec[i].chrom << ":" << gene_vec[i].start << "-" << gene_vec[i].end << endl;
-                output_annotated_fs_chr << "chr" << gene_vec[i].chrom << ":" << gene_vec[i].start << "-" << gene_vec[i].end << "\t" << gene_vec[i].cytoband << "\t" << gene_vec[i].annotation << endl;
             }
         }
         gene_fs.close();
         output_fs.close();
         output_annotated_fs.close();
-        output_fs_chr.close();
-        output_annotated_fs_chr.close();
     }
     
     void GenerateCombinedGeneCoord(string input_file, string output_file)
@@ -1351,7 +1345,7 @@ public:
             {
                 if(gene_vec[src_index].deleted)
                     continue;
-                if(compare_overlap(gene_vec[dest_index], gene_vec[src_index]) == 0) //overlap
+                if(check_merge(gene_vec[dest_index], gene_vec[src_index]) == 0) // need to be merged
                 {
                     MergeOverlapInterval(gene_vec[dest_index], gene_vec[src_index], false);
                 }
@@ -1589,15 +1583,6 @@ public:
             cerr << "[ERROR]: Failed to open output tiling interval file: " << output_file << endl;
             exit(1);
         }
-
-        string output_file_chr = output_file + ".chr.list";
-        ofstream output_fs_chr(output_file_chr.c_str());
-        if(!output_fs_chr)
-        {
-            cerr << "[ERROR]: Failed to open output tiling interval file: " << output_file_chr << endl;
-            exit(1);
-        }
-
         vector<Interval> gene_vec; //add custom tiling interval
         string line;
         if(!custom_only)
@@ -1636,16 +1621,9 @@ public:
             if(output_annotation)
                 output_fs << "\t" << gene_vec[i].cytoband;
             output_fs << endl;
-
-            output_fs_chr << "chr" << gene_vec[i].chrom << ":" << gene_vec[i].start << "-" << gene_vec[i].end;
-            if(output_annotation)
-                output_fs_chr << "\t" << gene_vec[i].cytoband;
-            output_fs_chr << endl;
-
         }
         input_fs.close();
         output_fs.close();
-        output_fs_chr.close();
     }
     
     void GenerateCombinedFpTilingGenotype(string input_file, string output_file)
