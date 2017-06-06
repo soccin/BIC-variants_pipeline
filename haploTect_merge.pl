@@ -693,7 +693,8 @@ sub cleanUp{
         print "Removing: $fname \n";
         unlink($fname);
     }
-    @files = glob ("$output/exac.vcf $output/header.txt $output/maf_targets.* $output/TriNuc.txt $output/*mutect_calls* $output/blank $output/*Haplotype* $output/*maf2.txt* $output/ref $output/tmp $output/*basecounts.txt $output/$pre\_merge_maf0.txt");
+    @files = glob ("$output/exac.vcf $output/header.txt $output/maf_targets.* $output/TriNuc.txt $output/*mutect_calls* $output/blank $output/*Haplotype* $output/*maf2.txt* $output/ref $output/tmp $output/*basecounts.txt $output/$pre\_merge_maf0.txt $output/$pre\_mutect_SNPs.maf
+$output/$pre\_haplotect_RAW_INDEL.maf $output/$pre\_haplotect_BIC_INDELS.maf");
 
 
     for my $fname (@files) {
