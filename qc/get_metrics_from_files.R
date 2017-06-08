@@ -10,7 +10,7 @@ get.latest.qc.review <- function(proj.id){
   file = paste(projdir,"/Proj_",proj.id,"_QC_signoff.txt",sep="")
   dir.create(projdir,showWarnings=FALSE)
   if(!file.exists(file)){ return(NULL) }
-  qc.reviews = read.delim(file)
+  qc.reviews = read.delim(file,check.names=FALSE)
   lastDate = as.vector(qc.reviews$Date[length(qc.reviews$Date)])[1]
   lastReviewer = as.vector(qc.reviews$User[length(qc.reviews$User)])[1]
   lastReview = qc.reviews[which(qc.reviews$Date == lastDate),]
@@ -32,7 +32,7 @@ get.title <- function(path,type){
 
       file = paste(path,filename,sep="/")
       if(file.exists(file)){ 
-          title = read.delim(file)
+          title = read.delim(file,check.names=FALSE)
           return(title)
       }
       return(NULL)
@@ -64,7 +64,7 @@ get.is.metrics <- function(path,type){
     file = paste(path,filename,sep="/")
     if(!file.exists(file) || file.info(file)$size == 0){ return(NULL) }
 
-    is <- read.delim(file,header=T,sep="\t")
+    is <- read.delim(file,header=T,sep="\t",check.names=FALSE)
     ## normalize header
     colnames(is)[1] = "insert_size"    
     if(type == 'targeted'){
@@ -95,7 +95,7 @@ get.hs.metrics <- function(path,type){
     if(length(filename)==0) { return(NULL) }
     file = paste(path,filename,sep="/")
     if(!file.exists(file) || file.info(file)$size == 0){ return(NULL) }
-    hs = read.delim(file,header=T,sep="\t")
+    hs = read.delim(file,header=T,sep="\t",check.names=FALSE)
     return(hs)
 }
 
@@ -107,7 +107,7 @@ get.all.samples <- function(path,type){
     filename = dir(path)[grep("_sample_list.txt",dir(path))]
     file = paste(path,filename,sep="/")
     if(!file.exists(file) || file.info(file)$size == 0){ return(NULL) }
-    dat = as.vector(read.delim(file,header=F,sep="\t")[,1])
+    dat = as.vector(read.delim(file,header=F,sep="\t",check.names=FALSE)[,1])
     return(dat)
 }
 
@@ -117,7 +117,7 @@ get.md.metrics <- function(path,type){
     if(length(filename)==0) { return(NULL) }
     file = paste(path,filename,sep="/")
     if(!file.exists(file) || file.info(file)$size == 0){ return(NULL) }
-    dat <- read.delim(file)
+    dat <- read.delim(file,check.names=FALSE)
     # This normalizes the sample names and removes the last __1
     # which is the library number
     dat$LIBRARY = sub("__1$", "", dat$LIBRARY)
@@ -132,7 +132,7 @@ get.fpc.sum <- function(path,type){
         file = paste(path,filename,sep="/")
         if(!file.exists(file) || file.info(file)$size == 0){ return(NULL) }
         
-        dat = read.delim(file)
+        dat = read.delim(file,check.names=FALSE)
         rownames(dat) = dat[,1]
         dat = data.matrix(dat[,-1])
         return(dat)
@@ -165,7 +165,7 @@ get.unexpected.matches <- function(path,type){
 
         if(file.info(file)$size == 0){ return(data.frame()) }
 
-        match<-read.delim(file, header=F, comment.char="#")
+        match<-read.delim(file, header=F,check.names=FALSE,comment.char="#")
         match <- match[-grep("Normal_Pool",match[,1]),]
         match <- match[-grep("Normal_Pool",match[,2]),]
 
@@ -182,7 +182,7 @@ get.unexpected.matches <- function(path,type){
  
     if(file.info(file)$size == 0){ return(data.frame()) }
 
-    match<-read.delim(file, header=T, comment.char="#")
+    match<-read.delim(file, header=T,check.names=FALSE,comment.char="#")
     if(nrow(match)>0){
         ## ignore matches with pools
         pt <- title[title$Class == "PoolTumor",]["Sample_ID"]
@@ -214,7 +214,7 @@ get.unexpected.mismatches <- function(path,type){
  
         if(file.info(file)$size == 0){ return(data.frame()) }
 
-        mismatch<-read.delim(file, header=F, comment.char="#")
+        mismatch<-read.delim(file, header=F,check.names=FALSE,comment.char="#")
         mismatch <- mismatch[-grep("Normal_Pool",mismatch[,1]),]
         mismatch <- mismatch[-grep("Normal_Pool",mismatch[,2]),]
 
@@ -262,7 +262,7 @@ get.major.contamination <- function(path,type){
         file = paste(path,filename,sep="/")
         if(!file.exists(file) || file.info(file)$size == 0){ return(NULL) }
 
-        dat = read.delim(file)
+        dat = read.delim(file,check.names=FALSE)
         return(dat)
     }    
     title = get.title(path,type)
@@ -273,7 +273,7 @@ get.major.contamination <- function(path,type){
     file = paste(path,filename,sep="/")
     if(!file.exists(file) || file.info(file)$size == 0){ return(NULL) }
 
-    dat = read.delim(file)
+    dat = read.delim(file,check.names=FALSE)
     dat$Sample = paste(dat$Sample, title$Sample_ID, sep=": ")
 
     pt <- title[title$Class == "PoolTumor",]["Sample_ID"]
@@ -298,7 +298,7 @@ get.minor.contamination <- function(path,type){
         file = paste(path,filename,sep="/")
         if(!file.exists(file) || file.info(file)$size == 0){ return(NULL) }
 
-        dat = read.delim(file)
+        dat = read.delim(file,check.names=FALSE)
         return(dat)
     }
     title = get.title(path,type)
@@ -309,7 +309,7 @@ get.minor.contamination <- function(path,type){
     file = paste(path,filename,sep="/")
     if(!file.exists(file) || file.info(file)$size == 0){ return(NULL) }
 
-    dat = read.delim(file)
+    dat = read.delim(file,check.names=FALSE)
     dat$Sample = paste(dat$Sample, title$Sample_ID, sep=": ")
 
     pt <- title[title$Class == "PoolTumor",]["Sample_ID"]
@@ -342,13 +342,13 @@ get.base.qualities <- function(path,type){
     if(!file.exists(filePost) || file.info(filePost)$size == 0){ return(NULL) }
 
     ## get pre-recalibration data
-    qualPre = read.delim(filePre)[1:200,]
+    qualPre = read.delim(filePre,check.names=FALSE)[1:200,]
     samples = colnames(qualPre)[-1]
     colnames(qualPre) = c("cycle",samples)
     qualPre.m = melt(qualPre,id.vars="cycle")
     qualPre.m$type = "Pre-Recalibration"
     ## get post-recalibration data
-    qualPost = read.delim(filePost)[1:200,]
+    qualPost = read.delim(filePost,check.names=FALSE)[1:200,]
     colnames(qualPost) = c("cycle",samples)
     qualPost.m = melt(qualPost,id.vars="cycle")
     qualPost.m$type = "Post-Recalibration"
@@ -360,7 +360,7 @@ get.base.qualities <- function(path,type){
 }
 
 load.metrics.db <- function(){
-    paths = as.matrix(read.delim("allProjects.txt",header=F))
+    paths = as.matrix(read.delim("allProjects.txt",header=F,check.names=FALSE))
 
     projects = list()
     types = c('exome','targeted')   
@@ -403,7 +403,7 @@ get.coverage <- function(path,type){
     if(!file.exists(file) || file.info(file)$size == 0){ return(NULL) }
 
     title <- get.title(path,type)
-    coverage <- read.delim(file)
+    coverage <- read.delim(file,check.names=FALSE)
     var <- colnames(coverage)[2:ncol(coverage)]
     a <- colwise(median)(coverage[, c(3:ncol(coverage))])
     coverage <- melt(a)
@@ -489,7 +489,7 @@ get.trimmed.reads <- function(path,type){
         if(length(filename)==0) { return(NULL) }
         file = paste(path,filename,sep="/")
         if(!file.exists(file) || file.info(file)$size == 0){ return(NULL) }
-        stats <- read.delim(file)    
+        stats <- read.delim(file,check.names=FALSE)    
         reads <- data.frame(Samples = stats$Sample, Read1=stats$R1_PercentTrimmed, Read2=stats$R2_PercentTrimmed)
     }
     return(reads)    
@@ -502,7 +502,7 @@ get.pool.norm.genotype <- function(path,type){
     if(length(filename) == 0) { return(NULL) }
     file = paste(path,filename,sep="/")
     if(!file.exists(file) || file.info(file)$size == 0){ return(NULL) }
-    dat <- read.delim(file,header=T,sep="\t")    
+    dat <- read.delim(file,header=T,sep="\t",check.names=FALSE)    
     return(dat)
 }
 
@@ -514,7 +514,7 @@ get.cdna.contamination <- function(path,type){
     if(length(filename) == 0) { return(NULL) }
     file = paste(path,filename,sep="/")
     if(!file.exists(file) || file.info(file)$size == 0){ return(NULL) }
-    d <- read.delim(file,header=T,sep="\t")
+    d <- read.delim(file,header=T,sep="\t",check.names=FALSE)
     htmp.dat = NULL
     if(nrow(d)>0){
         all.samples = get.all.samples(path,type)
@@ -555,7 +555,7 @@ get.gc.bias <- function(path,type){
     if(length(filename) == 0) { return(NULL) }
     file = paste(path,filename,sep="/")
     if(!file.exists(file) || file.info(file)$size == 0){ return(NULL) }
-    dat <- read.delim(file,header=T,sep="\t")
+    dat <- read.delim(file,header=T,sep="\t",check.names=FALSE)
     if(type == "targeted"){
         colnames(dat) = c("X",paste(title$Barcode,title$Sample_ID, sep=": "))
     } else {
