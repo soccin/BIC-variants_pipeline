@@ -405,8 +405,11 @@ foreach my $line (@pair_lines) {
     }
     ## run vcf2maf
     if($force_run || !-e "$progress/" . basename("$hc_vcf") . "_$tumor\_$normal\_vcf2maf.done"){
-        $force_run = 1;
-        &run_vcf_2_maf("$split_vcf_prefix\_vars.vcf", $split_vcf_prefix . ".maf", $tumor, $normal,  basename("$hc_vcf") . "_$tumor\_$normal\_vcf2maf");
+        my $tail = `tail -n 1 $split_vcf_prefix\_vars.vcf`;
+        if($tail !~ /^#CHROM/){ ## check that the vcf actually contains variants   
+          $force_run = 1;
+          &run_vcf_2_maf("$split_vcf_prefix\_vars.vcf", $split_vcf_prefix . ".maf", $tumor, $normal,  basename("$hc_vcf") . "_$tumor\_$normal\_vcf2maf");
+        }
     }
 
     # TODO: Instead of just assuming the correct column is $10, find it first, then use it
@@ -414,16 +417,23 @@ foreach my $line (@pair_lines) {
     # should this be in the regular folder, or in the tmp folder
     my $indel_maf = $split_vcf_prefix . "_indel_MAF.txt";
     if($force_run || !-e "$progress/" . basename("$split_vcf_prefix") . "_combine_MAF.done"){
-        $force_run = 1;
-         print "grep -e ^# -e ^Hugo_Symbol $split_vcf_prefix\.maf > $indel_maf\n";
+        my $tail = `tail -n 1 $split_vcf_prefix\_vars.vcf`;
+        if($tail !~ /^#CHROM/){ ## check that the vcf actually contains variants
+          $force_run = 1;
+          print "grep -e ^# -e ^Hugo_Symbol $split_vcf_prefix\.maf > $indel_maf\n";
          `grep -e ^# -e ^Hugo_Symbol $split_vcf_prefix\.maf > $indel_maf`;
          `awk 'BEGIN{FS="\t"} \$10=="INS" || \$10=="DEL" ' $split_vcf_prefix\.maf >> $indel_maf `;
          
          &checkResult($?, $progress,  basename("$split_vcf_prefix") . "_combine_MAF");
-           
+        }   
     }
-    push(@indv_mafs, $indel_maf); 
-        
+
+    my $tail = `tail -n 1 $split_vcf_prefix\_vars.vcf`;
+    if($tail !~ /^#CHROM/){ ## check that the vcf actually contains variants
+      push(@indv_mafs, $indel_maf); 
+    }      
+
+  
     ###
     ### MUTECT PART
     ###
