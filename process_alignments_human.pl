@@ -563,7 +563,8 @@ while(<IN>){
     my @pair = split(/,/, $gpair[1]);
     my @pins = ();
     foreach my $pai (@pair){
-	my @sn = split(/\//, $pai);
+        my @sp = split(/intFiles\//, $pai);
+	my @sn = split(/\//, $sp[1]);
 	if($inputFiles{$pai}){
 	    ### IN CASE A FILE SHOWS UP MULTIPLE TIMES DUE TO BEING IN MULTIPLE COMPARISONS AND WASN'T COLLAPSED e.g. MET ANALYSIS
 	    ### THIS MAKES SURE THAT A FILE ISN'T INCLUDED MULTIPLE TIMES IN PROCESSING
@@ -573,7 +574,7 @@ while(<IN>){
 	$inputFiles{$pai} = 1;
 
         ## store final bams for post-recalibration stats
-        my $samp = $sn[-3];
+        my $samp = $sn[0];
         push @finalBams, "$output/alignments/$pre\_indelRealigned_recal_$samp.bam"; 
     }
 

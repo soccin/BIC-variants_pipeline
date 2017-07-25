@@ -300,14 +300,15 @@ while(<IN>){
     my @pair = split(/,/, $gpair[1]);
     my @pins = ();
     foreach my $pai (@pair){
-	my @sn = split(/\//, $pai);
+        my @sp = split(/intFiles\//, $pai);
+        my @sn = split(/\//, $sp[1]);
 	if($inputFiles{$pai}){
 	    next;
 	}
 	push @pins, "-I $pai";
 	$inputFiles{$pai} = 1;
         
-        my $samp = $sn[-3];
+        my $samp = $sn[0];
         push @finalBams, "$output/alignments/$pre\_indelRealigned_recal_$samp.bam";
     }
 
