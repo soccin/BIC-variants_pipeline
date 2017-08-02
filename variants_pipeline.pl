@@ -529,7 +529,7 @@ sub verifyConfig{
 	    }
             $GATK = $conf[1];
 	}
-	elsif($conf[0] =~ /mutect/i){
+	elsif($conf[0] =~ /^mutect$/i){
 	    if(!-e "$conf[1]/muTect.jar"){
 		die "CAN'T FIND muTect.jar IN $conf[1] $!";
 	    }
@@ -602,7 +602,7 @@ sub verifyConfig{
 	    my $path_tmp = $ENV{'PATH'};
 	    $ENV{'PATH'} = "$conf[1]:$path_tmp";
 	}
-	elsif($conf[0] =~ /java/i){
+	elsif($conf[0] =~ /^java$/i){
 	    if(!-e "$conf[1]/java"){
 		die "CAN'T FIND java IN $conf[1] $!";
 	    }

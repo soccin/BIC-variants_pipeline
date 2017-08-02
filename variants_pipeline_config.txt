@@ -1,4 +1,4 @@
-ABRA			/opt/common/CentOS_6/abra/abra-0.92
+ABRA			/opt/common/CentOS_6/abra2/abra2-2.07
 BCFTOOLS		/opt/common/CentOS_6/bcftools/bcftools-1.2/bin
 BEDTOOLS		/opt/common/CentOS_6/bedtools/bedtools-2.22.0/bin
 BWA			/opt/common/CentOS_6/bwa/bwa-0.7.12
@@ -9,7 +9,8 @@ FACETS_SUITE				/opt/common/CentOS_6/facets-suite/facets-suite-1.0.1
 FACETS_LIB				/opt/common/CentOS_6/facets_lib/facets-0.3.30
 FIXMULTIINDEL		/opt/common/CentOS_6/FixMultiInDel/FixMultiInDel-2.0.1
 GATK			/opt/common/CentOS_6/gatk/GenomeAnalysisTK-3.4-0-g7e26428
-JAVA			/opt/common/CentOS_6/java/jdk1.7.0_75/bin
+JAVA			/opt/common/CentOS_6/java/jdk1.8.0_31/bin
+JAVA7_MUTECT            /opt/common/CentOS_6/java/jdk1.7.0_75/bin
 MCR			/opt/common/CentOS_6/matlab/v81
 MUTECT			/opt/common/CentOS_6/muTect/muTect-1.1.7
 PERL			/opt/common/CentOS_6/perl/perl-5.22.0/bin

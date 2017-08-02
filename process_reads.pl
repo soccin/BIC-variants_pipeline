@@ -116,7 +116,7 @@ while(<CONFIG>){
 	}
 	$PICARD = $conf[1];
     }
-    elsif($conf[0] =~ /java/i){
+    elsif($conf[0] =~ /^java$/i){
 	if(!-e "$conf[1]/java"){
 	    die "CAN'T FIND java IN $conf[1] $!";
 	}

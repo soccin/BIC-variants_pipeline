@@ -126,6 +126,7 @@ my $STRELKA = '';
 my $SCALPEL = '';
 my $VIRMID = '';
 my $JAVA = '';
+my $JAVA7_MUTECT = '';
 my $FACETS_LIB = '';
 my $FACETS_SUITE = '';
 my $BCFTOOLS= '';
@@ -186,7 +187,7 @@ while(<CONFIG>){
 	}
 	$GATK = $conf[1];
     }
-    elsif($conf[0] =~ /mutect/i){
+    elsif($conf[0] =~ /^mutect$/i){
 	if(!-e "$conf[1]/muTect.jar"){
 	    die "CAN'T FIND muTect.jar IN $conf[1] $!";
 	}
@@ -246,13 +247,19 @@ while(<CONFIG>){
 	}
 	$VIRMID = $conf[1];
     }
-    elsif($conf[0] =~ /java/i){
+    elsif($conf[0] =~ /^java$/i){
 	if(!-e "$conf[1]/java"){
 	    die "CAN'T FIND java IN $conf[1] $!";
 	}
 	$JAVA = $conf[1];
 	my $path_tmp = $ENV{'PATH'};
 	$ENV{'PATH'} = "$conf[1]:$path_tmp";
+    }
+    elsif($conf[0] =~ /^java7_mutect$/i){
+        if(!-e "$conf[1]/java"){
+            die "CAN'T FIND java IN $conf[1] $!";
+        }
+        $JAVA7_MUTECT = $conf[1];
     }
     elsif($conf[0] =~ /perl/i){
 	if(!-e "$conf[1]/perl"){
@@ -1113,7 +1120,7 @@ if($pair){
 	    sleep(2);
 	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$data[0]\_$data[1]\_MUTECT", job_hold => "$ssfj", cpu => "2", mem => "4", cluster_out => "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_MUTECT.log");
 	    my $standardParams = Schedule::queuing(%stdParams);
-	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xmx4g -Djava.io.tmpdir=$tempdir -jar $MUTECT/muTect.jar --analysis_type MuTect --reference_sequence $REF_SEQ --dbsnp $DB_SNP --cosmic $COSMIC --input_file:normal $output/alignments/$pre\_indelRealigned_recal\_$data[0]\.bam --input_file:tumor $output/alignments/$pre\_indelRealigned_recal\_$data[1]\.bam --vcf $output/variants/snpsIndels/mutect/$pre\_$data[0]\_$data[1]\_mutect_calls.vcf --out $output/variants/snpsIndels/mutect/$pre\_$data[0]\_$data[1]\_mutect_calls.txt -rf BadCigar --enable_extended_output --downsampling_type NONE`;
+	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA7_MUTECT/java -Xmx4g -Djava.io.tmpdir=$tempdir -jar $MUTECT/muTect.jar --analysis_type MuTect --reference_sequence $REF_SEQ --dbsnp $DB_SNP --cosmic $COSMIC --input_file:normal $output/alignments/$pre\_indelRealigned_recal\_$data[0]\.bam --input_file:tumor $output/alignments/$pre\_indelRealigned_recal\_$data[1]\.bam --vcf $output/variants/snpsIndels/mutect/$pre\_$data[0]\_$data[1]\_mutect_calls.vcf --out $output/variants/snpsIndels/mutect/$pre\_$data[0]\_$data[1]\_mutect_calls.txt -rf BadCigar --enable_extended_output --downsampling_type NONE`;
 	    `/bin/touch $output/progress/$pre\_$uID\_$data[0]\_$data[1]\_MUTECT.done`;
 	    $mutectj = "$pre\_$uID\_$data[0]\_$data[1]\_MUTECT";
 	    push @mu_jids, "$pre\_$uID\_$data[0]\_$data[1]\_MUTECT";
