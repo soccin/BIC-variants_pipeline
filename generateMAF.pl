@@ -152,6 +152,9 @@ while(<CONFIG>){
         if(!-e "$conf[1]/variant_effect_predictor.pl"){
             die "CAN'T FIND VEP IN $conf[1] $!";
         }
+        if(!-e "$conf[1]/Plugins/UpDownstream.pm"){
+            die "VEP missing UpDownstream Plugin!";
+        }
         $VEP = $conf[1];
     }
     elsif($conf[0] =~/vcf2maf/i){
@@ -275,7 +278,7 @@ my @indv_mafs;
 #Haplotype caller
 if($caller =~ /unifiedgenotyper|ug|haplotypecaller|hc/i){
     ## step zero. Fix multi Indels:
-    print "$FIXMULTIINDEL/fixMultiInDel.sh -a $vcf $vcf\_split.vcf";
+    print "$FIXMULTIINDEL/fixMultiInDel.sh -a $vcf $vcf\_split.vcf\n";
     `$FIXMULTIINDEL/fixMultiInDel.sh -a $vcf $vcf\_split.vcf`;
 
 
@@ -283,7 +286,7 @@ if($caller =~ /unifiedgenotyper|ug|haplotypecaller|hc/i){
     if($force_run || !-e "$progress/" . basename("$vcf") . "_add_REF.done"){
         $force_run = 1;
         my $outVCF = "$vcf\_REF.vcf";
-        print "$PERL/perl $Bin/maf/add_ref_sample_to_vcf.pl -in_vcf $vcf\_split.vcf -out $outVCF -species $species\n";
+        print "$PERL/perl $Bin/maf/add_ref_sample_to_vcf.pl -in_vcf $vcf\_split.vcf -out $outVCF -species $species\n ";
         `$PERL/perl $Bin/maf/add_ref_sample_to_vcf.pl -in_vcf $vcf\_split.vcf -out $outVCF -species $species`;
         &checkResult($?, $progress, basename("$vcf") . "_add_REF");
     }
@@ -416,7 +419,7 @@ if($caller =~ /unifiedgenotyper|ug|haplotypecaller|hc/i){
             $somaticPart = "-s";
         }
         
-        print "$PYTHON/python $Bin/maf/pA_qFiltersHC.py -m $raw_maf $somaticPart -c $caller -o $vcf\_BIC.maf";
+        print "$PYTHON/python $Bin/maf/pA_qFiltersHC.py -m $raw_maf $somaticPart -c $caller -o $vcf\_BIC.maf\n";
         `$PYTHON/python $Bin/maf/pA_qFiltersHC.py -m $raw_maf $somaticPart -c $caller -o $vcf\_BIC.maf`;
         &checkResult($?, $progress, basename("$vcf") . "_pA_qFiltersHC");
     }
@@ -454,7 +457,7 @@ if($force_run || !-e "$progress/" . basename("$vcf") . "_TCGA_MAF.done"){
 
 if($force_run || !-e "$progress/" . basename("$vcf") . "_pA_resortCols.done"){
     $force_run = 1;
-    print "creating MAF for cbio portal submission";
+    print "creating MAF for cbio portal submission\n";
     print "$PYTHON/python $Bin/maf/pA_reSortCols.py -i $vcf\_BIC.maf -f $Bin/maf/finalCols_PORTAL.txt -o $vcf\_$somatic\_TCGA_PORTAL_MAF.txt\n\n";
     `$PYTHON/python $Bin/maf/pA_reSortCols.py -i $vcf\_BIC.maf  -f $Bin/maf/finalCols_PORTAL.txt -o $vcf\_$somatic\_TCGA_PORTAL_MAF.txt`;
     &checkResult($?, $progress, basename("$vcf") . "_pA_resortCols");
@@ -584,8 +587,8 @@ sub run_vcf_2_maf{
     }
     
     print "\n#######\n#######\nStarting VEP. \n";
-    print "$PERL/perl $VCF2MAF/vcf2maf.pl --input-vcf $in_vcf --species $VEP_SPECIES --output-maf $out_maf --ref-fasta $output/ref_$somatic/$ref_base --tmp-dir $output/tmp_$somatic/ --ncbi $NCBI_BUILD --vep-forks 4 --vep-path $VEP --vep-data $VEP $addOptions --tumor-id $tumor --normal-id $normal \n";
-    `$PERL/perl $VCF2MAF/vcf2maf.pl --input-vcf $in_vcf --species $VEP_SPECIES --output-maf $out_maf --ref-fasta $output/ref_$somatic/$ref_base --tmp-dir $output/tmp_$somatic/ --ncbi $NCBI_BUILD --vep-forks 4 --vep-path $VEP --vep-data $VEP $addOptions --tumor-id $tumor --normal-id $normal`;
+    print "$PERL/perl $VCF2MAF/vcf2maf.pl --input-vcf $in_vcf --species $VEP_SPECIES --output-maf $out_maf --ref-fasta $output/ref_$somatic/$ref_base --tmp-dir $output/tmp_$somatic/ --ncbi $NCBI_BUILD --vep-forks 4 --vep-path $VEP --vep-data $VEP $addOptions --tumor-id $tumor --normal-id $normal --updown-length 10 \n";
+    `$PERL/perl $VCF2MAF/vcf2maf.pl --input-vcf $in_vcf --species $VEP_SPECIES --output-maf $out_maf --ref-fasta $output/ref_$somatic/$ref_base --tmp-dir $output/tmp_$somatic/ --ncbi $NCBI_BUILD --vep-forks 4 --vep-path $VEP --vep-data $VEP $addOptions --tumor-id $tumor --normal-id $normal --updown-length 10`;
 
     &checkResult($?, $progress, $doneFile, $out_maf);
 }

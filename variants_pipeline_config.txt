@@ -23,7 +23,7 @@ SOMATICSNIPER		/opt/common/CentOS_6/somaticsniper/somatic-sniper-1.0.4
 STRELKA			/opt/common/CentOS_6/strelka/strelka_1.0.11
 TABIX			/opt/common/CentOS_6/samtools/samtools-1.2/htslib-1.2.1
 VARSCAN			/opt/common/CentOS_6/varscan/v2.3.7
-VCF2MAF			/opt/common/CentOS_6/vcf2maf/v1.6.11
+VCF2MAF			/ifs/work/zeng/other/vep_updownstream/vcf2maf_v1.6.11_mod
 VCFTOOLS		/opt/common/CentOS_6-dev/vcftools/v0.1.14/bin
 VEP                     /opt/common/CentOS_6/vep/v86
 VIRMID			/opt/common/CentOS_6/virmid/Virmid-1.1.1
