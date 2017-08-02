@@ -256,6 +256,9 @@ while(<CONFIG>){
         if(!-e "$conf[1]/variant_effect_predictor.pl"){
             die "CAN'T FIND VEP IN $conf[1] $!";
         }
+        if(!-e "$conf[1]/Plugins/UpDownstream.pm"){
+            die "VEP missing UpDownstream Plugin!";
+        }
         $VEP = $conf[1];
     } elsif($conf[0] =~/vcf2maf/i){
         if(!-e "$conf[1]/vcf2maf.pl"){
@@ -740,8 +743,8 @@ sub run_vcf_2_maf{
     }
     
     print "\n#######\n#######\nStarting VEP. \n";
-    print "$PERL/perl $VCF2MAF/vcf2maf.pl --input-vcf $in_vcf --output-maf $out_maf --ref-fasta $output/ref/$ref_base --tmp-dir $output/tmp/ --ncbi $ncbi --vep-forks 4 --vep-path $VEP --vep-data $VEP $addOptions --tumor-id $tumor --normal-id $normal \n";
-    `$PERL/perl $VCF2MAF/vcf2maf.pl --input-vcf $in_vcf --output-maf $out_maf --ref-fasta $output/ref/$ref_base --tmp-dir $output/tmp/ --ncbi $ncbi --vep-forks 4 --vep-path $VEP --vep-data $VEP $addOptions --tumor-id $tumor --normal-id $normal`;
+    print "$PERL/perl $VCF2MAF/vcf2maf.pl --input-vcf $in_vcf --output-maf $out_maf --ref-fasta $output/ref/$ref_base --tmp-dir $output/tmp/ --ncbi $ncbi --vep-forks 4 --vep-path $VEP --vep-data $VEP $addOptions --tumor-id $tumor --normal-id $normal --updown-length 10 \n";
+    `$PERL/perl $VCF2MAF/vcf2maf.pl --input-vcf $in_vcf --output-maf $out_maf --ref-fasta $output/ref/$ref_base --tmp-dir $output/tmp/ --ncbi $ncbi --vep-forks 4 --vep-path $VEP --vep-data $VEP $addOptions --tumor-id $tumor --normal-id $normal --updown-length 10`;
 
     &checkResult($?, $progress, $doneFile, $out_maf);
 }
