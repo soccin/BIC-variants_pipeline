@@ -121,14 +121,14 @@ GetOptions ('map=s' => \$map,
  	    'tempdir=s' => \$tempdir,
             'request=s' => \$request) or exit(1);
 
-if(!$map || !$species || !$config || !$scheduler || !$targets || $help){
+if(!$map || !$species || !$config || !$scheduler || $help){
     print <<HELP;
 
     USAGE: variants_pipeline.pl -wes -config CONFIG -species SPECIES -scheduler SCHEDULER -targets TARGETS
 	* MAP: file listing sample information for processing (REQUIRED)
 	* GROUP: file listing grouping of samples for realign/recal steps (REQUIRED, unless using -mdOnly flag)
 	* SPECIES: b37 (default: human), mm9, mm10 (default: mouse), hybrid (b37+mm10), mm10_custom, species_custom and dm3 currently supported (REQUIRED)
-	* TARGETS: name of targets assay; will search for targets/baits ilists and targets padded file in $Bin/targets/TARGETS unless given full path to targets directory (REQUIRED)
+	* TARGETS: name of targets assay; will search for targets/baits ilists and targets padded file in $Bin/targets/TARGETS unless given full path to targets directory; required for non-chipseq projects
 	* CONFIG: file listing paths to programs needed for pipeline; full path to config file needed (REQUIRED)
         * REQUEST: file containing request information such as PI, investigator, etc. (REQUIRED)
 	* SCHEDULER: currently support for SGE and LSF (REQUIRED)
@@ -231,6 +231,12 @@ if($abra && $indelrealigner){
 }
 elsif(!$abra && !$indelrealigner){
     $abra = 1;
+}
+
+if(!$targets){
+    if(!$chip){
+	die "NON-CHIPSEQ runs require a target file $!"
+    }
 }
 
 if(!-d $output){
