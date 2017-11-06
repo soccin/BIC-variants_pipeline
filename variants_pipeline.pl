@@ -124,7 +124,7 @@ GetOptions ('map=s' => \$map,
 if(!$map || !$species || !$config || !$scheduler || $help){
     print <<HELP;
 
-    USAGE: variants_pipeline.pl -wes -config CONFIG -species SPECIES -scheduler SCHEDULER -targets TARGETS
+    USAGE: variants_pipeline.pl -wes -config CONFIG -species SPECIES -scheduler SCHEDULER
 	* MAP: file listing sample information for processing (REQUIRED)
 	* GROUP: file listing grouping of samples for realign/recal steps (REQUIRED, unless using -mdOnly flag)
 	* SPECIES: b37 (default: human), mm9, mm10 (default: mouse), hybrid (b37+mm10), mm10_custom, species_custom and dm3 currently supported (REQUIRED)
@@ -1086,7 +1086,9 @@ sub processInputs {
     }
     
     if(!-e $targets_ilist || !-e $baits_ilist || !-e $targets_bed_padded){
-	die "directory $targets OR $Bin/targets/$targets MUST CONTAIN THE FOLLOWING FILES: $targets\_targets.ilist; $targets\_baits.ilist; $targets\_targets_plus5bp.bed $!";	
+	if(!$chip){
+	    die "directory $targets OR $Bin/targets/$targets MUST CONTAIN THE FOLLOWING FILES: $targets\_targets.ilist; $targets\_baits.ilist; $targets\_targets_plus5bp.bed $!";
+	}	
     }
 }
 
