@@ -477,8 +477,8 @@ foreach my $line (@pair_lines) {
         if($filter_index eq ""){
             die "Cannot find FILTER column in maf $output/tmp/$vcf\_mutect.maf $!";
         }
-        ` awk 'BEGIN{FS="\t"} \$$filter_index == "PASS" || \$$filter_index == "RESCUE" ' $output/tmp/$vcf\_mutect.maf >> $passing_maf\_temp `;
-        ` awk 'BEGIN{FS="\t"} {if(\$$filter_index == "FILTER") { print \$0"\tCaller" } else if (\$$filter_index == "RESCUE") {print \$0"\tmutect.Rescue"} else if(\$$filter_index == "PASS") {print \$0"\tmutect"} else {print \$0}} ' $passing_maf\_temp > $passing_maf`;
+        ` awk 'BEGIN{FS="\t"} \$$filter_index !~ /FILTER/ && \$$filter_index !~ /REJECT/ ' $output/tmp/$vcf\_mutect.maf >> $passing_maf\_temp `;
+        ` awk 'BEGIN{FS="\t"} {if(\$$filter_index ~ /FILTER/) { print \$0"\tCaller" } else if (\$$filter_index ~ /RESCUE/) {print \$0"\tmutect.Rescue"} else if(\$$filter_index ~ /PASS/ || \$$filter_index == "common_variant") {print \$0"\tmutect"} else {print \$0}} ' $passing_maf\_temp > $passing_maf`;
     	&checkResult($?, $progress,  "$vcf\_$tumor\_$normal\_mutect_rm_failed");
     }
     push(@mutect_mafs, $passing_maf);
