@@ -487,11 +487,14 @@ my $targets_bed_padded = "$Bin/targets/$targets/$targets\_targets_plus5bp.bed";
 my $target_design = "$Bin/targets/$targets/$targets\__DESIGN.berger";
 ### std normals prefix; $targets\_norms_title.txt and $targets\_norms\_ALL_intervalnomapqcoverage_loess.txt required
 my $target_std_normals = "$Bin/targets/$targets/StdNormals/$targets\_norms";
+my $targets_facet = "$Bin/targets/$targets/$targets\_targets_FACETS.ilist";
+
 if(-d $targets){
     my @path = split(/\//, $targets);
     my $assay = pop @path;
     $targets_bed_padded = "$targets/$assay\_targets_plus5bp.bed";
     $target_design = "$targets/$assay\__DESIGN.berger";
+    $targets_facet = "$targets/$assay\_targets_FACETS.ilist";
     if($abra){
         $target_std_normals = "$targets/StdNormals/$assay\_abra_norms";
     }
@@ -500,8 +503,8 @@ if(-d $targets){
     }
 }
 
-if(!-e "$targets_bed_padded"){
-    die "CAN'T LOCATE $targets_bed_padded FOR $targets; REQUIRED FOR SCALPEL $!";
+if(!-e "$targets_bed_padded" || !-e "$targets_facet"){
+    die "CAN'T LOCATE $targets_bed_padded or $targets_facet FOR $targets; REQUIRED FOR SCALPEL or FACETS respectively $!";
 }
 
 my $multipleTargets = '';
@@ -1373,7 +1376,7 @@ if($pair){
         }
         my $facets_js = join(",", @facets_jid);
 	
-        my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_merge_facets_seg",  cpu => "1", mem => "1", job_hold => "$facets_js", cluster_out => "$output/progress/$pre\_$uID\_merge_facets_seg.log");
+        my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_merge_facets_seg", cpu => "1", mem => "1", job_hold => "$facets_js", cluster_out => "$output/progress/$pre\_$uID\_merge_facets_seg.log");
         my $standardParams = Schedule::queuing(%stdParams);
         my %addParams = (scheduler => "$scheduler", runtime => "1", priority_project=> "$priority_project", priority_group=> "$priority_group", queues => "lau.q,lcg.q,nce.q", rerun => "1", iounits => "0");
         my $additionalParams = Schedule::additionalParams(%addParams);
@@ -1382,6 +1385,34 @@ if($pair){
         `/bin/touch $output/progress/$pre\_$uID\_merge_facets_seg.done`;
         $facets_haplotect_jid = "$pre\_$uID\_merge_facets_seg";
         $facets_run = 1;
+    }
+
+    ### create cna file for portal upload
+    my $facets_geneLevel_jid = '';
+    my $ran_fgl = 0;
+    if($hasPair && (! -e "$output/progress/$pre\_$uID\_facets_genelevel.done" || $facets_run)){
+        my $facets_js = join(",", @facets_jid);
+	
+        my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_facets_genelevel", cpu => "1", mem => "1", job_hold => "$facets_js", cluster_out => "$output/progress/$pre\_$uID\_facets_genelevel.log");
+        my $standardParams = Schedule::queuing(%stdParams);
+        my %addParams = (scheduler => "$scheduler", runtime => "1", priority_project=> "$priority_project", priority_group=> "$priority_group", queues => "lau.q,lcg.q,nce.q", rerun => "1", iounits => "1");
+        my $additionalParams = Schedule::additionalParams(%addParams);
+        `$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{job_hold} $standardParams->{cluster_out} $additionalParams $FACETS_SUITE/facets geneLevel $output/variants/copyNumber/facets/*/*_hisens.cncf.txt -t $targets_facet -o $output/intFiles/$pre\___HISENS_GeneCalls_v2.txt`;
+	
+        `/bin/touch $output/progress/$pre\_$uID\_facets_genelevel.done`;
+        $facets_geneLevel_jid = "$pre\_$uID\_facets_genelevel";
+        $ran_fgl = 1;
+    }
+
+    if($hasPair && (! -e "$output/progress/$pre\_$uID\_facets_split_gene.done" || $ran_fgl)){	
+        my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_facets_genelevel", cpu => "1", mem => "1", job_hold => "$facets_geneLevel_jid", cluster_out => "$output/progress/$pre\_$uID\_facets_split_gene.log");
+        my $standardParams = Schedule::queuing(%stdParams);
+        my %addParams = (scheduler => "$scheduler", runtime => "1", priority_project=> "$priority_project", priority_group=> "$priority_group", queues => "lau.q,lcg.q,nce.q", rerun => "1", iounits => "1");
+        my $additionalParams = Schedule::additionalParams(%addParams);
+        `$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{job_hold} $standardParams->{cluster_out} $additionalParams $PYTHON/python $Bin/facets/split_gene_file.py -g $output/intFiles/$pre\___HISENS_GeneCalls_v2.txt -p $pair -d $output/variants/copyNumber/facets/`;
+	
+        `/bin/touch $output/progress/$pre\_$uID\_facets_split_gene.done`;
+        push @all_jids, "$pre\_$uID\_facets_genelevel";
     }
 
     if($hasPair && (!-e "$output/progress/$pre\_$uID\_HAPLOTECT.done" || $ran_mutect_glob || $ran_ar_indel_hc)){

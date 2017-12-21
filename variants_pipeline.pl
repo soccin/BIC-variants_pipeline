@@ -191,6 +191,7 @@ my $DM3_FASTA = '';
 my $targets_ilist = "$Bin/targets/$targets/$targets\_targets.ilist";
 my $baits_ilist = "$Bin/targets/$targets/$targets\_baits.ilist";
 my $targets_bed_padded = "$Bin/targets/$targets/$targets\_targets_plus5bp.bed";
+my $targets_facet = "$Bin/targets/$targets/$targets\_targets_FACETS.ilist";
 my $assay = $targets;
 if(-d $targets){
     my @path = split(/\//, $targets);
@@ -199,6 +200,7 @@ if(-d $targets){
     $targets_ilist = "$targets/$assay\_targets.ilist";
     $baits_ilist = "$targets/$assay\_baits.ilist";
     $targets_bed_padded = "$targets/$assay\_targets_plus5bp.bed";
+    $targets_facet = "$targets/$assay\_targets_FACETS.ilist";
 }
 
 my %grouping = ();
@@ -1090,6 +1092,15 @@ sub processInputs {
 	    die "directory $targets OR $Bin/targets/$targets MUST CONTAIN THE FOLLOWING FILES: $targets\_targets.ilist; $targets\_baits.ilist; $targets\_targets_plus5bp.bed $!";
 	}	
     }
+
+    if($species =~ /b37|hg19|hybrid|xenograft/i){
+	if(!-e "$targets_facet"){
+	    if(!$chip){
+		die "directory $targets OR $Bin/targets/$targets MUST CONTAIN THE FOLLOWING FILES FOR FACETS TO RUN: $targets\_targets_FACETS.ilist $!";
+	    }	
+	}
+    }
+
 }
 
 
