@@ -1397,7 +1397,7 @@ if($pair){
         my $standardParams = Schedule::queuing(%stdParams);
         my %addParams = (scheduler => "$scheduler", runtime => "1", priority_project=> "$priority_project", priority_group=> "$priority_group", queues => "lau.q,lcg.q,nce.q", rerun => "1", iounits => "1");
         my $additionalParams = Schedule::additionalParams(%addParams);
-        `$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{job_hold} $standardParams->{cluster_out} $additionalParams $FACETS_SUITE/facets geneLevel $output/variants/copyNumber/facets/*/*_hisens.cncf.txt -t $targets_facet -o $output/intFiles/$pre\___HISENS_GeneCalls_v2.txt`;
+        `$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{job_hold} $standardParams->{cluster_out} $additionalParams $FACETS_SUITE/facets geneLevel -f $output/variants/copyNumber/facets/*/*_hisens.cncf.txt -t $targets_facet -o $output/intFiles/$pre\___HISENS_GeneCalls_v2.txt`;
 	
         `/bin/touch $output/progress/$pre\_$uID\_facets_genelevel.done`;
         $facets_geneLevel_jid = "$pre\_$uID\_facets_genelevel";
@@ -1405,14 +1405,14 @@ if($pair){
     }
 
     if($hasPair && (! -e "$output/progress/$pre\_$uID\_facets_split_gene.done" || $ran_fgl)){	
-        my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_facets_genelevel", cpu => "1", mem => "1", job_hold => "$facets_geneLevel_jid", cluster_out => "$output/progress/$pre\_$uID\_facets_split_gene.log");
+        my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_facets_split_gene", cpu => "1", mem => "1", job_hold => "$facets_geneLevel_jid", cluster_out => "$output/progress/$pre\_$uID\_facets_split_gene.log");
         my $standardParams = Schedule::queuing(%stdParams);
         my %addParams = (scheduler => "$scheduler", runtime => "1", priority_project=> "$priority_project", priority_group=> "$priority_group", queues => "lau.q,lcg.q,nce.q", rerun => "1", iounits => "1");
         my $additionalParams = Schedule::additionalParams(%addParams);
         `$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{job_hold} $standardParams->{cluster_out} $additionalParams $PYTHON/python $Bin/facets/split_gene_file.py -g $output/intFiles/$pre\___HISENS_GeneCalls_v2.txt -p $pair -d $output/variants/copyNumber/facets/`;
 	
         `/bin/touch $output/progress/$pre\_$uID\_facets_split_gene.done`;
-        push @all_jids, "$pre\_$uID\_facets_genelevel";
+        push @all_jids, "$pre\_$uID\_facets_split_gene";
     }
 
     if($hasPair && (!-e "$output/progress/$pre\_$uID\_HAPLOTECT.done" || $ran_mutect_glob || $ran_ar_indel_hc)){
