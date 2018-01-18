@@ -127,6 +127,7 @@ my $SCALPEL = '';
 my $VIRMID = '';
 my $JAVA = '';
 my $JAVA7_MUTECT = '';
+my $HTSTOOLS = '';
 my $FACETS_LIB = '';
 my $FACETS_SUITE = '';
 my $BCFTOOLS= '';
@@ -168,6 +169,12 @@ while(<CONFIG>){
             die "CAN'T FIND bcftools IN $conf[1] $!";
         }
         $BCFTOOLS = $conf[1];
+    }
+    elsif($conf[0] =~ /htstools/i){
+        if(!-e "$conf[1]/snp-pileup"){
+            die "CAN'T FIND htstools IN $conf[1] $!";
+        }
+        $HTSTOOLS = $conf[1];
     }
     elsif($conf[0] =~ /facets_suite/i){
         if(!-e "$conf[1]/facets"){
@@ -1313,52 +1320,48 @@ if($pair){
 
 
         ## Here we will add the facets scripts
-        ## These are the #'s Nick uses
-        my $MINCOV=0;
-        my $BASEQ=20;
-        my $MAPQ=15;
-	
         ## Set up tumor and normal counts
-	if(!-d "$output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets"){
-	    mkdir("$output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets", 0775) or die "Can't make $output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets";
-	}
-	if(!-d "$output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets/tmp"){
-	    mkdir("$output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets/tmp", 0775) or die "Can't make $output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets/tmp";
-	}
         my $facetsSETUP_jid = '';
         my $facets_setup = 0;
         if($hasPair && (! -e "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_facets_SETUP.done" || $ssfj )) {
-            my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$data[0]\_$data[1]\_facets_SETUP_T",  cpu => "4", mem => "5", job_hold => "$ssfj", cluster_out => "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_facets_SETUP_T.log");
+            if(-d "$output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets"){
+                `/bin/rm -rf -d "$output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets"`;
+            }
+            mkdir("$output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets", 0775) or die "Can't make $output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets";
+            mkdir("$output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets/tmp", 0775) or die "Can't make $output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets/tmp";
+
+            %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$data[0]\_$data[1]\_facets_SETUP",  cpu => "4", mem => "4", job_hold => "$ssfj", cluster_out => "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_facets_SETUP.log");
             my $standardParams = Schedule::queuing(%stdParams);
             my %addParams_local = (scheduler => "$scheduler", runtime => "30", priority_project=> "$priority_project", priority_group=> "$priority_group", queues => "lau.q,lcg.q,nce.q", rerun => "1", iounits => "1");
             my $additionalParams_local = Schedule::additionalParams(%addParams_local);
-            #print "additional params: $additionalParams\nLocal add params: $additionalParams_local";
-            `$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{job_hold} $standardParams->{cluster_out} $additionalParams_local $Bin/facets/bin/GetBaseCounts --thread 4 --filter_improper_pair 0 --sort_output --fasta $REF_SEQ --vcf $FACETS_DB_SNP --maq $MAPQ --baq $BASEQ --cov $MINCOV --bam $output/alignments/$pre\_indelRealigned_recal\_$data[1]\.bam --out $output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets/tmp/$pre\_indelRealigned_recal\_$data[1].dat`;
-	    
-            %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$data[0]\_$data[1]\_facets_SETUP_N",  cpu => "4", mem => "5", job_hold => "$ssfj", cluster_out => "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_facets_SETUP_N.log");
-            my $standardParams2 = Schedule::queuing(%stdParams);
-            `$standardParams2->{submit} $standardParams2->{job_name} $standardParams2->{cpu} $standardParams2->{mem} $standardParams2->{job_hold} $standardParams2->{cluster_out} $additionalParams_local $Bin/facets/bin/GetBaseCounts --thread 4 --filter_improper_pair 0 --sort_output --fasta $REF_SEQ --vcf $FACETS_DB_SNP --maq $MAPQ --baq $BASEQ --cov $MINCOV --bam $output/alignments/$pre\_indelRealigned_recal\_$data[0]\.bam --out $output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets/tmp/$pre\_indelRealigned_recal\_$data[0].dat`;
-
-            %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$data[0]\_$data[1]\_merge_counts_facets_SETUP",  cpu => "4", mem => "18", job_hold => "$pre\_$uID\_$data[0]\_$data[1]\_facets_SETUP_N,$pre\_$uID\_$data[0]\_$data[1]\_facets_SETUP_T", cluster_out => "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_facets_SETUP.log");
-            my $standardParams3 = Schedule::queuing(%stdParams);
-            `$standardParams3->{submit} $standardParams3->{job_name} $standardParams3->{cpu} $standardParams3->{mem} $standardParams3->{job_hold} $standardParams3->{cluster_out} $additionalParams_local $Bin/facets/mergeTN.R  $output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets/tmp/$pre\_indelRealigned_recal\_$data[1].dat  $output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets/tmp/$pre\_indelRealigned_recal\_$data[0].dat $output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets/tmp/$pre\_countsMerged_$data[0]\_$data[1].dat.gz`;
+            `$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{job_hold} $standardParams->{cluster_out} $additionalParams_local $HTSTOOLS/snp-pileup -A -g -P 50 -r15,0 $FACETS_DB_SNP $output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets/tmp/$pre\_countsMerged_$data[0]\_$data[1].dat.gz $output/alignments/$pre\_indelRealigned_recal\_$data[0]\.bam $output/alignments/$pre\_indelRealigned_recal\_$data[1]\.bam`;
 	    
             $facets_setup = 1;
             `/bin/touch $output/progress/$pre\_$uID\_$data[0]\_$data[1]\_facets_SETUP.done`;
-            $facetsSETUP_jid = "$pre\_$uID\_$data[0]\_$data[1]\_merge_counts_facets_SETUP";
+            $facetsSETUP_jid = "$pre\_$uID\_$data[0]\_$data[1]\_facets_SETUP";
         }
         ## now facets
         if($hasPair && (! -e "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_facets_RUN.done" || $facets_setup)){ 
-	    my $pcval = $impact ? 100 : 300;
-            my $cval = $impact ? 50 : 100; 
-           
+            #parameters for hisens
+            my $cval = $impact ? 100 : 150; 
+            my $snp_nbhd = $impact ? 250 : 150;
+            my $min_nhet = $impact ? 10 : 15;
+            my $ndepth = 15;          
+ 
+            # parameters for purity
+            my $p_cval = $impact ? 150 : 250;
+            my $p_snp_nbhd = $impact ? 250 : 150;
+            my $p_min_nhet = $impact ? 15 : 25;
+            my $p_ndepth = 15;
+
+
             my $sub_species = $species eq 'b37' ? 'hg19' : $species;
 
             my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$data[0]\_$data[1]\_facets_RUN",  cpu => "3", mem => "2", job_hold => "$facetsSETUP_jid", cluster_out => "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_facets_RUN.log");
             my $standardParams = Schedule::queuing(%stdParams);
             my %addParams = (runtime => "10", priority_project=> "$priority_project", priority_group=> "$priority_group");
             my $additionalParams = Schedule::additionalParams(%addParams);
-            `$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{job_hold} $standardParams->{cluster_out} $additionalParams $Bin/facets/facets_RUN.sh $FACETS_SUITE $FACETS_LIB $output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets $data[0]\_$data[1] $output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets/tmp/$pre\_countsMerged_$data[0]\_$data[1].dat $sub_species $pcval $cval`;
+            `$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{job_hold} $standardParams->{cluster_out} $additionalParams $FACETS_SUITE/facets doFacets -c $cval -s $snp_nbhd -n $ndepth -m $min_nhet -pc $p_cval -ps $p_snp_nbhd -pn $p_ndepth -pm $p_min_nhet -f $output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets/tmp/$pre\_countsMerged_$data[0]\_$data[1].dat.gz -t $data[0]\_$data[1] -D $output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets -r $FACETS_LIB`;
 	    push @facets_jid, "$pre\_$uID\_$data[0]\_$data[1]\_facets_RUN" ;
             $facets_run = 1;
             `/bin/touch $output/progress/$pre\_$uID\_$data[0]\_$data[1]\_facets_RUN.done`; 

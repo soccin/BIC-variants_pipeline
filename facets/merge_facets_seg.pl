@@ -53,7 +53,7 @@ while (my $line = <$fh>){
     }
 
     opendir(my $dh, $sample);
-    my @files = grep {/hisens.seg$/ } readdir $dh;
+    my @files = grep {/hisens\.seg$/ } readdir $dh;
     closedir $dh;
 
     if (! @files) {

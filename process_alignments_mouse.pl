@@ -107,6 +107,7 @@ my $ABRA = '';
 my $BCFTOOLS = '';
 my $GATK = '';
 my $PICARD = '';
+my $HTSTOOLS = '';
 my $FACETS_LIB = '';
 my $FACETS_SUITE = '';
 my $MUTECT = '';
@@ -165,6 +166,12 @@ while(<CONFIG>){
 	    die "CAN'T FIND muTect.jar IN $conf[1] $!";
 	}
 	$MUTECT = $conf[1];
+    }
+    elsif($conf[0] =~ /htstools/i){
+        if(!-e "$conf[1]/snp-pileup"){
+            die "CAN'T FIND htstools IN $conf[1] $!";
+        }
+        $HTSTOOLS = $conf[1];
     }
     elsif($conf[0] =~ /facets_suite/i){
         if(!-e "$conf[1]/facets"){

@@ -5,8 +5,9 @@ BWA			/opt/common/CentOS_6/bwa/bwa-0.7.12
 CUTADAPT		/opt/common/CentOS_6/cutadapt/cutadapt-1.9.1/bin
 DELLY			/opt/common/CentOS_6/delly/delly_v0.6.1
 dRANGER			/opt/common/CentOS_6/dranger/dRanger_annotate_v2.0
-FACETS_SUITE				/opt/common/CentOS_6/facets-suite/facets-suite-1.0.1_MW_MOD
-FACETS_LIB				/opt/common/CentOS_6/facets_lib/facets-0.3.30
+HTSTOOLS                /opt/common/CentOS_6/htstools/htstools_0.1.1
+FACETS_SUITE				/opt/common/CentOS_6/facets-suite/facets-suite-1.5.5_MW_MOD
+FACETS_LIB				/opt/common/CentOS_6/facets_lib/facets-0.5.6
 FIXMULTIINDEL		/opt/common/CentOS_6/FixMultiInDel/FixMultiInDel-2.0.1
 GATK			/opt/common/CentOS_6/gatk/GenomeAnalysisTK-3.4-0-g7e26428
 JAVA			/opt/common/CentOS_6/java/jdk1.8.0_31/bin
