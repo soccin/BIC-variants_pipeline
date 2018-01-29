@@ -285,8 +285,8 @@ plot.alignment.percentage <- function(alignment,sort.by='name'){
         scale_fill_manual(name="Type",values = c3, labels = c("Both Reads Aligned", "One Read Aligned", "Neither Read Aligned")) +
         labs(title="Cluster Density & Alignment Rate") +
         xlab("") +
-        ylab("") +
-        scale_y_continuous(label=percent, limits = c(y,1), oob =rescale_none) #+
+        ylab("") #+
+        #scale_y_continuous(label=percent, limits = c(y,1), oob =rescale_none) #+
         #coord_flip()
 }
 
