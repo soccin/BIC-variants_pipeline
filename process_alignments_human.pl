@@ -653,7 +653,7 @@ while(<IN>){
 	    my $ran_abra = 0;
 	    my $abra_jid = '';
 	    if(!-e "$output/progress/$pre\_$uID\_$gpair[0]\_$c\_ABRA.done" || $ran_chr_split_index){
-		my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$gpair[0]\_$c\_ABRA", job_hold => "$cij", cpu => "12", mem => "90", cluster_out => "$output/progress/$pre\_$uID\_$gpair[0]\_$c\_ABRA.log");
+		my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$gpair[0]\_$c\_ABRA", job_hold => "$cij", cpu => "12", mem => "120", cluster_out => "$output/progress/$pre\_$uID\_$gpair[0]\_$c\_ABRA.log");
 		my $standardParams = Schedule::queuing(%stdParams);	    
 		my %addParams = (scheduler => "$scheduler", runtime => "500", priority_project=> "$priority_project", priority_group=> "$priority_group", rerun => "1", iounits => "4");
 		my $additionalParams = Schedule::additionalParams(%addParams);
@@ -1357,7 +1357,7 @@ if($pair){
 
             my $sub_species = $species eq 'b37' ? 'hg19' : $species;
 
-            my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$data[0]\_$data[1]\_facets_RUN",  cpu => "3", mem => "2", job_hold => "$facetsSETUP_jid", cluster_out => "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_facets_RUN.log");
+            my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$data[0]\_$data[1]\_facets_RUN",  cpu => "3", mem => "10", job_hold => "$facetsSETUP_jid", cluster_out => "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_facets_RUN.log");
             my $standardParams = Schedule::queuing(%stdParams);
             my %addParams = (runtime => "10", priority_project=> "$priority_project", priority_group=> "$priority_group");
             my $additionalParams = Schedule::additionalParams(%addParams);
