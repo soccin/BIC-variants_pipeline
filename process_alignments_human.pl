@@ -8,7 +8,7 @@ use Schedule;
 use Cluster;
 use File::Basename;
 
-my ($patient, $email, $impact, $wes, $svnRev, $pair, $group, $bamgroup, $config, $nosnps, $targets, $ug, $scheduler, $priority_project, $priority_group, $abra, $indelrealigner, $help, $step1, $allSomatic, $scalpel, $somaticsniper, $strelka, $varscan, $virmid);
+my ($patient, $email, $impact, $wes, $svnRev, $pair, $group, $bamgroup, $config, $nosnps, $targets, $ug, $scheduler, $priority_project, $priority_group, $abra, $indelrealigner, $help, $step1, $allSomatic, $scalpel, $somaticsniper, $strelka, $varscan, $virmid, $lancet, $vardict);
 
 my $pre = 'TEMP';
 my $output = "results";
@@ -47,7 +47,9 @@ GetOptions ('email=s' => \$email,
 	    'strelka' => \$strelka,
 	    'varscan' => \$varscan,
 	    'virmid' => \$virmid,
- 	    'tempdir=s' => \$tempdir,
+	    'lancet' => \$lancet,
+ 	    'vardict' => \$vardict,
+	    'tempdir=s' => \$tempdir,
  	    'output|out|o=s' => \$output) or exit(1);
 
 
@@ -73,7 +75,7 @@ if(!$group || !$config || !$scheduler || !$targets || !$bamgroup || $help){
 	* -step1: forece the pipeline to start from the first step in pipeline
 	* haplotypecaller is default; -ug || -unifiedgenotyper to also make unifiedgenotyper variant calls	
 	* TEMPDIR:  temp directory (default: /scratch/$uID)
-	* ALLSOMATIC: run all somatic callers; mutect/haplotypecaller always run; otherwise -scalpel, -somaticsniper, -strelka, -varscan, -virmid to run them individually	
+	* ALLSOMATIC: run all somatic callers; mutect/haplotypecaller always run; otherwise -scalpel, -somaticsniper, -strelka, -varscan, -virmid, -lancet, -vardict to run them individually	
 HELP
 exit;
 }
@@ -111,29 +113,36 @@ if($allSomatic){
     $strelka = 1;
     $varscan = 1;
     $virmid = 1;
+    $lancet = 1;
+    $vardict = 1;
 }
 
 my $ABRA = '';
-my $GATK = '';
-my $PICARD = '';
-my $MUTECT = '';
-my $SAMTOOLS = '';
+my $BCFTOOLS= '';
 my $BEDTOOLS = '';
-my $SOMATIC_SNIPER = '';
-my $VARSCAN = '';
-my $VEP = '';
-my $STRELKA = '';
-my $SCALPEL = '';
-my $VIRMID = '';
-my $JAVA = '';
-my $JAVA7_MUTECT = '';
+my $GATK = '';
 my $HTSTOOLS = '';
 my $FACETS_LIB = '';
 my $FACETS_SUITE = '';
-my $BCFTOOLS= '';
+my $LANCET = '';
+my $MUTECT = '';
+my $PICARD = '';
+my $SAMTOOLS = '';
+my $SCALPEL = '';
+my $SOMATIC_SNIPER = '';
+my $STRELKA = '';
 my $TABIX = '';
+my $VARDICT_JAVA = '';
+my $VARDICT_PERL = '';
+my $VARSCAN = '';
+my $VEP = '';
+my $VIRMID = '';
+
+my $JAVA = '';
+my $JAVA7_MUTECT = '';
 my $PYTHON = '';
 my $PERL = '';
+
 my $B37_FASTA = '';
 my $B37_FAI = '';
 my $B37_MM10_HYBRID_FASTA = '';
@@ -158,29 +167,17 @@ while(<CONFIG>){
 	}
 	$ABRA = $conf[1];
     }
-    elsif($conf[0] =~ /tabix/i){
-        if(!-e "$conf[1]/bgzip"){
-            die "CAN'T FIND tabix IN $conf[1] $!";
-        }
-        $TABIX = $conf[1];
-    }
     elsif($conf[0] =~ /bcftools/i){
         if(!-e "$conf[1]/bcftools"){
             die "CAN'T FIND bcftools IN $conf[1] $!";
         }
         $BCFTOOLS = $conf[1];
     }
-    elsif($conf[0] =~ /htstools/i){
-        if(!-e "$conf[1]/snp-pileup"){
-            die "CAN'T FIND htstools IN $conf[1] $!";
+    elsif($conf[0] =~ /bedtools/i){
+        if(!-e "$conf[1]/bedtools"){
+            die "CAN'T FIND bedtools IN $conf[1] $!";
         }
-        $HTSTOOLS = $conf[1];
-    }
-    elsif($conf[0] =~ /facets_suite/i){
-        if(!-e "$conf[1]/facets"){
-            die "CAN'T FIND facets_suite IN $conf[1] $!";
-        }
-        $FACETS_SUITE = $conf[1];
+        $BEDTOOLS = $conf[1];
     }
     elsif($conf[0] =~ /facets_lib/i){
         if(!-e "$conf[1]/facets"){
@@ -188,11 +185,29 @@ while(<CONFIG>){
         }
         $FACETS_LIB = $conf[1];
     }
+    elsif($conf[0] =~ /facets_suite/i){
+        if(!-e "$conf[1]/facets"){
+            die "CAN'T FIND facets_suite IN $conf[1] $!";
+        }
+        $FACETS_SUITE = $conf[1];
+    }
     elsif($conf[0] =~ /gatk/i){
 	if(!-e "$conf[1]/GenomeAnalysisTK.jar"){
 	    die "CAN'T FIND GenomeAnalysisTK.jar IN $conf[1] $!";
 	}
 	$GATK = $conf[1];
+    }
+    elsif($conf[0] =~ /htstools/i){
+        if(!-e "$conf[1]/snp-pileup"){
+            die "CAN'T FIND htstools IN $conf[1] $!";
+        }
+        $HTSTOOLS = $conf[1];
+    }
+    elsif($conf[0] =~ /lancet/i){
+	if(!-e "$conf[1]/lancet"){
+	    die "CAN'T FIND lancet IN $conf[1] $!";
+	}
+	$LANCET = $conf[1];
     }
     elsif($conf[0] =~ /^mutect$/i){
 	if(!-e "$conf[1]/muTect.jar"){
@@ -212,17 +227,41 @@ while(<CONFIG>){
 	}
 	$SAMTOOLS = $conf[1];
     }
-    elsif($conf[0] =~ /bedtools/i){
-        if(!-e "$conf[1]/bedtools"){
-            die "CAN'T FIND bedtools IN $conf[1] $!";
-        }
-        $BEDTOOLS = $conf[1];
+     elsif($conf[0] =~ /scalpel/i){
+	if(!-e "$conf[1]/scalpel"){
+	    die "CAN'T FIND scalpel IN $conf[1] $!";
+	}
+	$SCALPEL = $conf[1];
     }
-    elsif($conf[0] =~ /somaticsniper/i){
+   elsif($conf[0] =~ /somaticsniper/i){
 	if(!-e "$conf[1]/bam-somaticsniper"){
 	    die "CAN'T FIND bam-somaticsniper IN $conf[1] $!";
 	}
 	$SOMATIC_SNIPER = $conf[1];
+    }
+    elsif($conf[0] =~ /strelka/i){
+	if(!-e "$conf[1]/bin/configureStrelkaWorkflow.pl"){
+	    die "CAN'T FIND bin/configureStrelkaWorkflow.pl IN $conf[1] $!";
+	}
+	$STRELKA = $conf[1];
+    }
+    elsif($conf[0] =~ /tabix/i){
+        if(!-e "$conf[1]/bgzip"){
+            die "CAN'T FIND tabix IN $conf[1] $!";
+        }
+        $TABIX = $conf[1];
+    }
+    elsif($conf[0] =~ /vardict_java/i){
+	if(!-e "$conf[1]/VarDict"){
+	    die "CAN'T FIND VarDict IN $conf[1] $!";
+	}
+	$VARDICT_JAVA = $conf[1];
+    }
+    elsif($conf[0] =~ /vardict_perl/i){
+	if(!-e "$conf[1]/testsomatic.R" || !-e "$conf[1]/var2vcf_paired.pl"){
+	    die "CAN'T FIND testsomatic.R OR var2vcf_paired.pl IN $conf[1] $!";
+	}
+	$VARDICT_PERL = $conf[1];
     }
     elsif($conf[0] =~ /varscan/i){
 	if(!-e "$conf[1]/VarScan.jar"){
@@ -235,18 +274,6 @@ while(<CONFIG>){
             die "CAN'T FIND VEP IN $conf[1] $!";
         }
         $VEP = $conf[1];
-    }
-    elsif($conf[0] =~ /strelka/i){
-	if(!-e "$conf[1]/bin/configureStrelkaWorkflow.pl"){
-	    die "CAN'T FIND bin/configureStrelkaWorkflow.pl IN $conf[1] $!";
-	}
-	$STRELKA = $conf[1];
-    }
-    elsif($conf[0] =~ /scalpel/i){
-	if(!-e "$conf[1]/scalpel"){
-	    die "CAN'T FIND scalpel IN $conf[1] $!";
-	}
-	$SCALPEL = $conf[1];
     }
     elsif($conf[0] =~ /virmid/i){
 	if(!-e "$conf[1]/Virmid.jar"){
@@ -533,14 +560,6 @@ while(<FAI>){
     push @ref_chr, $line[0];
 }
 close FAI;
-
-if($allSomatic){
-    $scalpel = 1;
-    $somaticsniper = 1;
-    $strelka = 1;
-    $varscan = 1;
-    $virmid = 1;
-}
 
 my $count = 0;
 my %inputFiles = ();
@@ -1318,6 +1337,126 @@ if($pair){
 	    }
 	}
 
+	if($lancet){
+
+	    ### NOTE: THERE ARE REGIONS OF THE ASSEMBLY THAT HAVE NON ATGC BASES, SUCH AS M ON CHR3
+	    ###       OTHER CALLERS SEEM TO SKIP THESE BASES; LANCET DOES NTO AND MAKES CALLS
+	    ###       THESE VCF FILES FAIL TO MERGE IN GATK BECAUSE IT IS CONSIDERED MALFORMED WITH AN UNPARSABLE VCF WITH THAT ALLELE
+
+	    if(!-d "$output/variants/snpsIndels/lancet"){
+		mkdir("$output/variants/snpsIndels/lancet", 0775) or die "Can't make $output/variants/snpsIndels/lancet";
+	    }
+
+	    #### LANCET ON TARGETED REGION BED
+	    #my $ran_lancet = 0;
+	    #if(!-e "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_LANCET.done" || $ran_ssf){
+	#	sleep(2);
+		
+	#	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$data[0]\_$data[1]\_LANCET", job_hold => "$ssfj", cpu => "12", mem => "30", cluster_out => "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_LANCET.log");
+	#	my $standardParams = Schedule::queuing(%stdParams);
+	#	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $LANCET/lancet --tumor $output/alignments/$pre\_indelRealigned_recal\_$data[1]\.bam --normal $output/alignments/$pre\_indelRealigned_recal\_$data[0]\.bam --ref $REF_SEQ --bed $targets_bed_padded --num-threads 12 ">$output/variants/snpsIndels/lancet/$pre\_$data[0]\_$data[1]\_lancet_calls.vcf"`;
+	#	`/bin/touch $output/progress/$pre\_$uID\_$data[0]\_$data[1]\_LANCET.done`;
+	#	push @all_jids, "$pre\_$uID\_$data[0]\_$data[1]\_LANCET";
+	#	$ran_lancet = 1;
+	 #   }
+	    
+	    
+	    #### END LANCET ON TARGETED REGION
+	    
+	    
+	    ### LANCET WHOLE GENOME SPLIT BY CHR
+
+	    ### NOTE: human assemblies have non ATGC bases
+	    ###       lancet makes calls at those positions; haven't found a case where other callers do
+	    ###       these alleles cause gatk CombineVariants to fail because it thinks it's a malformed vcf
+	    ###       added step to remove those positions from the vcf
+
+	    my @filterLancetVariants = ();
+	    my @filter_lancet_jids = ();
+	    my $ran_fl = 0;
+	    foreach my $c (@ref_chr){
+		my $ran_lancet = 0;
+		my $lancet_jid = '';
+		if(!-e "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_$c\_LANCET.done" || $ran_ssf){
+		    sleep(2);
+		    
+		    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$data[0]\_$data[1]\_$c\_LANCET", job_hold => "$ssfj", cpu => "12", mem => "30", cluster_out => "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_$c\_LANCET.log");
+		    my $standardParams = Schedule::queuing(%stdParams);
+		    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $LANCET/lancet --tumor $output/alignments/$pre\_indelRealigned_recal\_$data[1]\.bam --normal $output/alignments/$pre\_indelRealigned_recal\_$data[0]\.bam --ref $REF_SEQ --reg $c --num-threads 12 ">$output/intFiles/$pre\_$data[0]\_$data[1]\_$c\_lancet_calls.vcf"`;
+		    
+		    `/bin/touch $output/progress/$pre\_$uID\_$data[0]\_$data[1]\_$c\_LANCET.done`;
+		    $lancet_jid = "$pre\_$uID\_$data[0]\_$data[1]\_$c\_LANCET";
+		    $ran_lancet = 1;
+		}
+	 
+		if(!-e "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_$c\_FILTER_LANCET.done" || $ran_ssf){
+		    sleep(2);
+		    
+		    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$data[0]\_$data[1]\_$c\_FILTER_LANCET", job_hold => "$lancet_jid", cpu => "1", mem => "2", cluster_out => "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_$c\_FILTER_LANCET.log");
+		    my $standardParams = Schedule::queuing(%stdParams);
+		    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/vcfFilterLancet.pl -input $output/intFiles/$pre\_$data[0]\_$data[1]\_$c\_lancet_calls.vcf -output $output/intFiles/$pre\_$data[0]\_$data[1]\_$c\_lancet_calls_FILTERED.vcf -log $output/intFiles/$pre\_$data[0]\_$data[1]\_$c\_lancet_calls_DISCARDED.txt`;
+		    
+		    `/bin/touch $output/progress/$pre\_$uID\_$data[0]\_$data[1]\_$c\_FILTER_LANCET.done`;
+		    push @filter_lancet_jids, "$pre\_$uID\_$data[0]\_$data[1]\_$c\_FILTER_LANCET";
+		    $ran_fl = 1
+		}
+		
+		push @filterLancetVariants, "--variant $output/intFiles/$pre\_$data[0]\_$data[1]\_$c\_lancet_calls_FILTERED.vcf";
+	    }
+	    
+	    
+	    my $filterLancetVars = join(" " , @filterLancetVariants);
+	    my $flj = join(",", @filter_lancet_jids);
+	    if(!-e "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_CV_LANCET.done" || $ran_fl){
+		sleep(2);
+		my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$data[0]\_$data[1]\_CV_LANCET", job_hold => "$flj", cpu => "1", mem => "2", cluster_out => "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_CV_LANCET.log");
+		my $standardParams = Schedule::queuing(%stdParams);
+
+		`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Djava.io.tmpdir=$tempdir -jar $GATK/GenomeAnalysisTK.jar -T CombineVariants -R $REF_SEQ -o $output/variants/snpsIndels/lancet/$pre\_$data[0]\_$data[1]\_lancet_calls.vcf --assumeIdenticalSamples $filterLancetVars`;
+
+		`/bin/touch $output/progress/$pre\_$uID\_$data[0]\_$data[1]\_CV_LANCET.done`;
+		push @all_jids, "$pre\_$uID\_$data[0]\_$data[1]\_CV_LANCET";
+	    }
+	}
+	
+	if($vardict){
+
+	    if(!-d "$output/variants/snpsIndels/vardict"){
+		mkdir("$output/variants/snpsIndels/vardict", 0775) or die "Can't make $output/variants/snpsIndels/vardict";
+	    }
+	    
+	    if(!-e "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_VARDICT.done" || $ran_ssf){
+		
+		sleep(2);
+		my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$data[0]\_$data[1]\_VARDICT", job_hold => "$ssfj", cpu => "1", mem => "10", cluster_out => "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_VARDICT.log");
+		my $standardParams = Schedule::queuing(%stdParams);
+		my %addParams = (scheduler => "$scheduler", runtime => "500", priority_project=> "$priority_project", priority_group=> "$priority_group", rerun => "1", iounits => "3");
+		my $additionalParams = Schedule::additionalParams(%addParams);
+		
+		
+		#`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams /opt/common/CentOS_6/VarDictJava/VarDict-1.5.1/bin/VarDict -G $REF_SEQ -f 0.01 -N $data[1] -b "$output/alignments/$pre\_indelRealigned_recal\_$data[1]\.bam|$output/alignments/$pre\_indelRealigned_recal\_$data[0]\.bam" -z -F 0 -c 1 -S 2 -E 3 -g 4 $targets_bed_padded | /opt/common/CentOS_6/VarDict/VarDict_85cc3f6/testsomatic.R | /opt/common/CentOS_6/VarDict/VarDict_85cc3f6/var2vcf_paired.pl -N "$data[1]|$data[0]" -f 0.01 ">$output/variants/snpsIndels/vardict/$pre\_$data[0]\_$data[1]\_vardict_calls.vcf"`;
+		
+		
+		### NOTE: need to write out command to file and submit command
+		###       beause i can't figure out how to get double quotes 
+		###       to be included in bsub command; 
+		###       it always gets removed, no matter how i try to escape it with backslash
+		open(FILE, ">$output/intFiles/$pre\_$uID\_$data[0]\_$data[1]\_VARDICT_command.sh") or die "Can't write to file $output/intFiles/$pre\_$uID\_$data[0]\_$data[1]\_VARDICT_command.sh $!";
+		
+		print FILE "#! /bin/bash\n\n";
+		print FILE "/opt/common/CentOS_6/VarDictJava/VarDict-1.5.1/bin/VarDict -G $REF_SEQ -f 0.01 -N $data[1] -b \"$output/alignments/$pre\_indelRealigned_recal\_$data[1]\.bam|$output/alignments/$pre\_indelRealigned_recal\_$data[0]\.bam\" -z -F 0 -c 1 -S 2 -E 3 -g 4 $targets_bed_padded | /opt/common/CentOS_6/VarDict/VarDict_85cc3f6/testsomatic.R | /opt/common/CentOS_6/VarDict/VarDict_85cc3f6/var2vcf_paired.pl -N \"$data[1]|$data[0]\" -f 0.01";
+		close FILE;
+		chmod 0750, "$output/intFiles/$pre\_$uID\_$data[0]\_$data[1]\_VARDICT_command.sh";
+		
+		`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $output/intFiles/$pre\_$uID\_$data[0]\_$data[1]\_VARDICT_command.sh ">$output/variants/snpsIndels/vardict/$pre\_$data[0]\_$data[1]\_vardict_calls.vcf"`;
+		
+		
+		`/bin/touch $output/progress/$pre\_$uID\_$data[0]\_$data[1]\_VARDICT.done`;
+		push @all_jids, "$pre\_$uID\_$data[0]\_$data[1]\_VARDICT";
+	    }
+
+	}
+
 
         ## Here we will add the facets scripts
         ## Set up tumor and normal counts
@@ -1381,7 +1520,7 @@ if($pair){
 	
         my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_merge_facets_seg", cpu => "1", mem => "1", job_hold => "$facets_js", cluster_out => "$output/progress/$pre\_$uID\_merge_facets_seg.log");
         my $standardParams = Schedule::queuing(%stdParams);
-        my %addParams = (scheduler => "$scheduler", runtime => "1", priority_project=> "$priority_project", priority_group=> "$priority_group", queues => "lau.q,lcg.q,nce.q", rerun => "1", iounits => "0");
+        my %addParams = (scheduler => "$scheduler", runtime => "1", priority_project=> "$priority_project", priority_group=> "$priority_group", queues => "lau.q,lcg.q,nce.q", rerun => "1", iounits => "1");
         my $additionalParams = Schedule::additionalParams(%addParams);
         `$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{job_hold} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/facets/merge_facets_seg.pl -facets_dir $output/variants/copyNumber/facets -outfile $seg_outfile`;
 	
@@ -1391,6 +1530,8 @@ if($pair){
     }
 
     ### create cna file for portal upload
+    ### NOTE: the ___HISENS_GeneCalls_v2.txt chr field doesn't have chr even for hg19
+    ###       so the target has to be b37 chr convention even if input is hg19 chr convention with chr
     my $facets_geneLevel_jid = '';
     my $ran_fgl = 0;
     if($hasPair && (! -e "$output/progress/$pre\_$uID\_facets_genelevel.done" || $facets_run)){

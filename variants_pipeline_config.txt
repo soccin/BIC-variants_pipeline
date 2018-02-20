@@ -12,6 +12,7 @@ FIXMULTIINDEL		/opt/common/CentOS_6/FixMultiInDel/FixMultiInDel-2.0.1
 GATK			/opt/common/CentOS_6/gatk/GenomeAnalysisTK-3.4-0-g7e26428
 JAVA			/opt/common/CentOS_6/java/jdk1.8.0_31/bin
 JAVA7_MUTECT            /opt/common/CentOS_6/java/jdk1.7.0_75/bin
+LANCET			/opt/common/CentOS_6/lancet/lancet-1.0.4
 MCR			/opt/common/CentOS_6/matlab/v81
 MUTECT			/opt/common/CentOS_6/muTect/muTect-1.1.7
 PERL			/opt/common/CentOS_6/perl/perl-5.22.0/bin
@@ -23,8 +24,10 @@ SCALPEL			/opt/common/CentOS_6/scalpel/scalpel-0.2.2
 SOMATICSNIPER		/opt/common/CentOS_6/somaticsniper/somatic-sniper-1.0.4
 STRELKA			/opt/common/CentOS_6/strelka/strelka_1.0.11
 TABIX			/opt/common/CentOS_6/samtools/samtools-1.2/htslib-1.2.1
+VARDICT_JAVA		/opt/common/CentOS_6/VarDictJava/VarDict-1.5.1/bin
+VARDICT_PERL		/opt/common/CentOS_6/VarDict/VarDict_85cc3f6
 VARSCAN			/opt/common/CentOS_6/varscan/v2.3.7
-VCF2MAF			/ifs/work/zeng/other/vep_updownstream/vcf2maf_v1.6.11_mod
+VCF2MAF			/opt/common/CentOS_6/vcf2maf/v1.6.11_mod
 VCFTOOLS		/opt/common/CentOS_6-dev/vcftools/v0.1.14/bin
 VEP                     /opt/common/CentOS_6/vep/v86
 VIRMID			/opt/common/CentOS_6/virmid/Virmid-1.1.1
@@ -52,6 +55,7 @@ MM10_CUSTOM_FASTA
 MM10_CUSTOM_FAI
 SPECIES_CUSTOM_BWA_INDEX
 SPECIES_CUSTOM_FASTA
+SPECIES_CUSTOM_FAI
 SPECIES_CUSTOM_DB_SNP
 DM3_BWA_INDEX
 DM3_FASTA
