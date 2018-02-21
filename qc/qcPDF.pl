@@ -38,7 +38,7 @@ while(<CONFIG>){
         my $path_tmp = $ENV{'PATH'};
         $ENV{'PATH'} = "$conf[1]:$path_tmp";
     }
-    elsif($conf[0] =~ /java/i){
+    elsif($conf[0] =~ /^java$/i){
         if(!-e "$conf[1]/java"){
             die "CAN'T FIND java IN $conf[1] $!";
         }
