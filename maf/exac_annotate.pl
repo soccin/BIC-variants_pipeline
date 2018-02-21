@@ -42,7 +42,7 @@ while(<CONFIG>){
     chomp;
     
     my @conf = split(/\s+/, $_);
-    if($conf[0] =~ /perl/i){
+    if($conf[0] =~ /^perl$/i){
         if(!-e "$conf[1]/perl"){
             die "CAN'T FIND perl IN $conf[1] $!";
         }

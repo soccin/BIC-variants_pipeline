@@ -619,7 +619,7 @@ sub verifyConfig{
 		die "CAN'T FIND testsomatic.R OR var2vcf_paired.pl IN $conf[1] $!";
 	    }
 	}
-	elsif($conf[0] =~ /perl/i){
+	elsif($conf[0] =~ /^perl$/i){
 	    if(!-e "$conf[1]/perl"){
 		die "CAN'T FIND perl IN $conf[1] $!";
 	    }

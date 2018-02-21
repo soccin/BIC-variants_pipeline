@@ -223,7 +223,7 @@ while(<CONFIG>){
         }    
         $JAVA7_MUTECT = $conf[1];
     }
-    elsif($conf[0] =~ /perl/i){
+    elsif($conf[0] =~ /^perl$/i){
 	if(!-e "$conf[1]/perl"){
 	    die "CAN'T FIND perl IN $conf[1] $!";
 	}
