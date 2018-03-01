@@ -1056,6 +1056,9 @@ if($pair){
 	    my $ran_scalpel = 0;
 	    if(!-e "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_SCALPEL.done" || $ran_ssf){
 		sleep(2);
+                if(!-d "$output/variants/snpsIndels/scalpel/"){
+                    mkdir("$output/variants/snpsIndels/scalpel/", 0775) or die "Can't make $output/variants/snpsIndels/scalpel/";
+                }
 		if(!-d "$output/variants/snpsIndels/scalpel/$data[0]\_$data[1]\_scalpel"){
 		    mkdir("$output/variants/snpsIndels/scalpel/$data[0]\_$data[1]\_scalpel", 0775) or die "Can't make $output/variants/snpsIndels/scalpel/$data[0]\_$data[1]\_scalpel";
 		}
