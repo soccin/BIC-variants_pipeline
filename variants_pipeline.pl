@@ -65,7 +65,7 @@ use Cluster;
 ### NOTE: DO NOT SUBMIT THIS WRAPPER SCRIPT TO THE CLUSTER BECAUSE ONCOTATOR STEP WILL FAIL
 ###       DUE TO NODES NOT HAVING NETWORK ACCESS
 
-my ($map, $group, $pair, $patient, $impact, $wes, $config, $help, $nosnps, $removedups, $species, $ug, $scheduler, $abra, $indelrealigner, $targets, $mdOnly, $noMD, $DB_SNP, $noClip, $request, $allSomatic, $scalpel, $somaticsniper, $strelka, $varscan, $virmid, $chip, $lancet, $vardict);
+my ($map, $group, $pair, $patient, $impact, $wes, $config, $help, $nosnps, $removedups, $species, $ug, $scheduler, $abra, $indelrealigner, $targets, $mdOnly, $noMD, $DB_SNP, $noClip, $request, $allSomatic, $scalpel, $somaticsniper, $strelka, $varscan, $virmid, $chip, $lancet, $vardict, $pindel);
 
 my $pre = 'TEMP';
 my $output = "results";
@@ -120,6 +120,7 @@ GetOptions ('map=s' => \$map,
 	    'virmid' => \$virmid,
 	    'lancet' => \$lancet,
 	    'vardict' => \$vardict,
+            'pindel' => \$pindel,
 	    'email' => \$email,
 	    'tempdir=s' => \$tempdir) or exit(1);
 
@@ -159,7 +160,7 @@ if(!$map || !$species || !$config || !$scheduler || !$request || $help){
 	* BASEQTRIM: base quality to trim in reads (default: 3)
 	* DB_SNP: VCF file containing known sites of genetic variation (REQUIRED for species_custom; either here or in config)
 	* haplotypecaller is default; -ug || -unifiedgenotyper to also make unifiedgenotyper variant calls	
-	* ALLSOMATIC: run all somatic callers; mutect/haplotypecaller always run; otherwise -scalpel, -somaticsniper, -strelka, -varscan, -virmid, -lancet, -vardict to run them individually	
+	* ALLSOMATIC: run all somatic callers; mutect/haplotypecaller always run; otherwise -scalpel, -somaticsniper, -strelka, -varscan, -virmid, -lancet, -vardict, -pindel to run them individually	
 HELP
 exit;
 }
@@ -222,6 +223,7 @@ if($allSomatic){
     $virmid = 1;
     $lancet = 1;
     $vardict = 1;
+    $pindel = 1;
 }
 
 if($wes && ($impact || $chip)){
@@ -511,6 +513,10 @@ sub reconstructCL {
 	$rCL .= " -vardict";
     }
 
+    if($pindel){
+        $rCL .= " -pindel";
+    }
+
     my $numArgs = $#ARGV + 1;
     foreach my $argnum (0 .. $#ARGV) {
 	$rCL .= " $ARGV[$argnum]";
@@ -619,6 +625,11 @@ sub verifyConfig{
 		die "CAN'T FIND testsomatic.R OR var2vcf_paired.pl IN $conf[1] $!";
 	    }
 	}
+        elsif($conf[0] =~ /pindel/i){
+            if(!-e "$conf[1]/pindel" or !-e "$conf[1]/pindel2vcf"){
+                die "CAN'T FIND pindel or pindel2vcf IN $conf[1] $!";
+            }
+        }
 	elsif($conf[0] =~ /^perl$/i){
 	    if(!-e "$conf[1]/perl"){
 		die "CAN'T FIND perl IN $conf[1] $!";
@@ -878,10 +889,10 @@ sub verifyRequest{
                 my $x = sprintf("%03d", $runnum);
                 $delDir = "/ifs/solres/seq/$origPi/$origInv/$pid/r_$x";
                 if( -d  "$delDir"){
-                    die "\nERROR: This project has a delivered directory with this rerun folder already present: $delDir \n\n";
+                #    die "\nERROR: This project has a delivered directory with this rerun folder already present: $delDir \n\n";
                 }
             }
-            die "\nERROR: This project has a delivered directory with this rerun folder already present: $delDir \n\n";
+            #die "\nERROR: This project has a delivered directory with this rerun folder already present: $delDir \n\n";
         } 
 
     }
@@ -891,7 +902,7 @@ sub verifyRequest{
 	my $x = sprintf("%03d", $runnum);
 	$delDir .= "r_$x";
 	if( -d  "$delDir"){
-	    die "\nERROR: This project has a delivered directory with this rerun folder already present: $delDir \n\n";
+	#    die "\nERROR: This project has a delivered directory with this rerun folder already present: $delDir \n\n";
 	}
     }
  
@@ -1778,6 +1789,9 @@ sub callSNPS {
     }
     if($lancet){
 	$somaticCallers .= " -lancet";
+    }
+    if($pindel){
+        $somaticCallers .= " -pindel";
     }
 
     my @currentTime = &getTime();

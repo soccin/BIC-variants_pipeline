@@ -7,8 +7,10 @@ use lib "$Bin/lib";
 use Schedule;
 use Cluster;
 use File::Basename;
+use POSIX qw(strftime);
+my $cur_date = strftime "%Y%m%d", localtime;
 
-my ($patient, $email, $impact, $wes, $svnRev, $pair, $group, $bamgroup, $config, $nosnps, $targets, $ug, $scheduler, $priority_project, $priority_group, $abra, $indelrealigner, $help, $step1, $allSomatic, $scalpel, $somaticsniper, $strelka, $varscan, $virmid, $lancet, $vardict);
+my ($patient, $email, $impact, $wes, $svnRev, $pair, $group, $bamgroup, $config, $nosnps, $targets, $ug, $scheduler, $priority_project, $priority_group, $abra, $indelrealigner, $help, $step1, $allSomatic, $scalpel, $somaticsniper, $strelka, $varscan, $virmid, $lancet, $vardict, $pindel);
 
 my $pre = 'TEMP';
 my $output = "results";
@@ -49,6 +51,7 @@ GetOptions ('email=s' => \$email,
 	    'virmid' => \$virmid,
 	    'lancet' => \$lancet,
  	    'vardict' => \$vardict,
+            'pindel' => \$pindel,
 	    'tempdir=s' => \$tempdir,
  	    'output|out|o=s' => \$output) or exit(1);
 
@@ -75,7 +78,7 @@ if(!$group || !$config || !$scheduler || !$targets || !$bamgroup || $help){
 	* -step1: forece the pipeline to start from the first step in pipeline
 	* haplotypecaller is default; -ug || -unifiedgenotyper to also make unifiedgenotyper variant calls	
 	* TEMPDIR:  temp directory (default: /scratch/$uID)
-	* ALLSOMATIC: run all somatic callers; mutect/haplotypecaller always run; otherwise -scalpel, -somaticsniper, -strelka, -varscan, -virmid, -lancet, -vardict to run them individually	
+	* ALLSOMATIC: run all somatic callers; mutect/haplotypecaller always run; otherwise -scalpel, -somaticsniper, -strelka, -varscan, -virmid, -lancet, -vardict, -pindel to run them individually	
 HELP
 exit;
 }
@@ -115,6 +118,7 @@ if($allSomatic){
     $virmid = 1;
     $lancet = 1;
     $vardict = 1;
+    $pindel = 1;
 }
 
 my $ABRA = '';
@@ -127,6 +131,7 @@ my $FACETS_SUITE = '';
 my $LANCET = '';
 my $MUTECT = '';
 my $PICARD = '';
+my $PINDEL = '';
 my $SAMTOOLS = '';
 my $SCALPEL = '';
 my $SOMATIC_SNIPER = '';
@@ -208,6 +213,12 @@ while(<CONFIG>){
 	    die "CAN'T FIND lancet IN $conf[1] $!";
 	}
 	$LANCET = $conf[1];
+    }
+    elsif($conf[0] =~ /pindel/i){
+        if(!-e "$conf[1]/pindel" or !-e "$conf[1]/pindel2vcf"){
+            die "CAN'T FIND pindel or pindel2vcf IN $conf[1] $!";
+        }
+        $PINDEL = $conf[1];
     }
     elsif($conf[0] =~ /^mutect$/i){
 	if(!-e "$conf[1]/muTect.jar"){
@@ -1458,6 +1469,49 @@ if($pair){
 	    }
 
 	}
+
+        if($pindel){
+            my $ran_pindel = 0;
+            if(!-d "$output/variants/snpsIndels/pindel"){
+                mkdir("$output/variants/snpsIndels/pindel", 0775) or die "Can't make $output/variants/snpsIndels/pindel";
+            }
+            if(!-d "$output/intFiles/pindel"){
+                mkdir("$output/intFiles/pindel", 0775) or die "Can't make $output/intFiles/pindel";
+            }
+            if(!-d "$output/intFiles/pindel/$data[0]\_$data[1]"){
+                mkdir("$output/intFiles/pindel/$data[0]\_$data[1]", 0775) or die "Can't make $output/intFiles/pindel/$data[0]\_$data[1]";
+            }
+            if(!-e "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_PINDEL.done" || $ran_ssf){
+                sleep(2);
+
+                open(PC, ">$output/intFiles/$data[0]\_$data[1]\_pindel_config.txt") or die "Can't write to file $output/intFiles/$data[0]\_$data[1]\_pindel_config.txt $!";
+                print PC "$output/alignments/$pre\_indelRealigned_recal\_$data[1]\.bam\t200\t$data[1]\n";
+                print PC "$output/alignments/$pre\_indelRealigned_recal\_$data[0]\.bam\t200\t$data[0]\n";
+                close PC;
+
+                my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$data[0]\_$data[1]\_PINDEL", job_hold => "$ssfj", cpu => "6", mem => "20", cluster_out => "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_PINDEL.log");
+                my $standardParams = Schedule::queuing(%stdParams);
+                my %addParams = (scheduler => "$scheduler", runtime => "500", priority_project=> "$priority_project", priority_group=> "$priority_group", rerun => "1", iounits => "3");
+                my $additionalParams = Schedule::additionalParams(%addParams);
+
+                `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PINDEL/pindel -i $output/intFiles/$data[0]\_$data[1]\_pindel_config.txt -f $REF_SEQ -c ALL -o $output/intFiles/pindel/$data[0]\_$data[1] -r false -t false -I false -T 6`;
+
+                `/bin/touch $output/progress/$pre\_$uID\_$data[0]\_$data[1]\_PINDEL.done`;
+                $ran_pindel = 1;
+
+            }
+            if(!-e "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_PINDEL2VCF.done" || $ran_pindel){
+                sleep(2);
+                    
+                my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$data[0]\_$data[1]\_PINDEL2VCF", job_hold => "$pre\_$uID\_$data[0]\_$data[1]\_PINDEL", cpu => "1", mem => "2", cluster_out => "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_PINDEL2VCF.log");
+                my $standardParams = Schedule::queuing(%stdParams);
+
+                `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PINDEL/pindel2vcf --pindel_output_root $output/intFiles/pindel/$data[0]\_$data[1] --reference $REF_SEQ --reference_name $species --reference_date $cur_date --vcf $output/variants/snpsIndels/pindel/$pre\_$data[0]\_$data[1]\_pindel_calls.txt -b true --gatk_compatible`;
+
+                `/bin/touch $output/progress/$pre\_$uID\_$data[0]\_$data[1]\_PINDEL2VCF.done`;
+                push @all_jids, "$pre\_$uID\_$data[0]\_$data[1]\_PINDEL2VCF";
+            }
+        }
 
 
         ## Here we will add the facets scripts

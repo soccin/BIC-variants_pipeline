@@ -17,6 +17,7 @@ MCR			/opt/common/CentOS_6/matlab/v81
 MUTECT			/opt/common/CentOS_6/muTect/muTect-1.1.7
 PERL			/opt/common/CentOS_6/perl/perl-5.22.0/bin
 PICARD			/opt/common/CentOS_6/picard/picard-tools-1.124
+PINDEL                  /opt/common/CentOS_6/pindel/pindel-0.2.5b9
 PYTHON			/opt/common/CentOS_6/python/python-2.7.8/bin
 R			/opt/common/CentOS_6/R/R-3.1.2/bin
 SAMTOOLS                /opt/common/CentOS_6/samtools/samtools-1.2
