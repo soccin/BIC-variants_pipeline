@@ -889,10 +889,10 @@ sub verifyRequest{
                 my $x = sprintf("%03d", $runnum);
                 $delDir = "/ifs/solres/seq/$origPi/$origInv/$pid/r_$x";
                 if( -d  "$delDir"){
-                #    die "\nERROR: This project has a delivered directory with this rerun folder already present: $delDir \n\n";
+                    die "\nERROR: This project has a delivered directory with this rerun folder already present: $delDir \n\n";
                 }
             }
-            #die "\nERROR: This project has a delivered directory with this rerun folder already present: $delDir \n\n";
+            die "\nERROR: This project has a delivered directory with this rerun folder already present: $delDir \n\n";
         } 
 
     }
@@ -902,7 +902,7 @@ sub verifyRequest{
 	my $x = sprintf("%03d", $runnum);
 	$delDir .= "r_$x";
 	if( -d  "$delDir"){
-	#    die "\nERROR: This project has a delivered directory with this rerun folder already present: $delDir \n\n";
+	    die "\nERROR: This project has a delivered directory with this rerun folder already present: $delDir \n\n";
 	}
     }
  
