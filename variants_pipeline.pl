@@ -456,11 +456,7 @@ sub reconstructCL {
     $rCL .= " -priority_project $priority_project";
     
     $rCL .= " -priority_group $priority_group";
-    
-    if($species){
-	$rCL .= " -species $species";
-    }
-    
+        
     if($r1adaptor){
 	$rCL .= " -r1adaptor $r1adaptor";
     }
