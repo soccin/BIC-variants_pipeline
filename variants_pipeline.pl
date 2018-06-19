@@ -1227,11 +1227,13 @@ sub alignReads {
 	my @unsorted = readdir workDir;
 	closedir workDir;
 	my @files = sort @unsorted;
-	
+
+        my $R1_exist = 0;	
 	open(OUT, ">files_$data[1]\_$data[0]\_$data[2]");
 	foreach my $file (@files){
 	    if($file =~ /fastq\.gz$/ && $file =~ m/^(.*)(R\d+)(.*)$/){
 		if($2 eq 'R1'){
+                    $R1_exist = 1;
 		    my $file_R2 = $file;
 		    $file_R2 =~ s/^(.*)R1(.*)$/$1R2$2/;
 
@@ -1264,6 +1266,7 @@ sub alignReads {
 	    }
 	}
 	close OUT;
+        die "Error: $data[1]\_$data[0]\_$data[2] contains no R1 read.\n" if(!$R1_exist);
 	
 	my @currentTime = &getTime();
 	print LOG "$currentTime[2]:$currentTime[1]:$currentTime[0], $currentTime[3]\/$currentTime[4]\/$currentTime[5]\tSTARTING READS PROCESSING/ALIGNMENT FOR $data[1]\_$data[0]\_$data[2]\n";
