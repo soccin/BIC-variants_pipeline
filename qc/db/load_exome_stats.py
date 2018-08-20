@@ -415,12 +415,14 @@ def read_and_save_gc_bias(file_id, in_file_name, project_id, pipeline_run_id, co
                 stat_cursor.execute(stat_query, params)
 
 
-def load(species, chipseq, paired, stat_type, project_name, pi, investigator, rerun_number, revision_number, in_file_name, conn, log_file):
+def load(species, assay, chipseq, paired, stat_type, project_name, pi, investigator, rerun_number, revision_number, in_file_name, conn, log_file):
     stats=dict()
     if species.lower() in ['human','hg18','hg19','hybrid','b37','grch37','xenograft']:
         stats = human_stats
         if chipseq:
             stats = human_chipseq_stats
+        if 'wgs' in assay.lower():
+            stats = human_wgs_stats
     elif species.lower() in ['mouse','mm9','mm10']:
         stats = mouse_stats
         if chipseq:
@@ -491,7 +493,7 @@ def load(species, chipseq, paired, stat_type, project_name, pi, investigator, re
     stat_cursor.close()
 
 def parse_request(request_file):
-    project_id = rerun_number = pi = investigator = species = None
+    assay = project_id = rerun_number = pi = investigator = species = None
     tumor_type = 'unknown' ## default
     pipeline = 'exome'     ## default - might change to 'variants'??
     with open(request_file,'rU') as req:
@@ -518,6 +520,8 @@ def parse_request(request_file):
                 species = val
             elif key == 'Custom species':
                 custom_species = val
+            elif key == 'Assay':
+                assay = val
             #elif key == 'Pipelines':   ## exclude this for now because values in request file do not match possible values in database
             #    pipeline = val     
 
@@ -525,7 +529,7 @@ def parse_request(request_file):
     if species == 'custom':
         species = custom_species
 
-    return (project_id,rerun_number,pi,investigator,species,tumor_type,pipeline)
+    return (project_id,rerun_number,pi,investigator,species,tumor_type,pipeline,assay)
 
 
 
@@ -570,6 +574,18 @@ human_stats = {
     "FPCResultsUnMatch": Stat("FPCResultsUnMatch", ["_UnexpectedMatches.txt"], read_and_save_fpc_results_unmatch),
     "FPCResultsUnMismatch": Stat("FPCResultsUnMismatch", ["_UnexpectedMismatches.txt"], read_and_save_fpc_results_unmismatch),
     "HSMetrics": Stat("HSMetrics", ["_HsMetrics.txt"], read_and_save_hs_metrics),
+    "OrgBaseQualities": Stat("OrgBaseQualities", ["_pre_recal_MeanQualityByCycle.txt"], read_and_save_org_base_qualities),
+    "GCBias": Stat("GCBias", ["_GcBiasMetrics.txt"], read_and_save_gc_bias)
+}
+
+human_wgs_stats = {
+    "FPHet": Stat("FPHet", ["_MajorContamination.txt"], read_and_save_fp_het),
+    "FPCSummary": Stat("FPCSummary", ["_DiscordantHomAlleleFractions.txt"], read_and_save_fpc_summary),
+    "BaseQualities": Stat("BaseQualities", ["_post_recal_MeanQualityByCycle.txt"], read_and_save_base_qualities),
+    "FPAvgHom": Stat("FPAvgHom", ["_MinorContamination.txt"], read_and_save_fp_avg_hom),
+    "FPSummary": Stat("FPSummary", ["_FingerprintSummary.txt"], read_and_save_fp_summary),
+    "FPCResultsUnMatch": Stat("FPCResultsUnMatch", ["_UnexpectedMatches.txt"], read_and_save_fpc_results_unmatch),
+    "FPCResultsUnMismatch": Stat("FPCResultsUnMismatch", ["_UnexpectedMismatches.txt"], read_and_save_fpc_results_unmismatch),
     "OrgBaseQualities": Stat("OrgBaseQualities", ["_pre_recal_MeanQualityByCycle.txt"], read_and_save_org_base_qualities),
     "GCBias": Stat("GCBias", ["_GcBiasMetrics.txt"], read_and_save_gc_bias)
 }

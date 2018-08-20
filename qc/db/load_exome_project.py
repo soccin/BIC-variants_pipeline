@@ -68,13 +68,15 @@ def validate_files(project_name, project_dir, stats, log_file):
     #####
 
 
-def load(species, chipseq, paired, project_name, rerun_number, pi, investigator, tumor_type, pipeline, revision_number, project_dir, conn, log_file):
+def load(species, assay, chipseq, paired, project_name, rerun_number, pi, investigator, tumor_type, pipeline, revision_number, project_dir, conn, log_file):
     stats = list()
 
     if species.lower() in ['human','hg18','hg19','hybrid','b37','grch37','xenograft']:
         stats = load_exome_stats.human_stats.values()
         if chipseq:
             stats = load_exome_stats.human_chipseq_stats.values()
+        if 'wgs' in assay.lower():
+            stats = load_exome_stats.human_wgs_stats.values()
     elif species.lower() in ['mouse','mm9','mm10']:
         stats = load_exome_stats.mouse_stats.values()
         if chipseq:
@@ -93,7 +95,7 @@ def load(species, chipseq, paired, project_name, rerun_number, pi, investigator,
     for stat in stats:
         file_name = get_stat_file(project_name, project_dir, stat)
         log_file.write("LOG: Loading stat '%s' from '%s'\n" % (stat.name, file_name))
-        load_exome_stats.load(species, chipseq, paired, stat.name, project_name, pi, investigator, rerun_number, revision_number, file_name, conn, log_file)
+        load_exome_stats.load(species, assay, chipseq, paired, stat.name, project_name, pi, investigator, rerun_number, revision_number, file_name, conn, log_file)
 
 
 if __name__ == "__main__":
@@ -126,7 +128,7 @@ if __name__ == "__main__":
         print "ERROR: Can't find request file %s" %request_file
         sys.exit(-1)
 
-    project_id, rerun_number, pi, investigator, species, tumor_type, pipeline = load_exome_stats.parse_request(request_file)
+    project_id, rerun_number, pi, investigator, species, tumor_type, pipeline, assay = load_exome_stats.parse_request(request_file)
 
     if not project_id or not rerun_number or not pi or not investigator:
         print "ERROR: Required info missing from request file"
@@ -143,6 +145,7 @@ if __name__ == "__main__":
     print "project_dir: ", project_dir 
     print "tumor_type: ",tumor_type
     print "species: ",species
+    print "assay ",assay
     #'''
     #sys.exit()
 
@@ -153,7 +156,7 @@ if __name__ == "__main__":
             conn = mysql.connector.connect(**db_config.params)
 
             project_dir = os.path.abspath(project_dir)
-            load(species, chipseq, paired, project_id, rerun_number, pi, investigator, tumor_type, pipeline, revision_number, project_dir, conn, log_file)
+            load(species, assay, chipseq, paired, project_id, rerun_number, pi, investigator, tumor_type, pipeline, revision_number, project_dir, conn, log_file)
 
             conn.commit()
             conn.close() 
