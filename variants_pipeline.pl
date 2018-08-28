@@ -1789,6 +1789,9 @@ sub callSNPS {
     if($lancet){
 	$somaticCallers .= " -lancet";
     }
+    if($vardict){
+	$somaticCallers .= " -vardict";
+    }
     if($pindel){
         $somaticCallers .= " -pindel";
     }
