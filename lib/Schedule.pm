@@ -80,12 +80,12 @@ sub sge {
 	###$cluster->mem("-l virtual_free=$sgeParams{'mem'}\G");
 	### NOTE: sge mem request is per cpu
 	my $memPerCPU = $sgeParams{'mem'}/$tcpus;
-	$cluster->mem("-l virtual_free=$memPerCPU\G");
+	$cluster->mem("-l virtual_free=${memPerCPU}G");
     }
     else{
 	### $cluster->mem("-l virtual_free=$cluster->{mem}\G");
 	my $memPerCPU = $cluster->{mem}/$tcpus;
-	$cluster->mem("-l virtual_free=$memPerCPU\G");
+	$cluster->mem("-l virtual_free=${memPerCPU}G");
     }
 
     if($sgeParams{'internet'}){

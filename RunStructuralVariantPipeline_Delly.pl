@@ -53,6 +53,7 @@ my (
     $queue,
     $PERL,
     $DELLY,
+    $BCFTOOLS,
     $QSUB,
     $standardNormalList,
     $MAPQ,
@@ -649,6 +650,12 @@ sub verifyConfig{
             }
             $DELLY = "$conf[1]/delly";
         }
+        elsif($conf[0] =~ /BCFTOOLS/i){
+            if(!-e "$conf[1]/bcftools"){
+                die "CAN'T FIND bcftools IN $conf[1] $!";
+            }
+            $BCFTOOLS = "$conf[1]/bcftools";
+        }
         elsif($conf[0] =~ /^PERL/i){
             if(!-e "$conf[1]/perl"){
                 die "CAN'T FIND perl IN $conf[1] $!";
@@ -994,28 +1001,28 @@ sub RunDelly {
 
 	#Delly Tumor CMD
 	my $dellyT_cmd =
-"$DELLY -t DEL -g $refFile -x $ExcludeRegions -q $MAPQ -o $tId\_del.vcf $tumor $normal";
+"'export OMP_NUM_THREADS=2 && $DELLY call -t DEL -g $refFile -x $ExcludeRegions -q $MAPQ -o $tId\_del.bcf $tumor $normal && $BCFTOOLS view -o $tId\_del.vcf $tId\_del.bcf'";
 	my $dellyT_jname  = "delly_$tId.$$.$count";
 	my $dellyT_stdout = $dellyT_jname . ".stdout";
 	my $dellyT_stderr = $dellyT_jname . ".stderr";
 
 	#Duppy Tumor CMD
 	my $duppyT_cmd =
-"$DELLY -t DUP -g $refFile -x $ExcludeRegions -q $MAPQ -o $tId\_dup.vcf $tumor $normal";
+"'export OMP_NUM_THREADS=2 && $DELLY call -t DUP -g $refFile -x $ExcludeRegions -q $MAPQ -o $tId\_dup.bcf $tumor $normal && $BCFTOOLS view -o $tId\_dup.vcf $tId\_dup.bcf'";
 	my $duppyT_jname  = "duppy_$tId.$$.$count";
 	my $duppyT_stdout = $duppyT_jname . ".stdout";
 	my $duppyT_stderr = $duppyT_jname . ".stderr";
 
 	#Invy Tumor CMD
 	my $invyT_cmd =
-"$DELLY -t INV -g $refFile -x $ExcludeRegions -q $MAPQ -o $tId\_inv.vcf  $tumor $normal";
+"'export OMP_NUM_THREADS=2 && $DELLY call -t INV -g $refFile -x $ExcludeRegions -q $MAPQ -o $tId\_inv.bcf $tumor $normal && $BCFTOOLS view -o $tId\_inv.vcf $tId\_inv.bcf'";
 	my $invyT_jname  = "invy_$tId.$$.$count";
 	my $invyT_stdout = $invyT_jname . ".stdout";
 	my $invyT_stderr = $invyT_jname . ".stderr";
 
 	#Jumpy Tumor CMD
 	my $jumpyT_cmd =
-"$DELLY -t TRA -g $refFile -x $ExcludeRegions -q $MAPQ -o $tId\_jmp.vcf  $tumor $normal";
+"'export OMP_NUM_THREADS=2 && $DELLY call -t BND -g $refFile -x $ExcludeRegions -q $MAPQ -o $tId\_jmp.bcf $tumor $normal && $BCFTOOLS view -o $tId\_jmp.vcf $tId\_jmp.bcf'";
 	my $jumpyT_jname  = "jumpy_$tId.$$.$count";
 	my $jumpyT_stdout = $jumpyT_jname . ".stdout";
 	my $jumpyT_stderr = $jumpyT_jname . ".stderr";
@@ -1158,7 +1165,7 @@ sub launchQsub {
 	if ( $holdjobname eq "Null" ) {
 	    ###$qcmd = "$QSUB -q $queue -V -v OMP_NUM_THREADS=2 -wd $outdir -N $jobname -o $stdout -e $stderr -l h_vmem=$mem,virtual_free=$mem -pe smp $processors -b y $cmd";
 
-	    my %stdParams = (scheduler => "$scheduler", job_name => "$jobname", cpu => "$processors", mem => "$mem", cluster_out => "$stdout", cluster_error => "$stderr");
+	    my %stdParams = (scheduler => "$scheduler", job_name => "$jobname", job_hold => "", cpu => "$processors", mem => "$mem", cluster_out => "$stdout", cluster_error => "$stderr");
 	    my $standardParams = Schedule::queuing(%stdParams);
 	    $qcmd = "$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $standardParams->{cluster_error} $additionalParams $cmd";
 
@@ -1584,10 +1591,10 @@ sub Read_VCFout {
 			if ( $_ =~ m/^#CHROM/ ) {
 				@header = split( "\t", $_ );
 				for ( my $i = 0 ; $i < scalar(@header) ; $i++ ) {
-					if ( $header[$i] =~ /$tumorId/ ) {
+					if ( $header[$i] =~ /^$tumorId$/ ) {
 						$tumorIndex = $i;
 					}
-					if ( $header[$i] =~ /$normalId/ ) {
+					if ( $header[$i] =~ /^$normalId$/ ) {
 						$normalIndex = $i;
 					}
 					if ( $header[$i] =~ /INFO/ ) {
@@ -1603,6 +1610,7 @@ sub Read_VCFout {
 						$filterIndex = $i;
 					}
 				}
+                                die "Error: incorrect header column in vcf file\n" if(!defined($tumorIndex) || !defined($normalIndex) || !defined($infoIndex) || !defined($chrIndex) || !defined($startIndex) || !defined($filterIndex));
 			}
 		}
 		else {
@@ -1633,12 +1641,14 @@ sub Read_VCFout {
 			}
 
 			#get Tumor Genotype Information
-			my ( $tGT, $tGL, $tGQ, $tFT, $tRC, $tDR, $tDV, $tRR, $tRV ) =
-			  split( ":", $line[$tumorIndex] );
+                        my ( $tGT, $tGL, $tGQ, $tFT, $tRCL, $tRC, $tRCR, $tCN, $tDR, $tDV,$tRR, $tRV ) =
+                          split( ":", $line[$tumorIndex] );
+
 
 			#Get Normal Genotype Information
-			my ( $nGT, $nGL, $nGQ, $nFT, $nRC, $nDR, $nDV, $nRR, $nRV ) =
-			  split( ":", $line[$normalIndex] );
+                        my ( $nGT, $nGL, $nGQ, $nFT, $nRCL, $nRC, $nRCR, $nCN, $nDR, $nDV,$nRR, $nRV ) =
+                          split( ":", $line[$normalIndex] );
+
 			my ( $svlen, $mapq, $peReads, $srReads, $svType, $svTNratio,
 				$svChr2, $svEnd )
 			  = 0.0;
@@ -1648,7 +1658,6 @@ sub Read_VCFout {
 			#($svTNratio) = 5 * $nDV;
 			$bkptType = "IMPRECISE" if exists $infoData{"IMPRECISE"};
 			$bkptType = "PRECISE" if exists $infoData{"PRECISE"};
-			$svlen          = $infoData{"SVLEN"}  if exists $infoData{"SVLEN"};
 			$mapq           = $infoData{"MAPQ"}   if exists $infoData{"MAPQ"};
 			$svType         = $infoData{"SVTYPE"} if exists $infoData{"SVTYPE"};
 			$peReads        = $infoData{"PE"}     if exists $infoData{"PE"};
@@ -1656,6 +1665,7 @@ sub Read_VCFout {
 			$svEnd          = $infoData{"END"}    if exists $infoData{"END"};
 			$connectionType = $infoData{"CT"}     if exists $infoData{"CT"};
 			$svChr2         = $infoData{"CHR2"}   if exists $infoData{"CHR2"};
+                        $svlen          = $svEnd - $svStart;
 			$consensusSeq   = $infoData{"CONSENSUS"} if exists $infoData{"CONSENSUS"};
 			if ( !$svChr2 ) { $svChr2 = $svChr }
 			$outHash{"$svChr:$svStart:$svChr2:$svEnd"} =

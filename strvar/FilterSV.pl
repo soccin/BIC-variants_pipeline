@@ -401,7 +401,7 @@ sub Usage {
 	print "\nUsage : FilterSV.pl [options]
         [--vcf|i 						S	 	1000 Genomes Format Structural Variant[SV] VCF.]
         [--hotspotFile|hsf 						S	 	BED4 Format bed file.]
-        [--typeOfSV|tos 						S	 	Type of structural Variant(please use these terms accordingly: Deletion:DEL,Duplication:DUP,Inversion:INV,Translocation:TRA)]
+        [--typeOfSV|tos 						S	 	Type of structural Variant(please use these terms accordingly: Deletion:DEL,Duplication:DUP,Inversion:INV,Translocation:BND)]
         [--tumorId|tid					S		ID for the tumor bam.]
         [--normalId|nid					S		ID for the Noraml bam.]
         [--outdir						S		Output directory.]
@@ -542,10 +542,10 @@ sub FilterVcf {
 			if ( $line =~ m/^#CHROM/ ) {
 				@header = split( "\t", $line );
 				for ( my $i = 0 ; $i < scalar(@header) ; $i++ ) {
-					if ( $header[$i] =~ /$tumorId/ ) {
+					if ( $header[$i] =~ /^$tumorId$/ ) {
 						$tumorIndex = $i;
 					}
-					if ( $header[$i] =~ /$normalId/ ) {
+					if ( $header[$i] =~ /^$normalId$/ ) {
 						$normalIndex = $i;
 					}
 					if ( $header[$i] =~ /INFO/ ) {
@@ -561,6 +561,7 @@ sub FilterVcf {
 						$filterIndex = $i;
 					}
 				}
+                        die "Error: incorrect header column in vcf file\n" if(!defined($tumorIndex) || !defined($normalIndex) || !defined($infoIndex) || !defined($chrIndex) || !defined($startIndex) || !defined($filterIndex));
 			}
 		}
 		else {
@@ -592,11 +593,11 @@ sub FilterVcf {
 			}
 
 			#get Tumor Genotype Information
-			my ( $tGT, $tGL, $tGQ, $tFT, $tRC, $tDR, $tDV,$tRR, $tRV ) =
+			my ( $tGT, $tGL, $tGQ, $tFT, $tRCL, $tRC, $tRCR, $tCN, $tDR, $tDV,$tRR, $tRV ) =
 			  split( ":", $line[$tumorIndex] );
 
 			#Get Normal Genotype Information
-			my ( $nGT, $nGL, $nGQ, $nFT, $nRC, $nDR, $nDV,$nRR, $nRV ) =
+			my ( $nGT, $nGL, $nGQ, $nFT, $nRCL, $nRC, $nRCR, $nCN, $nDR, $nDV,$nRR, $nRV ) =
 			  split( ":", $line[$normalIndex] );
 			my ( $svlen, $mapq, $peReads, $srReads, $svType, $svTNratio,
 				$svChr2, $svEnd )
@@ -605,7 +606,7 @@ sub FilterVcf {
 
 			#Calculate Tumor Noraml SV read ratio if its 0
 			#($svTNratio) = 5 * $nDV;
-			$svlen          = $infoData{"SVLEN"}  if exists $infoData{"SVLEN"};
+			#$svlen          = $infoData{"SVLEN"}  if exists $infoData{"SVLEN"};
 			$mapq           = $infoData{"MAPQ"}   if exists $infoData{"MAPQ"};
 			$svType         = $infoData{"SVTYPE"} if exists $infoData{"SVTYPE"};
 			$peReads        = $infoData{"PE"}     if exists $infoData{"PE"};
@@ -613,6 +614,9 @@ sub FilterVcf {
 			$svEnd          = $infoData{"END"}    if exists $infoData{"END"};
 			$connectionType = $infoData{"CT"}     if exists $infoData{"CT"};
 			$svChr2         = $infoData{"CHR2"}   if exists $infoData{"CHR2"};
+
+                        $svlen          = $svEnd - $svStart;
+
 			if ( !$svChr2 ) { $svChr2 = $svChr }
 			my $convertedSVchr;
 			$convertedSVchr = $svChr;
@@ -666,7 +670,7 @@ sub FilterVcf {
 					$nGQ,          $tDV,     $nDV
 				);
 			}
-			if ( $TypeOfSV =~ /TRA/i ) {
+			if ( $TypeOfSV =~ /BND/i ) {
 				$filterFlag = &FilterTranslocation(
 					$svChr,        $svStart, $svChr2, $svEnd,
 					$filterString, $svlen,   $mapq,   $peReads,

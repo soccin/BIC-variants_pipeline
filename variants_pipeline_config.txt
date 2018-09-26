@@ -3,7 +3,7 @@ BCFTOOLS		/opt/common/CentOS_6/bcftools/bcftools-1.2/bin
 BEDTOOLS		/opt/common/CentOS_6/bedtools/bedtools-2.22.0/bin
 BWA			/opt/common/CentOS_6/bwa/bwa-0.7.12
 CUTADAPT		/opt/common/CentOS_6/cutadapt/cutadapt-1.9.1/bin
-DELLY			/opt/common/CentOS_6/delly/delly_v0.6.1
+DELLY			/opt/common/CentOS_6/delly/delly-master-9b7fc59
 dRANGER			/opt/common/CentOS_6/dranger/dRanger_annotate_v2.0
 HTSTOOLS                /opt/common/CentOS_6/htstools/htstools_0.1.1
 FACETS_SUITE				/opt/common/CentOS_6/facets-suite/facets-suite-1.5.5_MW_MOD
