@@ -92,6 +92,13 @@ my (
     $priority_group
 );
 
+
+my $SINGULARITY = '';
+my $singularityParams = '';
+my $singularityBind = '';
+my $singularityenv_prepend_path = "";
+
+
 my $binPath = $Bin;
 my $variant_config_file = $binPath  . "/variants_pipeline_config.txt";   #default variant config file
 my $sv_config_file = $binPath . "/strvar/template_dmp_sv.conf"; #default sv config file
@@ -644,7 +651,13 @@ sub verifyConfig{
     while(<CONFIG>){
         chomp;
         my @conf = split(/\s+/, $_);
-        if($conf[0] =~ /DELLY/i){
+        if($conf[0] =~ /singularity/i){
+            if(!-e "$conf[1]/singularity"){
+                die "CAN'T FIND singularity IN $conf[1] $!";
+            }
+            $SINGULARITY = $conf[1];
+        }
+        elsif($conf[0] =~ /DELLY/i){
             if(!-e "$conf[1]/delly"){
                 die "CAN'T FIND delly IN $conf[1] $!";
             }
@@ -693,6 +706,13 @@ sub verifyConfig{
             $MCR= $conf[1];
         }
    }
+   my %sinParams = (singularity_exec => "$SINGULARITY/singularity", singularity_image => "$Bin/variants_pipeline_singularity_prod.simg");
+   $singularityParams = Schedule::singularityParams(%sinParams);
+   $singularityBind = Schedule::singularityBind();   
+
+   $ENV{'SINGULARITYENV_PREPEND_PATH'} = $singularityenv_prepend_path;
+   $ENV{'SINGULARITY_BINDPATH'} = $singularityBind; 
+   $ENV{'OMP_NUM_THREADS'} = '2';
    close CONFIG;
 }
 
@@ -1001,28 +1021,28 @@ sub RunDelly {
 
 	#Delly Tumor CMD
 	my $dellyT_cmd =
-"'export OMP_NUM_THREADS=2 && $DELLY call -t DEL -g $refFile -x $ExcludeRegions -q $MAPQ -o $tId\_del.bcf $tumor $normal && $BCFTOOLS view -o $tId\_del.vcf $tId\_del.bcf'";
+"$DELLY call -t DEL -g $refFile -x $ExcludeRegions -q $MAPQ -o $tId\_del.bcf $tumor $normal \\&\\& $BCFTOOLS view -o $tId\_del.vcf $tId\_del.bcf";
 	my $dellyT_jname  = "delly_$tId.$$.$count";
 	my $dellyT_stdout = $dellyT_jname . ".stdout";
 	my $dellyT_stderr = $dellyT_jname . ".stderr";
 
 	#Duppy Tumor CMD
 	my $duppyT_cmd =
-"'export OMP_NUM_THREADS=2 && $DELLY call -t DUP -g $refFile -x $ExcludeRegions -q $MAPQ -o $tId\_dup.bcf $tumor $normal && $BCFTOOLS view -o $tId\_dup.vcf $tId\_dup.bcf'";
+"$DELLY call -t DUP -g $refFile -x $ExcludeRegions -q $MAPQ -o $tId\_dup.bcf $tumor $normal \\&\\& $BCFTOOLS view -o $tId\_dup.vcf $tId\_dup.bcf";
 	my $duppyT_jname  = "duppy_$tId.$$.$count";
 	my $duppyT_stdout = $duppyT_jname . ".stdout";
 	my $duppyT_stderr = $duppyT_jname . ".stderr";
 
 	#Invy Tumor CMD
 	my $invyT_cmd =
-"'export OMP_NUM_THREADS=2 && $DELLY call -t INV -g $refFile -x $ExcludeRegions -q $MAPQ -o $tId\_inv.bcf $tumor $normal && $BCFTOOLS view -o $tId\_inv.vcf $tId\_inv.bcf'";
+"$DELLY call -t INV -g $refFile -x $ExcludeRegions -q $MAPQ -o $tId\_inv.bcf $tumor $normal \\&\\& $BCFTOOLS view -o $tId\_inv.vcf $tId\_inv.bcf";
 	my $invyT_jname  = "invy_$tId.$$.$count";
 	my $invyT_stdout = $invyT_jname . ".stdout";
 	my $invyT_stderr = $invyT_jname . ".stderr";
 
 	#Jumpy Tumor CMD
 	my $jumpyT_cmd =
-"'export OMP_NUM_THREADS=2 && $DELLY call -t BND -g $refFile -x $ExcludeRegions -q $MAPQ -o $tId\_jmp.bcf $tumor $normal && $BCFTOOLS view -o $tId\_jmp.vcf $tId\_jmp.bcf'";
+"$DELLY call -t BND -g $refFile -x $ExcludeRegions -q $MAPQ -o $tId\_jmp.bcf $tumor $normal \\&\\& $BCFTOOLS view -o $tId\_jmp.vcf $tId\_jmp.bcf";
 	my $jumpyT_jname  = "jumpy_$tId.$$.$count";
 	my $jumpyT_stdout = $jumpyT_jname . ".stdout";
 	my $jumpyT_stderr = $jumpyT_jname . ".stderr";
@@ -1149,7 +1169,7 @@ sub launchQsub {
 	    
 	    my %stdParams = (scheduler => "$scheduler", job_name => "$jobname", job_hold => "$holdjobname", cpu => "$processors", mem => "$mem", cluster_out => "$stdout", cluster_error => "$stderr");
 	    my $standardParams = Schedule::queuing(%stdParams);
-	    $qcmd = "$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $standardParams->{cluster_error} $additionalParams $cmd";
+	    $qcmd = "$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $standardParams->{cluster_error} $additionalParams $singularityParams $cmd";
 	    
 	    eval {
 		print "CMD:$qcmd\n";
@@ -1167,7 +1187,7 @@ sub launchQsub {
 
 	    my %stdParams = (scheduler => "$scheduler", job_name => "$jobname", job_hold => "", cpu => "$processors", mem => "$mem", cluster_out => "$stdout", cluster_error => "$stderr");
 	    my $standardParams = Schedule::queuing(%stdParams);
-	    $qcmd = "$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $standardParams->{cluster_error} $additionalParams $cmd";
+	    $qcmd = "$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $standardParams->{cluster_error} $additionalParams $singularityParams $cmd";
 
 	    eval {
 		print "CMD:$qcmd\n";

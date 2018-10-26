@@ -15,12 +15,20 @@ my ($pre, $template_config, $result_dir, $berger, $bamlist, $patient, $title, $s
 my ($config, $custom_design_dir, $project_dir, $std_dir);
 #my $lsf_queue = 0;
 
+my $root_root;
+BEGIN {($root_root) = $Bin =~ /(.*)\/.*\/.*/;}    #get the path above root
+
+
 my $wrapperPath = $Bin . "/impact_dmp/wrapper/";
 my $dmpCnvPath = $Bin . "/impact_dmp/bin/"; 
 my $configFilePath = $Bin . "/impact_dmp/configuration/";
 my $addCustomGenePath = $Bin . "/impact_dmp/ParseRefseqGene/ParseRefseqGene";
 my $uID = `/usr/bin/id -u -n`;
 chomp $uID;
+
+my $singularityParams = '';
+my $singularityBind = '';
+my $singularityenv_prepend_path = "";
 
 my (
 	#$sampleFile,                    #$titleFile,                     
@@ -88,7 +96,8 @@ my (
 	$Bam2Fastq, 					 
 	$REFSEQ,						 $REFSEQ_CANONICAL,
 	$CYTOBAND,                       $UCSC_DBSNP,
-	$FASTX_TOOLKIT,			 $maxium_readlength
+	$FASTX_TOOLKIT,			 $maxium_readlength,
+        $SINGULARITY
 );
 
 GetOptions ('pre=s' => \$pre,
@@ -375,6 +384,7 @@ sub GetConfiguration {
 		$CYTOBAND = $location{"CYTOBAND"};
 		$UCSC_DBSNP = $location{"UCSC_DBSNP"};
 		$FASTX_TOOLKIT = $location{"FASTX_TOOLKIT"};
+                $SINGULARITY = $location{"SINGULARITY"};
 
 		##Set Parameters
 		#$sampleFile  = $parameters{"SampleFile"};
@@ -430,6 +440,14 @@ sub GetConfiguration {
 	{
 		$Reference = $Reference_hg19;
 	}
+
+        my %sinParams = (singularity_exec => "$SINGULARITY/singularity", singularity_image => "$root_root/variants_pipeline_singularity_prod.simg");
+        $singularityParams = Schedule::singularityParams(%sinParams);
+        $singularityBind = Schedule::singularityBind();
+
+        $ENV{'SINGULARITYENV_PREPEND_PATH'} = $singularityenv_prepend_path;
+        $ENV{'SINGULARITY_BINDPATH'} = $singularityBind;
+
 	die ("[ERROR]: Did not find a variable in configuration file.Error: $@\n") if ($@);
 	return ( \%version );
 }
@@ -595,7 +613,7 @@ sub RunCopyNumber
 	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_NormalizedCoverage", cpu => "1", mem => "8", cluster_out => "$pre\_$uID\_NormalizedCoverage.stdout", cluster_error => "$pre\_$uID\_NormalizedCoverage.stderr");
 	my $standardParams = Schedule::queuing(%stdParams);
 
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $standardParams->{cluster_error} $additionalParams $PERL $wrapperPath/RunNormalizedCoverage.pl -pre $pre -config $config -bamlist $bamlist -result $project_dir $extra_para -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group`;
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $standardParams->{cluster_error} $additionalParams $singularityParams $PERL $wrapperPath/RunNormalizedCoverage.pl -pre $pre -config $config -bamlist $bamlist -result $project_dir $extra_para -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group`;
 
 	if(!$std_covg)
 	{
@@ -618,7 +636,7 @@ sub RunCopyNumber
 		%stdParams = (scheduler => "$scheduler", job_name => "$pre\_std\_$uID\_NormalizedCoverage", cpu => "1", mem => "8", cluster_out => "pre\_std\_$uID\_NormalizedCoverage.stdout", cluster_error => "$pre\_std\_$uID\_NormalizedCoverage.stderr");
 		$standardParams = Schedule::queuing(%stdParams);
 
- 		`$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $standardParams->{cluster_error} $additionalParams $PERL $wrapperPath/RunNormalizedCoverage.pl -pre $pre\_std -config $config -bamlist $std_bamlist -result $std_dir $std_extra_para -add_barcode_prefix -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group`;
+ 		`$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $standardParams->{cluster_error} $additionalParams $singularityParams $PERL $wrapperPath/RunNormalizedCoverage.pl -pre $pre\_std -config $config -bamlist $std_bamlist -result $std_dir $std_extra_para -add_barcode_prefix -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group`;
 	
  		$std_covg = $std_dir . "$pre\_std_fixed";
  		$hold_job_id = $hold_job_id . ",$pre\_std\_$uID\_NormalizedCoverage";
@@ -631,12 +649,12 @@ sub RunCopyNumber
 
 	%stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_TumorCopyNumber", job_hold => "$hold_job_id", cpu => "1", mem => "8", cluster_out => "$pre\_$uID\_TumorCopyNumber.stdout", cluster_error => "$pre\_$uID\_TumorCopyNumber.stderr");
 	$standardParams = Schedule::queuing(%stdParams);
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $standardParams->{cluster_error} $additionalParams "$RHOME/R --slave --vanilla --args $pre $std_covg $custom_design_dir/combined_gene_intervals.list.annotated $custom_design_dir/combined_tiling_interval.list.annotated MIN < $dmpCnvPath/copynumber_tm.batchdiff.bic.R"`;
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $standardParams->{cluster_error} $additionalParams "$singularityParams $RHOME/R --slave --vanilla --args $pre $std_covg $custom_design_dir/combined_gene_intervals.list.annotated $custom_design_dir/combined_tiling_interval.list.annotated MIN < $dmpCnvPath/copynumber_tm.batchdiff.bic.R"`;
 
 
         %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_NormalCopyNumber", job_hold => "$hold_job_id", cpu => "1", mem => "8", cluster_out => "$pre\_$uID\_NormalCopyNumber.stdout", cluster_error => "$pre\_$uID\_NormalCopyNumber.stderr");
         $standardParams = Schedule::queuing(%stdParams);
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $standardParams->{cluster_error} $additionalParams "$RHOME/R --slave --vanilla --args $pre $std_covg $custom_design_dir/combined_gene_intervals.list.annotated $custom_design_dir/combined_tiling_interval.list.annotated Normal MIN < $dmpCnvPath/copynumber_testclass.batchdiff.bic.R"`;
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $standardParams->{cluster_error} $additionalParams "$singularityParams $RHOME/R --slave --vanilla --args $pre $std_covg $custom_design_dir/combined_gene_intervals.list.annotated $custom_design_dir/combined_tiling_interval.list.annotated Normal MIN < $dmpCnvPath/copynumber_testclass.batchdiff.bic.R"`;
 
 
 	my $post_processing_extra_para;
@@ -648,7 +666,7 @@ sub RunCopyNumber
 	%stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_CopyNumberPostProcessing", job_hold => "$pre\_$uID\_TumorCopyNumber,$pre\_$uID\_NormalCopyNumber", cpu => "1", mem => "8", cluster_out => "$pre\_$uID\_CopyNumberPostProcessing.stdout", cluster_error => "$pre\_$uID\_CopyNumberPostProcessing.stderr");
         $standardParams = Schedule::queuing(%stdParams);
 	
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $standardParams->{cluster_error} $additionalParams $PERL $wrapperPath/exome_cnv_post_processing.pl -pre $pre -input $project_dir -output $result_dir -perl $PERL $post_processing_extra_para`;
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $standardParams->{cluster_error} $additionalParams $PERL $singularityParams $wrapperPath/exome_cnv_post_processing.pl -pre $pre -input $project_dir -output $result_dir -perl $PERL $post_processing_extra_para`;
 
 	print "[INFO]: Submitted copynumber analysis job to cluster\n";
 

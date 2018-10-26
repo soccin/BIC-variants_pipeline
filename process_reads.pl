@@ -93,12 +93,24 @@ my $BWA = '';
 my $PICARD = '';
 my $JAVA = '';
 my $PYTHON = '';
+
+my $SINGULARITY = '';
+my $singularityParams = '';
+my $singularityBind = '';
+my $singularityenv_prepend_path = "";
+
 open(CONFIG, "$config") or die "CAN'T OPEN CONFIG FILE $config SO USING DEFAULT SETTINGS $!";
 while(<CONFIG>){
     chomp;
 
     my @conf = split(/\s+/, $_);
-    if($conf[0] =~ /cutadapt/i){
+    if($conf[0] =~ /singularity/i){
+        if(!-e "$conf[1]/singularity"){
+            die "CAN'T FIND singularity IN $conf[1] $!";
+        }
+        $SINGULARITY = $conf[1];
+    }
+    elsif($conf[0] =~ /cutadapt/i){
 	if(!-e "$conf[1]/cutadapt"){
 	    die "CAN'T FIND cutadapt IN $conf[1] $!";
 	}
@@ -193,6 +205,12 @@ while(<CONFIG>){
  	$DM3_BWA_INDEX = $conf[1];
     }
 }
+my %sinParams = (singularity_exec => "$SINGULARITY/singularity", singularity_image => "$Bin/variants_pipeline_singularity_prod.simg");
+$singularityParams = Schedule::singularityParams(%sinParams);
+$singularityBind = Schedule::singularityBind();
+
+$ENV{'SINGULARITYENV_PREPEND_PATH'} = $singularityenv_prepend_path;
+$ENV{'SINGULARITY_BINDPATH'} = $singularityBind;
 close CONFIG;
 
 if($species =~/^b37$|human/i){
@@ -285,7 +303,7 @@ while (<IN>){
     if(!-e "progress/$pre\_$uID\_ZCAT_$nameR1[0]\.done"){
 	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_ZCAT_$nameR1[0]", cpu => "1", mem => "1", cluster_out => "progress/$pre\_$uID\_ZCAT_$nameR1[0]\.log");
 	my $standardParams = Schedule::queuing(%stdParams);
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams "/bin/zcat $data[0] >$count/$nameR1[0]"`;
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams "$singularityParams /bin/zcat $data[0] >$count/$nameR1[0]"`;
 	`/bin/touch progress/$pre\_$uID\_ZCAT_$nameR1[0]\.done`;
 	$zcatR1_jid = "$pre\_$uID\_ZCAT_$nameR1[0]";
 	$ran_zcatR1 = 1;
@@ -297,7 +315,7 @@ while (<IN>){
 	if(!-e "progress/$pre\_$uID\_ZCAT_$nameR2[0]\.done"){
 	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_ZCAT_$nameR2[0]", cpu => "1", mem => "1", cluster_out => "progress/$pre\_$uID\_ZCAT_$nameR2[0]\.log");
 	    my $standardParams = Schedule::queuing(%stdParams);
-	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams "/bin/zcat $data[1] >$count/$nameR2[0]"`;
+	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams "$singularityParams /bin/zcat $data[1] >$count/$nameR2[0]"`;
 	    `/bin/touch progress/$pre\_$uID\_ZCAT_$nameR2[0]\.done`;
 	    $zcatR2_jid = "$pre\_$uID\_ZCAT_$nameR2[0]";
 	    $ran_zcatR2 = 1;
@@ -337,7 +355,7 @@ while (<IN>){
 	sleep(2);
 	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_CQS_$nameR1[0]", job_hold => "$zcatR1_jid", cpu => "1", mem => "1", cluster_out => "progress/$pre\_$uID\_CQS_$nameR1[0]\.log");
 	my $standardParams = Schedule::queuing(%stdParams);
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/ConvertQualityScore --input $count/$nameR1[0] --output $count/$nameR1[0]\_CQS`;
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $Bin/ConvertQualityScore --input $count/$nameR1[0] --output $count/$nameR1[0]\_CQS`;
 	`/bin/touch progress/$pre\_$uID\_CQS_$nameR1[0]\.done`;
 	$cqs1_jid = "$pre\_$uID\_CQS_$nameR1[0]";
 	$ran_cqs1 = 1;	
@@ -350,7 +368,7 @@ while (<IN>){
 	    sleep(2);
 	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_CQS_$nameR2[0]", job_hold => "$zcatR2_jid", cpu => "1", mem => "1", cluster_out => "progress/$pre\_$uID\_CQS_$nameR2[0]\.log");
 	    my $standardParams = Schedule::queuing(%stdParams);
-	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/ConvertQualityScore --input $count/$nameR2[0] --output $count/$nameR2[0]\_CQS`;
+	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $Bin/ConvertQualityScore --input $count/$nameR2[0] --output $count/$nameR2[0]\_CQS`;
 	    `/bin/touch progress/$pre\_$uID\_CQS_$nameR2[0]\.done`;
 	    $cqs2_jid = "$pre\_$uID\_CQS_$nameR2[0]";
 	    $ran_cqs2 = 1;	
@@ -364,7 +382,7 @@ while (<IN>){
 	if(!-e "progress/$pre\_$uID\_CUTADAPT_$nameR1[0]\_$nameR2[0]\_CQS.done" || $ran_cqs1 || $ran_cqs2){
 	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_CUTADAPT_$nameR1[0]\_$nameR2[0]\_CQS", job_hold => "$cqs1_jid,$cqs2_jid", cpu => "1", mem => "1", cluster_out => "progress/$pre\_$uID\_CUTADAPT_$nameR1[0]\_$nameR2[0]\_CQS.log");
 	    my $standardParams = Schedule::queuing(%stdParams);
-	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams "$PYTHON/python $CUTADAPT/cutadapt -f fastq $clipR1 $clipR2 --overlap 10 --minimum-length $minReadLength --quality-cutoff $bqTrim -o $count/$nameR1[0]\_CQS_CT_PE.fastq --paired-output $count/$nameR2[0]\_CQS_CT_PE.fastq $count/$nameR1[0]\_CQS $count/$nameR2[0]\_CQS >$count/$nameR1[0]\_$nameR2[0]\_CQS_CUTADAPT\_STATS.txt"`;
+	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams "$singularityParams $PYTHON/python $CUTADAPT/cutadapt -f fastq $clipR1 $clipR2 --overlap 10 --minimum-length $minReadLength --quality-cutoff $bqTrim -o $count/$nameR1[0]\_CQS_CT_PE.fastq --paired-output $count/$nameR2[0]\_CQS_CT_PE.fastq $count/$nameR1[0]\_CQS $count/$nameR2[0]\_CQS >$count/$nameR1[0]\_$nameR2[0]\_CQS_CUTADAPT\_STATS.txt"`;
 	    `/bin/touch progress/$pre\_$uID\_CUTADAPT_$nameR1[0]\_$nameR2[0]\_CQS.done`;
 	    $ca_jid = "$pre\_$uID\_CUTADAPT_$nameR1[0]\_$nameR2[0]\_CQS";
 	    $ran_cutadapt = 1;	
@@ -374,7 +392,7 @@ while (<IN>){
 	    sleep(2);
 	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_BWA_$nameR1[0]\_$nameR2[0]", job_hold => "$ca_jid", cpu => "12", mem => "12", cluster_out => "progress/$pre\_$uID\_BWA_$nameR1[0]\_$nameR2[0]\.log");
 	    my $standardParams = Schedule::queuing(%stdParams);
-	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams "$BWA/bwa mem $bwaOptions -R \'$readgroup\' -t 12 $bwaDB  $count/$nameR1[0]\_CQS_CT_PE.fastq $count/$nameR2[0]\_CQS_CT_PE.fastq >$count/$nameR1[0]\_$nameR2[0]\_CQS_CT_PE.fastq_$species\.bwa.sam"`;
+	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams "$singularityParams $BWA/bwa mem $bwaOptions -R \'$readgroup\' -t 12 $bwaDB  $count/$nameR1[0]\_CQS_CT_PE.fastq $count/$nameR2[0]\_CQS_CT_PE.fastq >$count/$nameR1[0]\_$nameR2[0]\_CQS_CT_PE.fastq_$species\.bwa.sam"`;
 	    `/bin/touch progress/$pre\_$uID\_BWA_$nameR1[0]\_$nameR2[0]\.done`;
 	    push @bwa_jids, "$pre\_$uID\_BWA_$nameR1[0]\_$nameR2[0]";
 	    $ran_bwa = 1;
@@ -388,7 +406,7 @@ while (<IN>){
 	    sleep(2);
 	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_CUTADAPT_$nameR1[0]\_CQS", job_hold => "$cqs1_jid", cpu => "1", mem => "1", cluster_out => "progress/$pre\_$uID\_CUTADAPT_$nameR1[0]\_CQS.log");
 	    my $standardParams = Schedule::queuing(%stdParams);
-	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams "$PYTHON/python $CUTADAPT/cutadapt -f fastq $clipR1 --overlap 10 --minimum-length $minReadLength --quality-cutoff $bqTrim -o $count/$nameR1[0]\_CQS_CT_SE.fastq $count/$nameR1[0]\_CQS >$count/$nameR1[0]\_CQS_CUTADAPT\_STATS.txt"`;
+	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams "$singularityParams $PYTHON/python $CUTADAPT/cutadapt -f fastq $clipR1 --overlap 10 --minimum-length $minReadLength --quality-cutoff $bqTrim -o $count/$nameR1[0]\_CQS_CT_SE.fastq $count/$nameR1[0]\_CQS >$count/$nameR1[0]\_CQS_CUTADAPT\_STATS.txt"`;
 	    `/bin/touch progress/$pre\_$uID\_CUTADAPT_$nameR1[0]\_CQS.done`;
 	    $ca_jid = "$pre\_$uID\_CUTADAPT_$nameR1[0]\_CQS";
 	    $ran_cutadapt = 1;
@@ -398,7 +416,7 @@ while (<IN>){
 	    sleep(2);
 	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_BWA_$nameR1[0]", job_hold => "$ca_jid", cpu => "12", mem => "12", cluster_out => "progress/$pre\_$uID\_BWA_$nameR1[0]\.log");
 	    my $standardParams = Schedule::queuing(%stdParams);
-	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams "$BWA/bwa mem $bwaOptions -R \'$readgroup\' -t 12 $bwaDB $count/$nameR1[0]\_CQS_CT_SE.fastq >$count/$nameR1[0]\_CQS_CT_SE.fastq_$species\.bwa.sam"`;
+	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams "$singularityParams $BWA/bwa mem $bwaOptions -R \'$readgroup\' -t 12 $bwaDB $count/$nameR1[0]\_CQS_CT_SE.fastq >$count/$nameR1[0]\_CQS_CT_SE.fastq_$species\.bwa.sam"`;
 	    `/bin/touch progress/$pre\_$uID\_BWA_$nameR1[0]\.done`;
 	    push @bwa_jids, "$pre\_$uID\_BWA_$nameR1[0]";
 	    $ran_bwa = 1;
@@ -422,6 +440,6 @@ if(!-e "progress/$pre\_$uID\_$run\_MERGE.done" || $ran_bwa){
     sleep(2);
     my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$run\_MERGE", job_hold => "$bwa_holds", cpu => "8", mem => "30", cluster_out => "progress/$pre\_$uID\_$run\_MERGE.log");
     my $standardParams = Schedule::queuing(%stdParams);
-    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx30g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=$tempdir -jar $PICARD/picard.jar MergeSamFiles $inputRaw O=$run\.bam SORT_ORDER=coordinate VALIDATION_STRINGENCY=LENIENT TMP_DIR=$tempdir CREATE_INDEX=true USE_THREADING=false MAX_RECORDS_IN_RAM=5000000`;
+    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $JAVA/java -Xms256m -Xmx30g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=$tempdir -jar $PICARD/picard.jar MergeSamFiles $inputRaw O=$run\.bam SORT_ORDER=coordinate VALIDATION_STRINGENCY=LENIENT TMP_DIR=$tempdir CREATE_INDEX=true USE_THREADING=false MAX_RECORDS_IN_RAM=5000000`;
     `/bin/touch progress/$pre\_$uID\_$run\_MERGE.done`;
 }

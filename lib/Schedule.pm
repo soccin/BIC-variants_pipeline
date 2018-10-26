@@ -234,4 +234,20 @@ sub additionalLSF {
     return $aLSF;
 }
 
+
+sub singularityBind{
+    my $sBind = ",/scratch/,/tmp/,/ifs/,/common/lsf/,/common/juno/";
+
+    return $sBind;
+}
+
+
+
+sub singularityParams{
+    my %sparams = @_;
+ 
+    my $sinParams = "$sparams{'singularity_exec'} exec $sparams{'singularity_image'}";
+
+    return $sinParams;
+}
 1;

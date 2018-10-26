@@ -32,7 +32,9 @@ my $add_barcode_prefix = 0;
 my @blood_type = ("Blood","Frozen","Fresh","OCT");
 my @ffpe_type = ("FFPE", "Cytology");
 
-
+my $singularityParams = '';
+my $singularityBind = '';
+my $singularityenv_prepend_path = "";
 
 
 my ($pre, $config, $bamlist, $patient, $title, $result_dir, $hg19, $scheduler, $priority_project, $priority_group);
@@ -129,6 +131,7 @@ my (
 	#$CYTOBAND,                       $UCSC_DBSNP,
 	#$FASTX_TOOLKIT,			 		$maxium_readlength,
 	#$ReferenceHG19
+        $SINGULARITY
 );
 
 
@@ -226,6 +229,7 @@ sub GetConfiguration {
 		#$FP_genotypes        = $location{"FP_genotypes"};
 		#$GATK_SomaticIndel   = $location{"GATK_SomaticIndel"};
 		$GATK                = $location{"GATK"};
+                $SINGULARITY               = $location{"SINGULARITY"};
 		$Reference           = $location{"Reference"};
 		#$ReferenceHG19       = $location{"ReferenceHG19"};
 		#$Refseq              = $location{"Refseq"};
@@ -333,6 +337,13 @@ sub GetConfiguration {
 		#$deleteIntermediateFiles = $parameters{"DeleteIntermediateFiles"};
 		#$maxium_readlength    = $parameters{"MAXIMUM_READ_LENGTH"};
 	};
+        my %sinParams = (singularity_exec => "$SINGULARITY/singularity", singularity_image => "$root_root/variants_pipeline_singularity_prod.simg");
+        $singularityParams = Schedule::singularityParams(%sinParams);
+        $singularityBind = Schedule::singularityBind();
+
+        $ENV{'SINGULARITYENV_PREPEND_PATH'} = $singularityenv_prepend_path;
+        $ENV{'SINGULARITY_BINDPATH'} = $singularityBind;
+
 	die ("[ERROR]: Did not find a variable in configuration file.Error: $@\n") if ($@);
 	return ( \%version );
 }
@@ -713,13 +724,13 @@ sub RunDepthOfCoverage
         		my %stdParams = (scheduler => "$scheduler", job_name => "GeneNomapqCoverage.$id.$$", cpu => "1", mem => "8", cluster_out => "GeneNomapqCoverage.$id.$$.stdout", cluster_error => "GeneNomapqCoverage.$id.$$.stderr");
         		my $standardParams = Schedule::queuing(%stdParams);		
 
-			my $cmd = "$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $standardParams->{cluster_error} $additionalParams $JAVA_1_7 -Xmx4g -Djava.io.tmpdir=$TMPDIR -jar $GATK -T DepthOfCoverage -R $Reference -I $bamFile -o $gene_nomapqCoverage -L $cur_gene_interval  -rf BadCigar -mmq 0 -mbq $BASQ -omitLocusTable -omitSampleSummary -omitBaseOutput --includeRefNSites";
+			my $cmd = "$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $standardParams->{cluster_error} $additionalParams $singularityParams $JAVA_1_7 -Xmx4g -Djava.io.tmpdir=$TMPDIR -jar $GATK -T DepthOfCoverage -R $Reference -I $bamFile -o $gene_nomapqCoverage -L $cur_gene_interval  -rf BadCigar -mmq 0 -mbq $BASQ -omitLocusTable -omitSampleSummary -omitBaseOutput --includeRefNSites";
 			$logger->debug("COMMAND: $cmd");
 			`$cmd`;
 
                         %stdParams = (scheduler => "$scheduler", job_name => "NotifyGeneNomapqCoverage.$id.$$", job_hold => "GeneNomapqCoverage.$id.$$", cpu => "1", mem => "2", cluster_out => "NotifyGeneNomapqCoverage.$id.$$.stat", cluster_error => "NotifyGeneNomapqCoverage.$id.$$.stderr");
                         $standardParams = Schedule::queuing(%stdParams); 
-			`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $standardParams->{cluster_error} $additionalParams $outdir/Notify.csh`;
+			`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $standardParams->{cluster_error} $additionalParams $singularityParams $outdir/Notify.csh`;
 		};
 		if ($@)
 		{
@@ -747,14 +758,14 @@ sub RunDepthOfCoverage
                         my %stdParams = (scheduler => "$scheduler", job_name => "TilingNomapqCoverage.$id.$$", cpu => "1", mem => "8", cluster_out => "TilingNomapqCoverage.$id.$$.stdout", cluster_error => "TilingNomapqCoverage.$id.$$.stderr");
                         my $standardParams = Schedule::queuing(%stdParams);
 
-			my $cmd = "$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $standardParams->{cluster_error} $additionalParams $JAVA_1_7 -Xmx4g -Djava.io.tmpdir=$TMPDIR -jar $GATK -T DepthOfCoverage -R $Reference -I $bamFile -o $tiling_nomapqCoverage -L $cur_tiling_interval  -rf BadCigar -mmq 0 -mbq $BASQ -omitLocusTable -omitSampleSummary -omitBaseOutput --includeRefNSites";
+			my $cmd = "$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $standardParams->{cluster_error} $additionalParams $singularityParams $JAVA_1_7 -Xmx4g -Djava.io.tmpdir=$TMPDIR -jar $GATK -T DepthOfCoverage -R $Reference -I $bamFile -o $tiling_nomapqCoverage -L $cur_tiling_interval  -rf BadCigar -mmq 0 -mbq $BASQ -omitLocusTable -omitSampleSummary -omitBaseOutput --includeRefNSites";
 			$logger->debug("COMMAND: $cmd");
 			`$cmd`;
 
 
                         %stdParams = (scheduler => "$scheduler", job_name => "NotifyTilingNomapqCoverage.$id.$$", job_hold => "TilingNomapqCoverage.$id.$$", cpu => "1", mem => "2", cluster_out => "NotifyTilingNomapqCoverage.$id.$$.stat", cluster_error => "NotifyTilingNomapqCoverage.$id.$$.stderr");
                         $standardParams = Schedule::queuing(%stdParams);
-			`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $standardParams->{cluster_error} $additionalParams $outdir/Notify.csh`;
+			`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $standardParams->{cluster_error} $additionalParams $singularityParams $outdir/Notify.csh`;
 		};
 		if ($@)
 		{
@@ -901,15 +912,15 @@ sub RunLoessNormalization
         my $additionalParams = Schedule::additionalParams(%addParams);
         my %stdParams = (scheduler => "$scheduler", job_name => "LOESS.$$", cpu => "1", mem => "8", cluster_out => "LOESS.$$.stdout", cluster_error => "LOESS.$$.stderr");
         my $standardParams = Schedule::queuing(%stdParams);
-	my $cmd = "$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $standardParams->{cluster_error} $additionalParams $RHOME/R --slave --vanilla --args $pre $outdir $GCBiasFile < $LoessNormalization";
+	my $cmd = "$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $standardParams->{cluster_error} $additionalParams $singularityParams $RHOME/R --slave --vanilla --args $pre $outdir $GCBiasFile < $LoessNormalization";
     $logger->debug( "COMMAND: $cmd");
     
 	eval{
-		`$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $standardParams->{cluster_error} $additionalParams "$RHOME/R --slave --vanilla --args $pre $outdir $GCBiasFile < $LoessNormalization"`;
+		`$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $standardParams->{cluster_error} $additionalParams "$singularityParams $RHOME/R --slave --vanilla --args $pre $outdir $GCBiasFile < $LoessNormalization"`;
 		
 		my %stdParams = (scheduler => "$scheduler", job_name => "NotifyLOESS.$$", job_hold => "LOESS.$$", cpu => "1", mem => "2", cluster_out => "NotifyLOESS.$$.stat", cluster_error => "/dev/null");
         	my $standardParams = Schedule::queuing(%stdParams);
-		`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $standardParams->{cluster_error} $additionalParams $outdir/Notify.csh`;
+		`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $standardParams->{cluster_error} $additionalParams $singularityParams $outdir/Notify.csh`;
     };
     if ($@) {
         $logger->fatal(

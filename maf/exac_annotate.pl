@@ -150,7 +150,7 @@ else{
 }
 
 # To make simple vcf, first use the maf2vcf.pl from cyriac...
-`/opt/common/CentOS_6/bin/v1/perl $VCF2MAF/maf2vcf.pl --input-maf $input --ref-fasta $output/ref$somatic/$ref_base --output-dir $output/xtra$somatic`;
+`$PERL/perl $VCF2MAF/maf2vcf.pl --input-maf $input --ref-fasta $output/ref$somatic/$ref_base --output-dir $output/xtra$somatic`;
 #`echo "##fileformat=VCFv4.2" > $output/xtra$somatic/simpleVCF.vcf; echo "#CHROM POS ID REF ALT QUAL FILTER INFO" | tr ' ' '\t' >> $output/xtra$somatic/simpleVCF.vcf`;
 
 #open(my $out_fh, ">", "$output/xtra$somatic/simpleVCF.vcf");
