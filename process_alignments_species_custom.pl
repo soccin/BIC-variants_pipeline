@@ -62,7 +62,7 @@ if(!$group || !$config || !$scheduler || !$targets || !$bamgroup || $help){
 	* BAMGROUP: files listing bams to be processed together; every bam for each group on 1 line, comma-separated (required)
 	* TARGETS: name of targets assay; will search for targets/baits ilists and targets padded file in $Bin/targets/TARGETS unless given full path to targets directory (REQUIRED)
 	* CONFIG: file listing paths to programs needed for pipeline; full path to config file needed (REQUIRED)
-	* SCHEDULER: currently support for SGE and LSF (REQUIRED)
+	* SCHEDULER: currently support for SGE, LUNA, and JUNO (REQUIRED)
 	* DB_SNP: VCF file containing known sites of genetic variation (REQUIRED; either here or in config)
 	* PAIR: file listing tumor/normal pairing of samples for mutect/maf conversion; if not specified, considered unpaired
 	* PRE: output prefix (default: TEMP)
@@ -525,7 +525,7 @@ foreach my $finalBam (@finalBams){
     $samp =~ s/$pre\_indelRealigned_recal_//g;
     
     if(!-e "$output/progress/$pre\_$uID\_MQ_METRICS_$samp\.done" || $ran_ssf){
-	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_MQ_METRICS_$samp", job_hold => "$ssfj", cpu => "1", mem => "10", cluster_out => "$output/progress/$pre\_$uID\_MQ_METRICS_$samp\.log");
+	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_MQ_METRICS_$samp", job_hold => "$ssfj", cpu => "1", mem => "20", cluster_out => "$output/progress/$pre\_$uID\_MQ_METRICS_$samp\.log");
 	my $standardParams = Schedule::queuing(%stdParams);
 	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $JAVA/java -Djava.io.tmpdir=/scratch/$uID -jar $PICARD/picard.jar MeanQualityByCycle INPUT=$finalBam OUTPUT=$output/intFiles/$pre\_MeanQualityByCycle_$samp.txt CHART_OUTPUT=$output/intFiles/$pre\_MeanQualityByCycle_$samp.pdf REFERENCE_SEQUENCE=$REF_SEQ VALIDATION_STRINGENCY=LENIENT ASSUME_SORTED=true TMP_DIR=/scratch/$uID`;
 	push @mq_metrics_jid, "$pre\_$uID\_MQ_METRICS_$samp";

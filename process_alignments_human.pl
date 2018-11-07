@@ -65,7 +65,7 @@ if(!$group || !$config || !$scheduler || !$targets || !$bamgroup || $help){
 	* SPECIES: b37, hybrid|xenograft (b37_mm10)
 	* TARGETS: name of targets assay; will search for targets/baits ilists and targets padded file in $Bin/targets/TARGETS unless given full path to targets directory (REQUIRED)
 	* CONFIG: file listing paths to programs needed for pipeline; full path to config file needed (REQUIRED)
-	* SCHEDULER: currently support for SGE and LSF (REQUIRED)
+	* SCHEDULER: currently support for SGE, LUNA, and JUNO (REQUIRED)
 	* PAIR: file listing tumor/normal pairing of samples for mutect/maf conversion; if not specified, considered unpaired
 	* PRE: output prefix (default: TEMP)
 	* OUTPUT: output results directory (default: results)
@@ -854,7 +854,7 @@ foreach my $finalBam (@finalBams){
     $samp =~ s/$pre\_indelRealigned_recal_//g;
     
     if(!-e "$output/progress/$pre\_$uID\_MQ_METRICS_$samp\.done" || $ran_ssf){
-	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_MQ_METRICS_$samp", job_hold => "$ssfj", cpu => "1", mem => "10", cluster_out => "$output/progress/$pre\_$uID\_MQ_METRICS_$samp\.log");
+	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_MQ_METRICS_$samp", job_hold => "$ssfj", cpu => "1", mem => "20", cluster_out => "$output/progress/$pre\_$uID\_MQ_METRICS_$samp\.log");
 	my $standardParams = Schedule::queuing(%stdParams);
 	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $JAVA/java -Djava.io.tmpdir=$tempdir -jar $PICARD/picard.jar MeanQualityByCycle INPUT=$finalBam OUTPUT=$output/intFiles/$pre\_MeanQualityByCycle_$samp.txt CHART_OUTPUT=$output/intFiles/$pre\_MeanQualityByCycle_$samp.pdf REFERENCE_SEQUENCE=$REF_SEQ VALIDATION_STRINGENCY=LENIENT ASSUME_SORTED=true TMP_DIR=$tempdir`;
 	push @mq_metrics_jid, "$pre\_$uID\_MQ_METRICS_$samp";
@@ -985,7 +985,7 @@ my $hcj = join(",", @hc_jids);
 my $cvhcj = '';
 if(!-e "$output/progress/$pre\_$uID\_CV_HC.done" || $ran_hc){
     sleep(2);
-    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_CV_HC", job_hold => "$hcj", cpu => "1", mem => "2", cluster_out => "$output/progress/$pre\_$uID\_CV_HC.log");
+    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_CV_HC", job_hold => "$hcj", cpu => "1", mem => "20", cluster_out => "$output/progress/$pre\_$uID\_CV_HC.log");
     my $standardParams = Schedule::queuing(%stdParams);
     `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $JAVA/java -Djava.io.tmpdir=$tempdir -jar $GATK/GenomeAnalysisTK.jar -T CombineVariants -R $REF_SEQ -o $output/intFiles/$pre\_HaplotypeCaller_RAW.vcf --assumeIdenticalSamples $hcVars`;
     `/bin/touch $output/progress/$pre\_$uID\_CV_HC.done`;
@@ -1017,7 +1017,7 @@ my $ran_ar_snp_hc = 0;
 my $arshcj = '';
 if(!-e "$output/progress/$pre\_$uID\_AR_SNP_HC.done" || $ran_vr_snp_hc){
     sleep(2);
-    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_AR_SNP_HC", job_hold => "$vrshcj", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_AR_SNP_HC.log");
+    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_AR_SNP_HC", job_hold => "$vrshcj", cpu => "1", mem => "20", cluster_out => "$output/progress/$pre\_$uID\_AR_SNP_HC.log");
     my $standardParams = Schedule::queuing(%stdParams);
     `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $JAVA/java -Djava.io.tmpdir=$tempdir -jar $GATK/GenomeAnalysisTK.jar -T ApplyRecalibration -R $REF_SEQ -input $output/intFiles/$pre\_HaplotypeCaller_RAW.vcf --ts_filter_level 99.0 -mode SNP -tranchesFile $output/intFiles/$pre\_HaplotypeCaller_SNP.tranches -recalFile $output/intFiles/$pre\_HaplotypeCaller_SNP.recal -o $output/intFiles/$pre\_HaplotypeCaller_SNP_vqsr.vcf -nt 1`;
     `/bin/touch $output/progress/$pre\_$uID\_AR_SNP_HC.done`;
@@ -1029,7 +1029,7 @@ my $ran_vr_indel_hc = 0;
 my $vrihcj = '';
 if(!-e "$output/progress/$pre\_$uID\_VR_INDEL_HC.done" || $ran_ar_snp_hc){
     sleep(2);
-    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_VR_INDEL_HC", job_hold => "$arshcj", cpu => "4", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_VR_INDEL_HC.log");
+    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_VR_INDEL_HC", job_hold => "$arshcj", cpu => "4", mem => "20", cluster_out => "$output/progress/$pre\_$uID\_VR_INDEL_HC.log");
     my $standardParams = Schedule::queuing(%stdParams);
     `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $JAVA/java -Djava.io.tmpdir=$tempdir -jar $GATK/GenomeAnalysisTK.jar -T VariantRecalibrator -R $REF_SEQ -input $output/intFiles/$pre\_HaplotypeCaller_SNP_vqsr.vcf -resource:mills,known=false,training=true,truth=true,prior=12.0 $MILLS_1000G -an DP -an FS -an MQRankSum -an ReadPosRankSum -mode INDEL -tranche 100.0 -tranche 99.9 -tranche 99.0 -tranche 90.0 --maxGaussians 4 -recalFile $output/intFiles/$pre\_HaplotypeCaller_INDEL.recal -tranchesFile $output/intFiles/$pre\_HaplotypeCaller_INDEL.tranches -rscriptFile $output/intFiles/$pre\_HaplotypeCaller_INDEL.plots.R -nt 4`;
     `/bin/touch $output/progress/$pre\_$uID\_VR_INDEL_HC.done`;
@@ -1041,7 +1041,7 @@ my $ran_ar_indel_hc = 0;
 my $arihcj = '';
 if(!-e "$output/progress/$pre\_$uID\_AR_INDEL_HC.done" || $ran_vr_indel_hc){
     sleep(2);
-    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_AR_INDEL_HC", job_hold => "$vrihcj", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_AR_INDEL_HC.log");
+    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_AR_INDEL_HC", job_hold => "$vrihcj", cpu => "1", mem => "20", cluster_out => "$output/progress/$pre\_$uID\_AR_INDEL_HC.log");
     my $standardParams = Schedule::queuing(%stdParams);
     `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $JAVA/java -Djava.io.tmpdir=$tempdir -jar $GATK/GenomeAnalysisTK.jar -T ApplyRecalibration -R $REF_SEQ -input $output/intFiles/$pre\_HaplotypeCaller_SNP_vqsr.vcf --ts_filter_level 99.0 -mode INDEL -tranchesFile $output/intFiles/$pre\_HaplotypeCaller_INDEL.tranches -recalFile $output/intFiles/$pre\_HaplotypeCaller_INDEL.recal -o $output/variants/snpsIndels/haplotypecaller/$pre\_HaplotypeCaller.vcf -nt 1`;
     `/bin/touch $output/progress/$pre\_$uID\_AR_INDEL_HC.done`;

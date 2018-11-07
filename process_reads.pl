@@ -59,7 +59,7 @@ if(!$file || !$config || !$species || !$scheduler || $help){
 	* PRE: output prefix (default: TEMP)
 	* SPECIES: b37, mm9, mm10, mm10_custom, species_custom, and dm3 currently supported (REQUIRED)
 	* CONFIG: file listing paths to programs needed for pipeline; full path to config file needed (REQUIRED)
-	* SCHEDULER: currently support for SGE and LSF (REQUIRED)
+	* SCHEDULER: currently support for SGE, LUNA, and JUNO (REQUIRED)
 	* RUN: RUN IDENTIFIER (default: TEMP_RUN)
 	* PRIORITY_PROJECT: sge notion of priority assigned to projects (default: ngs)
 	* PRIORITY_GROUP: lsf notion of priority assigned to groups (default: Pipeline)
@@ -265,6 +265,9 @@ my $bwaOptions = "-MP";
 if($defaultBWA){
     $bwaOptions = "";
 }
+
+
+
 
 my $ran_bwa = 0;
 my @bwa_jids = ();
