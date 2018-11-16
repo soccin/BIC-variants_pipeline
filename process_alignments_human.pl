@@ -1575,7 +1575,7 @@ if($pair){
 
             my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$data[0]\_$data[1]\_facets_RUN",  cpu => "3", mem => "10", job_hold => "$facetsSETUP_jid", cluster_out => "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_facets_RUN.log");
             my $standardParams = Schedule::queuing(%stdParams);
-            my %addParams = (runtime => "10", priority_project=> "$priority_project", priority_group=> "$priority_group");
+            my %addParams = (scheduler => "$scheduler", runtime => "10", priority_project=> "$priority_project", priority_group=> "$priority_group");
             my $additionalParams = Schedule::additionalParams(%addParams);
             `$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{job_hold} $standardParams->{cluster_out} $additionalParams $singularityParams $PYTHON/python $FACETS_SUITE/facets doFacets -c $cval -s $snp_nbhd -n $ndepth -m $min_nhet -pc $p_cval -ps $p_snp_nbhd -pn $p_ndepth -pm $p_min_nhet -f $output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets/tmp/$pre\_countsMerged_$data[0]\_$data[1].dat.gz -t $data[0]\_$data[1] -D $output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets -r $FACETS_LIB`;
 	    push @facets_jid, "$pre\_$uID\_$data[0]\_$data[1]\_facets_RUN" ;
