@@ -291,6 +291,9 @@ while(<CONFIG>){
 	    die "CAN'T FIND python IN $conf[1] $!";
 	}
 	$PYTHON = $conf[1];
+        my $path_tmp = $ENV{'PATH'};
+        $ENV{'PATH'} = "$conf[1]:$path_tmp";
+        $singularityenv_prepend_path .= ":$conf[1]";
     }
      elsif($conf[0] =~ /^r$/i){
 	if(!-e "$conf[1]/R"){
