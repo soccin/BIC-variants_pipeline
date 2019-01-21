@@ -18,7 +18,7 @@ my $species = 'species_custom';
 
 my $uID = `/usr/bin/id -u -n`;
 chomp $uID;
-my $rsync = "/ifs/solres/$uID";
+my $rsync = "/ifs/res/$uID";
 my $tempdir = "/scratch/$uID";
 
 GetOptions ('email=s' => \$email,
@@ -67,7 +67,7 @@ if(!$group || !$config || !$scheduler || !$targets || !$bamgroup || $help){
 	* PAIR: file listing tumor/normal pairing of samples for mutect/maf conversion; if not specified, considered unpaired
 	* PRE: output prefix (default: TEMP)
 	* OUTPUT: output results directory (default: results)
-	* RSYNC:  path to rsync data for archive (default: /ifs/solres/USER_ID)
+	* RSYNC:  path to rsync data for archive (default: /ifs/res/USER_ID)
 	* PRIORITY_PROJECT: sge notion of priority assigned to projects (default: ngs)
 	* PRIORITY_GROUP: lsf notion of priority assigned to groups (default: Pipeline)
 	* -nosnps: if no snps to be called; e.g. when only indelrealigned/recalibrated bams needed

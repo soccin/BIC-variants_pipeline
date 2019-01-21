@@ -79,7 +79,7 @@ my $uID = `/usr/bin/id -u -n`;
 chomp $uID;
 
 my $email = "$uID\@cbio.mskcc.org";
-my $rsync = "/ifs/solres/$uID";
+my $rsync = "/ifs/res/$uID";
 my $tempdir = "/scratch/$uID";
 
 GetOptions ('map=s' => \$map,
@@ -140,7 +140,7 @@ if(!$map || !$species || !$config || !$scheduler || !$request || $help){
         * PATIENT: if a patient file is given, patient wide fillout will be added to maf file
 	* PRE: output prefix (default: TEMP)
 	* OUTPUT: output results directory (default: results)
-	* RSYNC:  path to rsync data for archive (default: /ifs/solres/$uID)
+	* RSYNC:  path to rsync data for archive (default: /ifs/res/$uID)
 	* TEMPDIR:  temp directory (default: /scratch/$uID)
 	* PRIORITY_PROJECT: sge notion of priority assigned to projects (default: ngs)
 	* PRIORITY_GROUP: lsf notion of priority assigned to groups (default: Pipeline)
@@ -883,14 +883,14 @@ sub verifyRequest{
         die "\nERROR: Info missing from request file.\n\nREQUIRED fields are:\n  PI\n  PI_Name\n  Investigator\n  Investigator_Name\n  ProjectID\n  RunNumber\n  Assay\n  Pipelines\n\n";
     }
 
-    my $delDir = "/ifs/solres/seq/$pi/$inv/$pid/";
+    my $delDir = "/ifs/res/seq/$pi/$inv/$pid/";
     if($runnum > 1) {
         if(!$rerunReason) {
             die "\nERROR: This is a rerun, but there was no rerun reason given in the request file.\n\n";
         }
         if( ! -d $delDir ){
             if( $origPi && $origInv){
-                $delDir = "/ifs/solres/seq/$origPi/$origInv/$pid/";
+                $delDir = "/ifs/res/seq/$origPi/$origInv/$pid/";
                 if( ! -d $delDir ){
                     die "\nERROR: This looks like a rerun (RunNum: $runnum) but the delivered directory does not exists: $delDir \n\n";
                 }
@@ -904,7 +904,7 @@ sub verifyRequest{
         if( -d  "$delDir"){ 
             if( $origPi && $origInv){
                 my $x = sprintf("%03d", $runnum);
-                $delDir = "/ifs/solres/seq/$origPi/$origInv/$pid/r_$x";
+                $delDir = "/ifs/res/seq/$origPi/$origInv/$pid/r_$x";
                 if( -d  "$delDir"){
                     die "\nERROR: This project has a delivered directory with this rerun folder already present: $delDir \n\n";
                 }
@@ -915,7 +915,7 @@ sub verifyRequest{
     }
     
     if( $origPi && $origInv){
-        $delDir = "/ifs/solres/seq/$origPi/$origInv/$pid/";
+        $delDir = "/ifs/res/seq/$origPi/$origInv/$pid/";
 	my $x = sprintf("%03d", $runnum);
 	$delDir .= "r_$x";
 	if( -d  "$delDir"){
