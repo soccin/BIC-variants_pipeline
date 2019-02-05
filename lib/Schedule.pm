@@ -325,9 +325,9 @@ sub additionalJUNO {
     $aJUNO .= " -r -Q \"all ~0\"";
     }
     
-    #if($addJUNO{'priority_group'}){
-    #$aJUNO .= " -sla DEVEL";
-    #}
+    if($addJUNO{'priority_group'}){
+    $aJUNO .= " -sla DEVEL";
+    }
 ###    else{
 ### $aJUNO .= " -sla Pipeline";
 ###    }
