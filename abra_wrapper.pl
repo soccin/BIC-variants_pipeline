@@ -8,6 +8,7 @@ use lib "$Bin/lib";
 my ($inBams, $outBams, $refSeq, $bwaRef, $targets, $working, $config, $help, $log);
 my $uID = `/usr/bin/id -u -n`;
 chomp $uID;
+my $tempdir = "/scratch/$uID";
 
 GetOptions ('inBams=s' => \$inBams,
             'outBams=s' => \$outBams,
@@ -16,6 +17,7 @@ GetOptions ('inBams=s' => \$inBams,
  	    'targets=s' => \$targets,
             'working=s' => \$working,
 	    'config=s' => \$config,
+            'tempdir=s' => \$tempdir,
 	    'log=s' => \$log,
             'help' => \$help) or exit(1);
 
@@ -60,9 +62,9 @@ close CONFIG;
     
 
 
-###`$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx60g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $ABRA/abra.jar --in $inBams --out $outBams --ref $refSeq --bwa-ref $bwaRef --targets $targets --working $working --threads 24`;
+###`$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx60g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=$tempdir -jar $ABRA/abra.jar --in $inBams --out $outBams --ref $refSeq --bwa-ref $bwaRef --targets $targets --working $working --threads 24`;
 
-`$JAVA/java -Xms256m -Xmx60g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $ABRA/abra.jar --in $inBams --out $outBams --ref $refSeq --targets $targets --tmpdir $working --threads 12 --mnf 5 --mbq 150 > $log 2>&1`;
+`$JAVA/java -Xms256m -Xmx60g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=$tempdir -jar $ABRA/abra.jar --in $inBams --out $outBams --ref $refSeq --targets $targets --tmpdir $working --threads 12 --mnf 5 --mbq 150 > $log 2>&1`;
 
 my $eadj = $? >> 8;
 exit($eadj);

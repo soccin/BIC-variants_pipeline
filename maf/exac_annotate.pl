@@ -7,6 +7,7 @@ use File::Path qw(make_path remove_tree);
 use File::Basename;
 
 my ($input, $somatic, $species, $output, $config, $data, $help);
+my $tempdir = "/scratch/$uID";
 
 GetOptions ('in_maf=s' => \$input,
 'species=s' => \$species,
@@ -14,6 +15,7 @@ GetOptions ('in_maf=s' => \$input,
 'somatic=s' => \$somatic,
 'config=s' => \$config,
 'data=s' => \$data,
+'tempdir=s' => \$tempdir,
 'help|h' => \$help ) or exit(1);
 
 my $uID = `/usr/bin/id -u -n`;
@@ -181,7 +183,7 @@ foreach my $file (@files) {
 
 my $strippedFiles = join(" INPUT=", glob("$output/xtra$somatic/*.vcf_stripped.vcf"));
 
-`$JAVA/java -Djava.io.tmpdir=/scratch/$uID -jar $PICARD/picard.jar SortVcf VALIDATION_STRINGENCY=LENIENT INPUT=$strippedFiles OUTPUT=$output/xtra$somatic/sortedSimpleVCF.vcf SEQUENCE_DICTIONARY=$output/ref$somatic/$refDictBase`;
+`$JAVA/java -Djava.io.tmpdir=$tempdir -jar $PICARD/picard.jar SortVcf VALIDATION_STRINGENCY=LENIENT INPUT=$strippedFiles OUTPUT=$output/xtra$somatic/sortedSimpleVCF.vcf SEQUENCE_DICTIONARY=$output/ref$somatic/$refDictBase`;
 
 `sed 's/chr//g;s/ID=chr/ID=/g' $output/xtra$somatic/sortedSimpleVCF.vcf | uniq > tmp; mv tmp $output/xtra$somatic/sortedSimpleVCF.vcf`;
 

@@ -565,7 +565,7 @@ while(<IN>){
 		my $standardParams = Schedule::queuing(%stdParams);	    
 		my %addParams = (scheduler => "$scheduler", runtime => "500", priority_project=> "$priority_project", priority_group=> "$priority_group", rerun => "1", iounits => "4");
 		my $additionalParams = Schedule::additionalParams(%addParams);
-		`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $PERL/perl $Bin/abra_wrapper.pl -inBams $aiBams -outBams $aoBams -refSeq $REF_SEQ -bwaRef $BWA_INDEX -targets $abra_target -working $output/intFiles/abra_$gpair[0]\_$c -config $config -log $output/progress/$pre\_$uID\_$gpair[0]\_$c\_ABRA_WRAPPER.log`;
+		`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $PERL/perl $Bin/abra_wrapper.pl -inBams $aiBams -outBams $aoBams -refSeq $REF_SEQ -bwaRef $BWA_INDEX -targets $abra_target -working $output/intFiles/abra_$gpair[0]\_$c -config $config -tempdir $tempdir -log $output/progress/$pre\_$uID\_$gpair[0]\_$c\_ABRA_WRAPPER.log`;
 		
 		$abra_jid = "$pre\_$uID\_$gpair[0]\_$c\_ABRA";
 		`/bin/touch $output/progress/$pre\_$uID\_$gpair[0]\_$c\_ABRA.done`;
@@ -1340,7 +1340,7 @@ if($pair){
         my $muj = join(",", @mu_jids);
         my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_HAPLOTECT", job_hold => "$cvhcj,$muj", cpu => "4", mem => "8", cluster_out => "$output/progress/$pre\_$uID\_HAPLOTECT.log");
         my $standardParams = Schedule::queuing(%stdParams);
-        `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $PERL/perl $Bin/haploTect_merge.pl -pair $pair -hc_vcf $output/variants/snpsIndels/haplotypecaller/$pre\_HaplotypeCaller.vcf -species $species -pre $pre -output $output/variants/snpsIndels/haplotect -mutect_dir $output/variants/snpsIndels/mutect -config $config $patientFile -align_dir $output/alignments/ -svnRev $svnRev $addOptions -delete_temp`;
+        `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $PERL/perl $Bin/haploTect_merge.pl -pair $pair -hc_vcf $output/variants/snpsIndels/haplotypecaller/$pre\_HaplotypeCaller.vcf -species $species -pre $pre -output $output/variants/snpsIndels/haplotect -mutect_dir $output/variants/snpsIndels/mutect -config $config $patientFile -align_dir $output/alignments/ -svnRev $svnRev $addOptions -tempdir $tempdir -delete_temp`;
 
         $haplotect_run = 1;
         `/bin/touch $output/progress/$pre\_$uID\_HAPLOTECT.done`;

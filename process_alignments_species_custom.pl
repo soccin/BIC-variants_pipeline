@@ -437,7 +437,7 @@ while(<IN>){
 	    my $standardParams = Schedule::queuing(%stdParams);	    
 	    my %addParams = (scheduler => "$scheduler", runtime => "500", priority_project=> "$priority_project", priority_group=> "$priority_group", rerun => "1", iounits => "4");
 	    my $additionalParams = Schedule::additionalParams(%addParams);
-	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $PERL/perl $Bin/abra_wrapper.pl -inBams $aiBams -outBams $aoBams -refSeq $REF_SEQ -bwaRef $BWA_INDEX -targets $abra_target -working $output/intFiles/abra_$gpair[0] -config $config -log $output/progress/$pre\_$uID\_$gpair[0]\_ABRA_WRAPPER.log`;
+	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $PERL/perl $Bin/abra_wrapper.pl -inBams $aiBams -outBams $aoBams -refSeq $REF_SEQ -bwaRef $BWA_INDEX -targets $abra_target -working $output/intFiles/abra_$gpair[0] -config $config -tempdir $tempdir -log $output/progress/$pre\_$uID\_$gpair[0]\_ABRA_WRAPPER.log`;
 
 	    $abraj = "$pre\_$uID\_$gpair[0]\_ABRA";
 	    `/bin/touch $output/progress/$pre\_$uID\_$gpair[0]\_ABRA.done`;
@@ -454,7 +454,7 @@ while(<IN>){
 		my %addParams = (scheduler => "$scheduler", runtime => "500", priority_project=> "$priority_project", priority_group=> "$priority_group", queues => "lau.q,lcg.q,nce.q", rerun => "1", iounits => "5");
 		my $additionalParams = Schedule::additionalParams(%addParams);
 
-		`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $JAVA/java -Xms256m -Xmx50g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $PICARD/picard.jar FixMateInformation I=$outBam O=$outBam\_FM.bam SORT_ORDER=coordinate VALIDATION_STRINGENCY=LENIENT TMP_DIR=/scratch/$uID MAX_RECORDS_IN_RAM=5000000 CREATE_INDEX=true`;
+		`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $JAVA/java -Xms256m -Xmx50g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=$tempdir -jar $PICARD/picard.jar FixMateInformation I=$outBam O=$outBam\_FM.bam SORT_ORDER=coordinate VALIDATION_STRINGENCY=LENIENT TMP_DIR=$tempdir MAX_RECORDS_IN_RAM=5000000 CREATE_INDEX=true`;
 		$irj = "$pre\_$uID\_$gpair[0]\_$bcount\_FIXMATE";
 	    }
 	    `/bin/touch $output/progress/$pre\_$uID\_$gpair[0]\_FIXMATE.done`;
@@ -467,7 +467,7 @@ while(<IN>){
 	if(!-e "$output/progress/$pre\_$uID\_$gpair[0]\_RTC.done" || $step1){
 	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$gpair[0]\_RTC", cpu => "10", mem => "5", cluster_out => "$output/progress/$pre\_$uID\_$gpair[0]\_RTC.log");
 	    my $standardParams = Schedule::queuing(%stdParams);
-	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $JAVA/java -Xms256m -Xmx5g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T RealignerTargetCreator -R $REF_SEQ $multipleTargets -S LENIENT --known $DB_SNP -nt 10 -rf BadCigar --out $output/intFiles/$pre\_$gpair[0]\_indelRealigner.intervals $bgroup`;
+	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $JAVA/java -Xms256m -Xmx5g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=$tempdir -jar $GATK/GenomeAnalysisTK.jar -T RealignerTargetCreator -R $REF_SEQ $multipleTargets -S LENIENT --known $DB_SNP -nt 10 -rf BadCigar --out $output/intFiles/$pre\_$gpair[0]\_indelRealigner.intervals $bgroup`;
 	    `/bin/touch $output/progress/$pre\_$uID\_$gpair[0]\_RTC.done`;
 	    $rtc_jid = "$pre\_$uID\_$gpair[0]\_RTC";
 	    $ran_rtc = 1;
@@ -477,7 +477,7 @@ while(<IN>){
 	    sleep(2);
 	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$gpair[0]\_IR", job_hold => "$rtc_jid", cpu => "1", mem => "15", cluster_out => "$output/progress/$pre\_$uID\_$gpair[0]\_IR.log");
 	    my $standardParams = Schedule::queuing(%stdParams);
-	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $JAVA/java -Xms256m -Xmx15g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T IndelRealigner -R $REF_SEQ $multipleTargets -S LENIENT --knownAlleles $DB_SNP --targetIntervals $output/intFiles/$pre\_$gpair[0]\_indelRealigner.intervals --maxReadsForRealignment 500000 --maxReadsInMemory 3000000 --maxReadsForConsensuses 500000 -rf BadCigar --out $output/intFiles/$pre\_$gpair[0]\_indelRealigned.bam $bgroup`;
+	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $JAVA/java -Xms256m -Xmx15g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=$tempdir -jar $GATK/GenomeAnalysisTK.jar -T IndelRealigner -R $REF_SEQ $multipleTargets -S LENIENT --knownAlleles $DB_SNP --targetIntervals $output/intFiles/$pre\_$gpair[0]\_indelRealigner.intervals --maxReadsForRealignment 500000 --maxReadsInMemory 3000000 --maxReadsForConsensuses 500000 -rf BadCigar --out $output/intFiles/$pre\_$gpair[0]\_indelRealigned.bam $bgroup`;
 	    `/bin/touch $output/progress/$pre\_$uID\_$gpair[0]\_IR.done`;
 	    $irj = "$pre\_$uID\_$gpair[0]\_IR";
 	    $ran_ir = 1;
@@ -491,7 +491,7 @@ while(<IN>){
 	sleep(2);
 	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$gpair[0]\_BR", job_hold => "$irj", cpu => "6", mem => "30", cluster_out => "$output/progress/$pre\_$uID\_$gpair[0]\_BR.log");
 	my $standardParams = Schedule::queuing(%stdParams);
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $JAVA/java -Xms256m -Xmx30g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T BaseRecalibrator -l INFO -R $REF_SEQ -S LENIENT --knownSites $DB_SNP --covariate ContextCovariate --covariate CycleCovariate --covariate QualityScoreCovariate --covariate ReadGroupCovariate -rf BadCigar --num_cpu_threads_per_data_thread 6 --out $output/intFiles/$pre\_$gpair[0]\_recal_data.grp -I $indelBam`;
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $JAVA/java -Xms256m -Xmx30g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=$tempdir -jar $GATK/GenomeAnalysisTK.jar -T BaseRecalibrator -l INFO -R $REF_SEQ -S LENIENT --knownSites $DB_SNP --covariate ContextCovariate --covariate CycleCovariate --covariate QualityScoreCovariate --covariate ReadGroupCovariate -rf BadCigar --num_cpu_threads_per_data_thread 6 --out $output/intFiles/$pre\_$gpair[0]\_recal_data.grp -I $indelBam`;
 	`/bin/touch $output/progress/$pre\_$uID\_$gpair[0]\_BR.done`;
 	$ran_br = 1;
     }
@@ -502,7 +502,7 @@ while(<IN>){
 	sleep(2);
 	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$gpair[0]\_PR", job_hold => "$pre\_$uID\_$gpair[0]\_BR", cpu => "12", mem => "40", cluster_out => "$output/progress/$pre\_$uID\_$gpair[0]\_PR.log");
 	my $standardParams = Schedule::queuing(%stdParams);
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $JAVA/java -Xms256m -Xmx30g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T PrintReads -R $REF_SEQ $multipleTargets --emit_original_quals -BQSR $output/intFiles/$pre\_$gpair[0]\_recal_data.grp --num_cpu_threads_per_data_thread 12 -rf BadCigar --out $output/intFiles/$pre\_$gpair[0]\_indelRealigned_recal.bam -I $output/intFiles/$pre\_$gpair[0]\_indelRealigned.bam`;
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $JAVA/java -Xms256m -Xmx30g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=$tempdir -jar $GATK/GenomeAnalysisTK.jar -T PrintReads -R $REF_SEQ $multipleTargets --emit_original_quals -BQSR $output/intFiles/$pre\_$gpair[0]\_recal_data.grp --num_cpu_threads_per_data_thread 12 -rf BadCigar --out $output/intFiles/$pre\_$gpair[0]\_indelRealigned_recal.bam -I $output/intFiles/$pre\_$gpair[0]\_indelRealigned.bam`;
 	`/bin/touch $output/progress/$pre\_$uID\_$gpair[0]\_PR.done`;
 	$prj = "$pre\_$uID\_$gpair[0]\_PR";
 	push @prg_jids, "$pre\_$uID\_$gpair[0]\_PR";
@@ -516,7 +516,7 @@ while(<IN>){
 	sleep(2);
 	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$gpair[0]\_SSF", job_hold => "$prj", cpu => "1", mem => "10", cluster_out => "$output/progress/$pre\_$uID\_$gpair[0]\_SSF.log");
 	my $standardParams = Schedule::queuing(%stdParams);
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $JAVA/java -Xms256m -Xmx10g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T SplitSamFile -R $REF_SEQ -I $output/intFiles/$pre\_$gpair[0]\_indelRealigned_recal.bam --outputRoot $output/alignments/$pre\_indelRealigned_recal_`;
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $JAVA/java -Xms256m -Xmx10g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=$tempdir -jar $GATK/GenomeAnalysisTK.jar -T SplitSamFile -R $REF_SEQ -I $output/intFiles/$pre\_$gpair[0]\_indelRealigned_recal.bam --outputRoot $output/alignments/$pre\_indelRealigned_recal_`;
 	`/bin/touch $output/progress/$pre\_$uID\_$gpair[0]\_SSF.done`;
 	push @ssf_jids, "$pre\_$uID\_$gpair[0]\_SSF";
 	$ran_ssf = 1;
@@ -536,7 +536,7 @@ foreach my $finalBam (@finalBams){
     if(!-e "$output/progress/$pre\_$uID\_MQ_METRICS_$samp\.done" || $ran_ssf){
 	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_MQ_METRICS_$samp", job_hold => "$ssfj", cpu => "1", mem => "20", cluster_out => "$output/progress/$pre\_$uID\_MQ_METRICS_$samp\.log");
 	my $standardParams = Schedule::queuing(%stdParams);
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $JAVA/java -Djava.io.tmpdir=/scratch/$uID -jar $PICARD/picard.jar MeanQualityByCycle INPUT=$finalBam OUTPUT=$output/intFiles/$pre\_MeanQualityByCycle_$samp.txt CHART_OUTPUT=$output/intFiles/$pre\_MeanQualityByCycle_$samp.pdf REFERENCE_SEQUENCE=$REF_SEQ VALIDATION_STRINGENCY=LENIENT ASSUME_SORTED=true TMP_DIR=/scratch/$uID`;
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $JAVA/java -Djava.io.tmpdir=$tempdir -jar $PICARD/picard.jar MeanQualityByCycle INPUT=$finalBam OUTPUT=$output/intFiles/$pre\_MeanQualityByCycle_$samp.txt CHART_OUTPUT=$output/intFiles/$pre\_MeanQualityByCycle_$samp.pdf REFERENCE_SEQUENCE=$REF_SEQ VALIDATION_STRINGENCY=LENIENT ASSUME_SORTED=true TMP_DIR=$tempdir`;
 	push @mq_metrics_jid, "$pre\_$uID\_MQ_METRICS_$samp";
 	`/bin/touch $output/progress/$pre\_$uID\_MQ_METRICS_$samp\.done`;
 	$ran_mqm = 1; 
@@ -591,7 +591,7 @@ if($ug){
 	sleep(2);
 	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_UG_SNP", job_hold => "$prgj", cpu => "12", mem => "48", cluster_out => "$output/progress/$pre\_$uID\_UG_SNP.log");
 	my $standardParams = Schedule::queuing(%stdParams);
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $JAVA/java -Xms256m -Xmx24g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T UnifiedGenotyper -R $REF_SEQ --reference_sample_name SPECIES_CUSTOM $multipleTargets --dbsnp $DB_SNP --downsampling_type NONE --annotateNDA --annotation AlleleBalance --annotation AlleleBalanceBySample --annotation HardyWeinberg --genotype_likelihoods_model SNP --read_filter BadCigar --num_cpu_threads_per_data_thread 12 --out $output/intFiles/$pre\_UnifiedGenotyper_SNP.vcf $irBams2`;
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $JAVA/java -Xms256m -Xmx24g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=$tempdir -jar $GATK/GenomeAnalysisTK.jar -T UnifiedGenotyper -R $REF_SEQ --reference_sample_name SPECIES_CUSTOM $multipleTargets --dbsnp $DB_SNP --downsampling_type NONE --annotateNDA --annotation AlleleBalance --annotation AlleleBalanceBySample --annotation HardyWeinberg --genotype_likelihoods_model SNP --read_filter BadCigar --num_cpu_threads_per_data_thread 12 --out $output/intFiles/$pre\_UnifiedGenotyper_SNP.vcf $irBams2`;
 	`/bin/touch $output/progress/$pre\_$uID\_UG_SNP.done`;
 	$ugsj = "$pre\_$uID\_UG_SNP";
 	$ran_ug_snp = 1;
@@ -601,7 +601,7 @@ if($ug){
 	sleep(2);
 	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_UG_INDEL", job_hold => "$prgj", cpu => "12", mem => "48", cluster_out => "$output/progress/$pre\_$uID\_UG_INDEL.log");
 	my $standardParams = Schedule::queuing(%stdParams);
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $JAVA/java -Xms256m -Xmx24g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T UnifiedGenotyper -R $REF_SEQ --reference_sample_name SPECIES_CUSTOM $multipleTargets --downsampling_type NONE --annotateNDA --annotation AlleleBalance --annotation AlleleBalanceBySample --annotation HardyWeinberg --genotype_likelihoods_model INDEL --read_filter BadCigar --num_cpu_threads_per_data_thread 12 --out $output/intFiles/$pre\_UnifiedGenotyper_INDEL.vcf $irBams2`;
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $JAVA/java -Xms256m -Xmx24g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=$tempdir -jar $GATK/GenomeAnalysisTK.jar -T UnifiedGenotyper -R $REF_SEQ --reference_sample_name SPECIES_CUSTOM $multipleTargets --downsampling_type NONE --annotateNDA --annotation AlleleBalance --annotation AlleleBalanceBySample --annotation HardyWeinberg --genotype_likelihoods_model INDEL --read_filter BadCigar --num_cpu_threads_per_data_thread 12 --out $output/intFiles/$pre\_UnifiedGenotyper_INDEL.vcf $irBams2`;
 	`/bin/touch $output/progress/$pre\_$uID\_UG_INDEL.done`;
 	$ugij = "$pre\_$uID\_UG_INDEL";
 	$ran_ug_indel = 1;
@@ -621,8 +621,8 @@ if(!-e "$output/progress/$pre\_$uID\_HC.done" || $ran_pr_glob){
         `sleep $time `;
         $HC_submission_num++;
         print "HC attempt number $HC_submission_num\n"; 
-        print "Command: $standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $JAVA/java -Xms256m -Xmx90g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T HaplotypeCaller -R $REF_SEQ $multipleTargets --dbsnp $DB_SNP --downsampling_type NONE --annotation AlleleBalanceBySample --annotation ClippingRankSumTest --read_filter BadCigar --num_cpu_threads_per_data_thread 30 --out $output/variants/snpsIndels/haplotypecaller/$pre\_HaplotypeCaller.vcf $irBams2";
-        $response = `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $JAVA/java -Xms256m -Xmx90g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T HaplotypeCaller -R $REF_SEQ $multipleTargets --dbsnp $DB_SNP --downsampling_type NONE --annotation AlleleBalanceBySample --annotation ClippingRankSumTest --read_filter BadCigar --num_cpu_threads_per_data_thread 30 --out $output/variants/snpsIndels/haplotypecaller/$pre\_HaplotypeCaller.vcf $irBams2       2>&1`;
+        print "Command: $standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $JAVA/java -Xms256m -Xmx90g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=$tempdir -jar $GATK/GenomeAnalysisTK.jar -T HaplotypeCaller -R $REF_SEQ $multipleTargets --dbsnp $DB_SNP --downsampling_type NONE --annotation AlleleBalanceBySample --annotation ClippingRankSumTest --read_filter BadCigar --num_cpu_threads_per_data_thread 30 --out $output/variants/snpsIndels/haplotypecaller/$pre\_HaplotypeCaller.vcf $irBams2";
+        $response = `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $JAVA/java -Xms256m -Xmx90g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=$tempdir -jar $GATK/GenomeAnalysisTK.jar -T HaplotypeCaller -R $REF_SEQ $multipleTargets --dbsnp $DB_SNP --downsampling_type NONE --annotation AlleleBalanceBySample --annotation ClippingRankSumTest --read_filter BadCigar --num_cpu_threads_per_data_thread 30 --out $output/variants/snpsIndels/haplotypecaller/$pre\_HaplotypeCaller.vcf $irBams2       2>&1`;
         print "Response: $response\n";
         if($response !~ /is submitted to default queue/ && $HC_submission_num == 10){
             `mail -s "HaplotypeCaller Job Not Working" $email <<< "This is an e-mail letting you know that your variants pipeline run for $pre is not submitting HC jobs to the cluster. Please remove all .done files for haplotype caller and rerun the pipeline."  `;
@@ -647,7 +647,7 @@ if($ug){
 	sleep(2);
 	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_UG_RAW", job_hold => "$ugsj,$ugij", cpu => "1", mem => "2", cluster_out => "$output/progress/$pre\_$uID\_CV_UG_RAW.log");
 	my $standardParams = Schedule::queuing(%stdParams);
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $JAVA/java -Xms256m -Xmx2g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T CombineVariants -R $REF_SEQ -o $output/intFiles/$pre\_UnifiedGenotyper_RAW.vcf --assumeIdenticalSamples --variant $output/intFiles/$pre\_UnifiedGenotyper_SNP.vcf --variant $output/intFiles/$pre\_UnifiedGenotyper_INDEL.vcf`;
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $JAVA/java -Xms256m -Xmx2g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=$tempdir -jar $GATK/GenomeAnalysisTK.jar -T CombineVariants -R $REF_SEQ -o $output/intFiles/$pre\_UnifiedGenotyper_RAW.vcf --assumeIdenticalSamples --variant $output/intFiles/$pre\_UnifiedGenotyper_SNP.vcf --variant $output/intFiles/$pre\_UnifiedGenotyper_INDEL.vcf`;
 	`/bin/touch $output/progress/$pre\_$uID\_UG_RAW.done`;
     }
 
@@ -657,7 +657,7 @@ if($ug){
 	sleep(2);
 	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_VF_UG_SNP", job_hold => "$ugsj", cpu => "1", mem => "2", cluster_out => "$output/progress/$pre\_$uID\_VF_UG_SNP.log");
 	my $standardParams = Schedule::queuing(%stdParams);
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $JAVA/java -Xms256m -Xmx2g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T VariantFiltration -R $REF_SEQ --mask $output/intFiles/$pre\_UnifiedGenotyper_INDEL.vcf --maskName nearIndel --variant $output/intFiles/$pre\_UnifiedGenotyper_SNP.vcf -o $output/intFiles/$pre\_UnifiedGenotyper_SNP_vf.vcf --clusterWindowSize 10 --filterExpression \\"QD \\< 2.0\\" --filterExpression \\"MQ \\< 40.0\\" --filterExpression \\"FS \\> 60.0\\" --filterExpression \\"HaplotypeScore \\> 13.0\\" --filterExpression \\"MQRankSum \\< -12.5\\" --filterExpression \\"ReadPosRankSum \\< -8.0\\" --filterName QDFilter --filterName MQFilter --filterName FSFilter --filterName HSFilter --filterName MQRSFilter --filterName ReadPosFilter`;
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $JAVA/java -Xms256m -Xmx2g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=$tempdir -jar $GATK/GenomeAnalysisTK.jar -T VariantFiltration -R $REF_SEQ --mask $output/intFiles/$pre\_UnifiedGenotyper_INDEL.vcf --maskName nearIndel --variant $output/intFiles/$pre\_UnifiedGenotyper_SNP.vcf -o $output/intFiles/$pre\_UnifiedGenotyper_SNP_vf.vcf --clusterWindowSize 10 --filterExpression \\"QD \\< 2.0\\" --filterExpression \\"MQ \\< 40.0\\" --filterExpression \\"FS \\> 60.0\\" --filterExpression \\"HaplotypeScore \\> 13.0\\" --filterExpression \\"MQRankSum \\< -12.5\\" --filterExpression \\"ReadPosRankSum \\< -8.0\\" --filterName QDFilter --filterName MQFilter --filterName FSFilter --filterName HSFilter --filterName MQRSFilter --filterName ReadPosFilter`;
 	`/bin/touch $output/progress/$pre\_$uID\_VF_UG_SNP.done`;
 	push @vfug_jids, "$pre\_$uID\_VF_UG_SNP";
 	$ran_vf_ug_snp = 1;
@@ -668,7 +668,7 @@ if($ug){
 	sleep(2);
 	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_VF_UG_INDEL", job_hold => "$ugij", cpu => "1", mem => "2", cluster_out => "$output/progress/$pre\_$uID\_VF_UG_INDEL.log");
 	my $standardParams = Schedule::queuing(%stdParams);
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $JAVA/java -Xms256m -Xmx2g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T VariantFiltration -R $REF_SEQ --variant $output/intFiles/$pre\_UnifiedGenotyper_INDEL.vcf -o $output/intFiles/$pre\_UnifiedGenotyper_INDEL_vf.vcf --clusterWindowSize 10 --filterExpression \\"QD \\< 2.0\\" --filterExpression \\"ReadPosRankSum \\< -20.0\\" --filterExpression \\"InbreedingCoeff \\< -0.8\\" --filterExpression \\"FS \\> 200.0\\" --filterName QDFilter --filterName ReadPosFilter --filterName InbreedingFilter --filterName FSFilter`;
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $JAVA/java -Xms256m -Xmx2g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=$tempdir -jar $GATK/GenomeAnalysisTK.jar -T VariantFiltration -R $REF_SEQ --variant $output/intFiles/$pre\_UnifiedGenotyper_INDEL.vcf -o $output/intFiles/$pre\_UnifiedGenotyper_INDEL_vf.vcf --clusterWindowSize 10 --filterExpression \\"QD \\< 2.0\\" --filterExpression \\"ReadPosRankSum \\< -20.0\\" --filterExpression \\"InbreedingCoeff \\< -0.8\\" --filterExpression \\"FS \\> 200.0\\" --filterName QDFilter --filterName ReadPosFilter --filterName InbreedingFilter --filterName FSFilter`;
 	`/bin/touch $output/progress/$pre\_$uID\_VF_UG_INDEL.done`;
 	push @vfug_jids, "$pre\_$uID\_VF_UG_INDEL";
 	$ran_vf_ug_indel = 1;
@@ -681,7 +681,7 @@ if($ug){
 	my $vfugj = join(",", @vfug_jids);
 	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_CV_UG_SI", job_hold => "$vfugj", cpu => "1", mem => "2", cluster_out => "$output/progress/$pre\_$uID\_CV_UG_SI.log");
 	my $standardParams = Schedule::queuing(%stdParams);
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $JAVA/java -Xms256m -Xmx2g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $GATK/GenomeAnalysisTK.jar -T CombineVariants -R $REF_SEQ -o $output/variants/snpsIndels/unifiedgenotyper/$pre\_UnifiedGenotyper.vcf --assumeIdenticalSamples --variant $output/progress/$pre\_UnifiedGenotyper_SNP_vf.vcf --variant $output/progress/$pre\_UnifiedGenotyper_INDEL_vf.vcf`;
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $JAVA/java -Xms256m -Xmx2g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=$tempdir -jar $GATK/GenomeAnalysisTK.jar -T CombineVariants -R $REF_SEQ -o $output/variants/snpsIndels/unifiedgenotyper/$pre\_UnifiedGenotyper.vcf --assumeIdenticalSamples --variant $output/progress/$pre\_UnifiedGenotyper_SNP_vf.vcf --variant $output/progress/$pre\_UnifiedGenotyper_INDEL_vf.vcf`;
 	`/bin/touch $output/progress/$pre\_$uID\_CV_UG_SI.done`;
         $cvugsij = "$pre\_$uID\_CV_UG_SI";
 	$ran_cv_ug_si = 1;
@@ -725,7 +725,7 @@ if($pair){
 	    sleep(2);
 	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$data[0]\_$data[1]\_MUTECT", job_hold => "$ssfj", cpu => "2", mem => "20", cluster_out => "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_MUTECT.log");
 	    my $standardParams = Schedule::queuing(%stdParams);
-	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $JAVA7_MUTECT/java -Xmx16g -Djava.io.tmpdir=/scratch/$uID -jar $MUTECT/muTect.jar --analysis_type MuTect --reference_sequence $REF_SEQ --dbsnp $DB_SNP --input_file:normal $output/alignments/$pre\_indelRealigned_recal\_$data[0]\.bam --input_file:tumor $output/alignments/$pre\_indelRealigned_recal\_$data[1]\.bam --vcf $output/variants/snpsIndels/mutect/$pre\_$data[0]\_$data[1]\_mutect_calls.vcf --out $output/variants/snpsIndels/mutect/$pre\_$data[0]\_$data[1]\_mutect_calls.txt -rf BadCigar --enable_extended_output --downsampling_type NONE`;
+	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $JAVA7_MUTECT/java -Xmx16g -Djava.io.tmpdir=$tempdir -jar $MUTECT/muTect.jar --analysis_type MuTect --reference_sequence $REF_SEQ --dbsnp $DB_SNP --input_file:normal $output/alignments/$pre\_indelRealigned_recal\_$data[0]\.bam --input_file:tumor $output/alignments/$pre\_indelRealigned_recal\_$data[1]\.bam --vcf $output/variants/snpsIndels/mutect/$pre\_$data[0]\_$data[1]\_mutect_calls.vcf --out $output/variants/snpsIndels/mutect/$pre\_$data[0]\_$data[1]\_mutect_calls.txt -rf BadCigar --enable_extended_output --downsampling_type NONE`;
 	    `/bin/touch $output/progress/$pre\_$uID\_$data[0]\_$data[1]\_MUTECT.done`;
 	    $mutectj = "$pre\_$uID\_$data[0]\_$data[1]\_MUTECT";
 	    push @mu_jids, "$pre\_$uID\_$data[0]\_$data[1]\_MUTECT";
@@ -773,7 +773,7 @@ if($pair){
 		###mkdir("$output/variants/snpsIndels/virmid/$data[0]\_$data[1]\_virmid", 0775) or die "Can't make $output/variants/snpsIndels/virmid/$data[0]\_$data[1]\_virmid";
 		my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$data[0]\_$data[1]\_VIRMID", job_hold => "$ssfj", cpu => "4", mem => "12", cluster_out => "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_VIRMID.log");
 		my $standardParams = Schedule::queuing(%stdParams);
-		`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $JAVA/java -Xms256m -Xmx12g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=/scratch/$uID -jar $VIRMID/Virmid.jar -R $REF_SEQ -D $output/alignments/$pre\_indelRealigned_recal\_$data[1]\.bam -N $output/alignments/$pre\_indelRealigned_recal\_$data[0]\.bam -t 4 -o $pre\_$data[0]\_$data[1]\_virmid -w $output/variants/snpsIndels/virmid/$data[0]\_$data[1]\_virmid`;
+		`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $JAVA/java -Xms256m -Xmx12g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=$tempdir -jar $VIRMID/Virmid.jar -R $REF_SEQ -D $output/alignments/$pre\_indelRealigned_recal\_$data[1]\.bam -N $output/alignments/$pre\_indelRealigned_recal\_$data[0]\.bam -t 4 -o $pre\_$data[0]\_$data[1]\_virmid -w $output/variants/snpsIndels/virmid/$data[0]\_$data[1]\_virmid`;
 		`/bin/touch $output/progress/$pre\_$uID\_$data[0]\_$data[1]\_VIRMID.done`;
 		push @all_jids, "$pre\_$uID\_$data[0]\_$data[1]\_VIRMID";
 		$ran_virmid = 1;
@@ -1028,7 +1028,7 @@ if($pair){
 	my $muj = join(",", @mu_jids);
 	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_HAPLOTECT", job_hold => "$hcj,$muj", cpu => "4", mem => "8", cluster_out => "$output/progress/$pre\_$uID\_HAPLOTECT.log");
 	my $standardParams = Schedule::queuing(%stdParams);
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $PERL/perl $Bin/haploTect_merge.pl -pair $pair -hc_vcf $output/variants/snpsIndels/haplotypecaller/$pre\_HaplotypeCaller.vcf -species $species -pre $pre -output $output/variants/snpsIndels/haplotect -mutect_dir $output/variants/snpsIndels/mutect -config $config $patientFile -align_dir $output/alignments/ -delete_temp`;
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $PERL/perl $Bin/haploTect_merge.pl -pair $pair -hc_vcf $output/variants/snpsIndels/haplotypecaller/$pre\_HaplotypeCaller.vcf -species $species -pre $pre -output $output/variants/snpsIndels/haplotect -mutect_dir $output/variants/snpsIndels/mutect -config $config $patientFile -align_dir $output/alignments/ -tempdir $tempdir -delete_temp`;
 	
 	push @all_jids, "$pre\_$uID\_HAPLOTECT";
 	$haplotect_run = 1;

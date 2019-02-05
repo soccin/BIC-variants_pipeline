@@ -6,7 +6,7 @@ use FindBin qw($Bin);
 use File::Path qw(make_path);
 use File::Basename;
 
-my ($svnRev, $pairing, $hc_vcf, $help, $mutect_dir, $species, $bam_dir, $patient, $pre, $output, $delete_temp, $config, $exac_vcf);
+my ($svnRev, $pairing, $hc_vcf, $help, $mutect_dir, $species, $bam_dir, $patient, $pre, $output, $delete_temp, $config, $exac_vcf, $tempdir);
 
 # Default output = results/variants/FinalReport
 # get current directory
@@ -32,6 +32,7 @@ GetOptions ('pair=s' => \$pairing,
 	        'config=s' => \$config,
             'species=s' => \$species,
             'svnRev=s' => \$svnRev,
+            'tempdir=s' => \$tempdir,
             'help|h' => \$help ) or exit(1);
 
 # if the basic necessities are missing, exit
@@ -618,8 +619,8 @@ if($force_run || ! -e "$progress/$pre\_bedtools_anno.done"){
 if($species =~ /hg19|b37|human|hybrid/i){
     if($force_run || ! -e "$progress/$pre\_exac_anno.done"){
         $force_run = 1; 
-        print "perl $Bin/maf/exac_annotate.pl --in_maf $output/$pre\_merge_maf0.txt --species $species --output $output --config $config --data $Bin/data\n\n";
-        `$PERL/perl $Bin/maf/exac_annotate.pl --in_maf $output/$pre\_merge_maf0.txt --species $species --output $output --config $config --data $Bin/data`;
+        print "perl $Bin/maf/exac_annotate.pl --in_maf $output/$pre\_merge_maf0.txt --species $species --output $output --config $config --data $Bin/data --tempdir $tempdir\n\n";
+        `$PERL/perl $Bin/maf/exac_annotate.pl --in_maf $output/$pre\_merge_maf0.txt --species $species --output $output --config $config --data $Bin/data --tempdir $tempdir`;
         &checkResult($?, $progress, "$pre\_exac_anno");
     }
 
