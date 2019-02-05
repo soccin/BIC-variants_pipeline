@@ -12,7 +12,7 @@ use POSIX qw(strftime);
 my $cur_date = strftime "%Y%m%d", localtime;
 
 
-my ($pair, $svnRev, $email, $patient, $group, $bamgroup, $config, $nosnps, $targets, $ug, $scheduler, $priority_project, $priority_group, $abra, $indelrealigner, $help, $step1, $allSomatic, $scalpel, $somaticsniper, $strelka, $varscan, $virmid, $lancet, $vardict, $pindel);
+my ($pair, $svnRev, $email, $patient, $group, $bamgroup, $config, $nosnps, $targets, $ug, $scheduler, $priority_project, $priority_group, $abra, $indelrealigner, $help, $step1, $allSomatic, $scalpel, $somaticsniper, $strelka, $varscan, $virmid, $lancet, $vardict, $pindel, $abra_target);
 
 my $pre = 'TEMP';
 my $output = "results";
@@ -53,7 +53,8 @@ GetOptions ('email=s' => \$email,
  	    'vardict' => \$vardict,
             'pindel' => \$pindel,
  	    'tempdir=s' => \$tempdir,
- 	    'output|out|o=s' => \$output) or exit(1);
+ 	    'output|out|o=s' => \$output,
+            'abratarget|abra_target=s' => \$abra_target) or exit(1);
 
 
 if(!$group || !$config || !$scheduler || !$targets || !$bamgroup || $help){
@@ -429,6 +430,12 @@ if(-d $targets){
 if(!-e "$targets_bed_padded"){
     die "CAN'T LOCATE $targets_bed_padded FOR $targets; REQUIRED FOR SCALPEL $!";
 }
+if(!$abra_target){
+    $abra_target = $targets_bed_padded;
+}
+if(!-e "$abra_target"){
+    die "CAN'T LOCATE $abra_target; REQUIRED FOR ABRA $!";
+}
 
 my $multipleTargets = '';
 
@@ -558,7 +565,7 @@ while(<IN>){
 		my $standardParams = Schedule::queuing(%stdParams);	    
 		my %addParams = (scheduler => "$scheduler", runtime => "500", priority_project=> "$priority_project", priority_group=> "$priority_group", rerun => "1", iounits => "4");
 		my $additionalParams = Schedule::additionalParams(%addParams);
-		`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $PERL/perl $Bin/abra_wrapper.pl -inBams $aiBams -outBams $aoBams -refSeq $REF_SEQ -bwaRef $BWA_INDEX -targets $targets_bed_padded -working $output/intFiles/abra_$gpair[0]\_$c -config $config -log $output/progress/$pre\_$uID\_$gpair[0]\_$c\_ABRA_WRAPPER.log`;
+		`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $PERL/perl $Bin/abra_wrapper.pl -inBams $aiBams -outBams $aoBams -refSeq $REF_SEQ -bwaRef $BWA_INDEX -targets $abra_target -working $output/intFiles/abra_$gpair[0]\_$c -config $config -log $output/progress/$pre\_$uID\_$gpair[0]\_$c\_ABRA_WRAPPER.log`;
 		
 		$abra_jid = "$pre\_$uID\_$gpair[0]\_$c\_ABRA";
 		`/bin/touch $output/progress/$pre\_$uID\_$gpair[0]\_$c\_ABRA.done`;
