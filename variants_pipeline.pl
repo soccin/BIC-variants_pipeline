@@ -206,6 +206,9 @@ if(-d $targets){
     $targets_bed_padded = "$targets/$assay\_targets_plus5bp.bed";
     $targets_facet = "$targets/$assay\_targets_FACETS.ilist";
 }
+if(!$abra_target){
+   $abra_target = $targets_bed_padded;
+}
 if(!-e "$abra_target"){
     die "CAN'T LOCATE $abra_target; REQUIRED FOR ABRA $!";
 }
