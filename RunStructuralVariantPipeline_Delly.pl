@@ -1058,28 +1058,28 @@ sub RunDelly {
 	if ( $tFlag == 2 ) {
 		&launchQsub(
 			$dellyT_cmd,    $sampleTumorOutput,
-			"8G",           $dellyT_stdout,
+			"20G",           $dellyT_stdout,
 			$dellyT_stderr, "2",
 			$runQueue,      $dellyT_jname,
 			"Null"
 		);
 		&launchQsub(
 			$duppyT_cmd,    $sampleTumorOutput,
-			"8G",           $duppyT_stdout,
+			"20G",           $duppyT_stdout,
 			$duppyT_stderr, "2",
 			$runQueue,      $duppyT_jname,
 			"Null"
 		);
 		&launchQsub(
 			$invyT_cmd,    $sampleTumorOutput,
-			"8G",          $invyT_stdout,
+			"20G",          $invyT_stdout,
 			$invyT_stderr, "2",
 			$runQueue,     $invyT_jname,
 			"Null"
 		);
 		&launchQsub(
 			$jumpyT_cmd,    $sampleTumorOutput,
-			"8G",           $jumpyT_stdout,
+			"20G",           $jumpyT_stdout,
 			$jumpyT_stderr, "2",
 			$runQueue,      $jumpyT_jname,
 			"Null"
@@ -1259,28 +1259,28 @@ sub RunFilterStructuralVariants {
 	my $notifyT_stderr = $notifyT_jname . ".stderr";
 	&launchQsub(
 		$delcmd,           $svOutdir,
-		"10G",             $delFilter_stdout,
+		"20G",             $delFilter_stdout,
 		$delFilter_stderr, "1",
 		$runQueue,         $delFilter_jname,
 		"Null"
 	);
 	&launchQsub(
 		$dupcmd,           $svOutdir,
-		"10G",             $dupFilter_stdout,
+		"20G",             $dupFilter_stdout,
 		$dupFilter_stderr, "1",
 		$runQueue,         $dupFilter_jname,
 		"Null"
 	);
 	&launchQsub(
 		$invcmd,           $svOutdir,
-		"10G",             $invFilter_stdout,
+		"20G",             $invFilter_stdout,
 		$invFilter_stderr, "1",
 		$runQueue,         $invFilter_jname,
 		"Null"
 	);
 	&launchQsub(
 		$jmpcmd,           $svOutdir,
-		"10G",             $jmpFilter_stdout,
+		"20G",             $jmpFilter_stdout,
 		$jmpFilter_stderr, "1",
 		$runQueue,         $jmpFilter_jname,
 		"Null"
@@ -1348,7 +1348,7 @@ sub AnnotateStructuralVariants {
 	my $notify_stdout = $notify_jname . ".stat";
 	my $notify_stderr = $notify_jname . ".stderr";
 	&launchQsub(
-		$annotate_cmd,     $outdir, "2G",      $annotate_stdout,
+		$annotate_cmd,     $outdir, "10G",      $annotate_stdout,
 		$annotate_stderr, "1",     $queue, $annotate_jname,
 		"Null"
 	);
@@ -1733,7 +1733,7 @@ sub RunAnnotateStructuralVariants {
 		push( @checkProcess, $delAnno_jname );
 		&launchQsub(
 			$delAnnoCMD,     $svOutdir,
-			"5G",            $delAnno_stdout,
+			"20G",            $delAnno_stdout,
 			$delAnno_stderr, "1",
 			$runQueue,       $delAnno_jname,
 			"Null"
@@ -1746,7 +1746,7 @@ sub RunAnnotateStructuralVariants {
 		push( @checkProcess, $dupAnno_jname );
 		&launchQsub(
 			$dupAnnoCMD,     $svOutdir,
-			"5G",            $dupAnno_stdout,
+			"20G",            $dupAnno_stdout,
 			$dupAnno_stderr, "1",
 			$runQueue,       $dupAnno_jname,
 			"Null"
@@ -1759,7 +1759,7 @@ sub RunAnnotateStructuralVariants {
 		push( @checkProcess, $invAnno_jname );
 		&launchQsub(
 			$invAnnoCMD,     $svOutdir,
-			"5G",            $invAnno_stdout,
+			"20G",            $invAnno_stdout,
 			$invAnno_stderr, "1",
 			$runQueue,       $invAnno_jname,
 			"Null"
@@ -1772,7 +1772,7 @@ sub RunAnnotateStructuralVariants {
 		push( @checkProcess, $jmpAnno_jname );
 		&launchQsub(
 			$jmpAnnoCMD,     $svOutdir,
-			"5G",            $jmpAnno_stdout,
+			"20G",            $jmpAnno_stdout,
 			$jmpAnno_stderr, "1",
 			$runQueue,       $jmpAnno_jname,
 			"Null"
