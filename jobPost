@@ -1,0 +1,11 @@
+!#/bin/bash
+
+# Do not requeue jobs that exceeded the requested run time or mem limit, which will fail again with the same requested resources
+if [[ $LSB_JOBEXIT_INFO =~ (SIG_TERM_RUNLIMIT|SIG_TERM_MEMLIMIT) ]]; then
+    bstop $LSB_JOBID
+    cd $LS_EXECCWD
+    echo $LSB_JOBEXIT_INFO >>$LSB_OUTPUTFILE
+    echo "Job exceeded the requested run time limit or memory limit. See error above." >>$LSB_OUTPUTFILE
+fi
+
+
