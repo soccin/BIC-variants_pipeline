@@ -718,7 +718,7 @@ sub RunDepthOfCoverage
 	} else
 	{
 		eval {
-	        	my %addParams = (scheduler => "$scheduler", runtime => "500", priority_project=> "$priority_project", priority_group=> "$priority_group", queues => "lau.q,lcg.q,nce.q", work_dir => "$outdir", iounits => "1");
+	        	my %addParams = (scheduler => "$scheduler", runtime => "500", priority_project=> "$priority_project", priority_group=> "$priority_group", queues => "lau.q,lcg.q,nce.q", work_dir => "$outdir", rerun => "1", iounits => "1");
         		my $additionalParams = Schedule::additionalParams(%addParams);
 
         		my %stdParams = (scheduler => "$scheduler", job_name => "GeneNomapqCoverage.$id.$$", cpu => "1", mem => "8", cluster_out => "GeneNomapqCoverage.$id.$$.stdout", cluster_error => "GeneNomapqCoverage.$id.$$.stderr");
@@ -752,7 +752,7 @@ sub RunDepthOfCoverage
 	} else
 	{
 		eval {
-			my %addParams = (scheduler => "$scheduler", runtime => "500", priority_project=> "$priority_project", priority_group=> "$priority_group", queues => "lau.q,lcg.q,nce.q", work_dir => "$outdir", iounits => "1");
+			my %addParams = (scheduler => "$scheduler", runtime => "500", priority_project=> "$priority_project", priority_group=> "$priority_group", queues => "lau.q,lcg.q,nce.q", work_dir => "$outdir", rerun => "1", iounits => "1");
                         my $additionalParams = Schedule::additionalParams(%addParams);
 
                         my %stdParams = (scheduler => "$scheduler", job_name => "TilingNomapqCoverage.$id.$$", cpu => "1", mem => "8", cluster_out => "TilingNomapqCoverage.$id.$$.stdout", cluster_error => "TilingNomapqCoverage.$id.$$.stderr");
@@ -908,7 +908,7 @@ sub RunLoessNormalization
 	
 	$ENV{"R_LIBS_USER"} = $RLIBS;
 	
-        my %addParams = (scheduler => "$scheduler", runtime => "500", priority_project=> "$priority_project", priority_group=> "$priority_group", queues => "lau.q,lcg.q,nce.q", work_dir => "$outdir", iounits => "1");
+        my %addParams = (scheduler => "$scheduler", runtime => "500", priority_project=> "$priority_project", priority_group=> "$priority_group", queues => "lau.q,lcg.q,nce.q", work_dir => "$outdir", rerun => "1", iounits => "1");
         my $additionalParams = Schedule::additionalParams(%addParams);
         my %stdParams = (scheduler => "$scheduler", job_name => "LOESS.$$", cpu => "1", mem => "8", cluster_out => "LOESS.$$.stdout", cluster_error => "LOESS.$$.stderr");
         my $standardParams = Schedule::queuing(%stdParams);

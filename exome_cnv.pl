@@ -607,7 +607,7 @@ sub RunCopyNumber
 		$extra_para .= " -hg19"
 	}
 
-	my %addParams = (scheduler => "$scheduler", runtime => "60", priority_project=> "$priority_project", priority_group=> "$priority_group", queues => "lau.q,lcg.q,nce.q", work_dir => "$project_dir", iounits => "1");
+	my %addParams = (scheduler => "$scheduler", runtime => "60", priority_project=> "$priority_project", priority_group=> "$priority_group", queues => "lau.q,lcg.q,nce.q", work_dir => "$project_dir", rerun => "1", iounits => "1");
 	my $additionalParams = Schedule::additionalParams(%addParams);
 
 	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_NormalizedCoverage", cpu => "1", mem => "8", cluster_out => "$pre\_$uID\_NormalizedCoverage.stdout", cluster_error => "$pre\_$uID\_NormalizedCoverage.stderr");
@@ -631,7 +631,7 @@ sub RunCopyNumber
         	        $std_extra_para .= " -hg19"
 	        }
 
-		%addParams = (scheduler => "$scheduler", runtime => "60", priority_project=> "$priority_project", priority_group=> "$priority_group", queues => "lau.q,lcg.q,nce.q", work_dir => "$std_dir", iounits => "1");
+		%addParams = (scheduler => "$scheduler", runtime => "60", priority_project=> "$priority_project", priority_group=> "$priority_group", queues => "lau.q,lcg.q,nce.q", work_dir => "$std_dir", rerun => "1",iounits => "1");
 		$additionalParams = Schedule::additionalParams(%addParams);
 		%stdParams = (scheduler => "$scheduler", job_name => "$pre\_std\_$uID\_NormalizedCoverage", cpu => "1", mem => "8", cluster_out => "pre\_std\_$uID\_NormalizedCoverage.stdout", cluster_error => "$pre\_std\_$uID\_NormalizedCoverage.stderr");
 		$standardParams = Schedule::queuing(%stdParams);
@@ -644,7 +644,7 @@ sub RunCopyNumber
 
 	$ENV{"R_LIBS_USER"}=$RLIBS;
 
-	%addParams = (scheduler => "$scheduler", runtime => "60", priority_project=> "$priority_project", priority_group=> "$priority_group", queues => "lau.q,lcg.q,nce.q", work_dir => "$project_dir", iounits => "1");
+	%addParams = (scheduler => "$scheduler", runtime => "60", priority_project=> "$priority_project", priority_group=> "$priority_group", queues => "lau.q,lcg.q,nce.q", work_dir => "$project_dir", rerun => "1",iounits => "1");
 	$additionalParams = Schedule::additionalParams(%addParams);
 
 	%stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_TumorCopyNumber", job_hold => "$hold_job_id", cpu => "1", mem => "8", cluster_out => "$pre\_$uID\_TumorCopyNumber.stdout", cluster_error => "$pre\_$uID\_TumorCopyNumber.stderr");

@@ -1156,7 +1156,7 @@ sub launchQsub {
 	) = @_;
 
 	
-	my %addParams = (scheduler => "$scheduler", runtime => "50", priority_project=> "$priority_project", priority_group=> "$priority_group", queues => "lau.q,lcg.q,nce.q", work_dir => "$outdir", iounits => "1");
+	my %addParams = (scheduler => "$scheduler", runtime => "50", priority_project=> "$priority_project", priority_group=> "$priority_group", queues => "lau.q,lcg.q,nce.q", work_dir => "$outdir", rerun =>"1", iounits => "1");
 	my $additionalParams = Schedule::additionalParams(%addParams);
 
 
