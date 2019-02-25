@@ -206,7 +206,7 @@ sub additionalLUNA {
     my $aLUNA = "";
 
     if($addLUNA{'rerun'}){
-    $aLUNA .= " -r -Q \"all ~0\"";
+    $aLUNA .= " -r -Q \"all ~0\" -Ep \"$Bin/jobPost\"";
     }
     
     if($addLUNA{'priority_group'}){
@@ -322,7 +322,7 @@ sub additionalJUNO {
     my $aJUNO = "";
 
     if($addJUNO{'rerun'}){
-    $aJUNO .= " -r -Q \"all ~0\"";
+    $aJUNO .= " -r -Q \"all ~0\" -Ep \"$Bin/jobPost\"";
     }
     
     if($addJUNO{'priority_group'}){
