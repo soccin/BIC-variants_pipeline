@@ -7,6 +7,8 @@ use File::Path qw(make_path remove_tree);
 use File::Basename;
 
 my ($input, $somatic, $species, $output, $config, $data, $help);
+my $uID = `/usr/bin/id -u -n`;
+chomp $uID;
 my $tempdir = "/scratch/$uID";
 
 GetOptions ('in_maf=s' => \$input,
@@ -17,9 +19,6 @@ GetOptions ('in_maf=s' => \$input,
 'data=s' => \$data,
 'tempdir=s' => \$tempdir,
 'help|h' => \$help ) or exit(1);
-
-my $uID = `/usr/bin/id -u -n`;
-chomp $uID;
 
 if(!$input || !$species || !$output || !$config || !$data){
     die "you are missing some input";
