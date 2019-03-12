@@ -11,6 +11,7 @@ import argparse
 import pandas as pd
 import time
 import sys
+import math
 
 def main():
     parser = argparse.ArgumentParser(
@@ -49,7 +50,7 @@ def main():
     WriteResults(dataDict, args)
 # Read the structural variant file
 def ReadSV(file, args):
-    dataDF = pd.read_csv(file, sep='\t', header=0, keep_default_na='True')
+    dataDF = pd.read_csv(file, sep='\t', header=0, keep_default_na=False, na_values=" ")
     return(dataDF)
 # Process the pandas dataframe to get contaminataed genes
 def ProcessData(dataDF):
@@ -61,6 +62,8 @@ def ProcessData(dataDF):
     for key, value in gDF.iteritems():
         # get name of the sample its meta data
         (tumorID, gene1, svtype) = key
+        if not gene1 or gene1 == ' ': #math.isnan(float(gene1)):
+            continue
         # check how many entries are there of sv type
         entires = len(value)
         # initialize the number of cDNA events and a list of corresponding genes
