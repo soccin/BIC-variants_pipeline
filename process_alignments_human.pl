@@ -463,6 +463,7 @@ my $PHASE1_SNPS_1000G = '';
 my $COSMIC = '';
 my $COSMIC_HOTSPOTS = '';
 if($species =~ /^b37$|human/i){
+    $species = "b37";
     $REF_SEQ = "$B37_FASTA";
     $REF_FAI = "$B37_FAI";
     $BWA_INDEX = "$B37_BWA_INDEX";
@@ -481,6 +482,7 @@ if($species =~ /^b37$|human/i){
     }
 }
 elsif($species =~ /hybrid|xenograft|b37_mm10/i){
+    $species = "hybrid";
     $REF_SEQ = "$B37_MM10_HYBRID_FASTA";
     $REF_FAI = "$B37_MM10_HYBRID_FAI";
     $BWA_INDEX = "$B37_MM10_HYBRID_BWA_INDEX";
@@ -1723,8 +1725,8 @@ if($pair){
 	
 	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_DELLY", job_hold => "$ssfj", cpu => "1", mem => "10", cluster_out => "$output/progress/$pre\_$uID\_DELLY.log");
 	my $standardParams = Schedule::queuing(%stdParams);
-        my $tempGenome = $species == "hybrid" ? "b37" : $species;
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $PERL/perl $Bin/RunStructuralVariantPipeline_Delly.pl -pre $pre -out $output/variants/structVar/delly -pair $pair -bam_list $output/intFiles/$pre\_sv_bam_list.txt -genome $tempGenome -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group`;
+        #my $tempGenome = $species == "hybrid" ? "b37" : $species;
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $PERL/perl $Bin/RunStructuralVariantPipeline_Delly.pl -pre $pre -out $output/variants/structVar/delly -pair $pair -bam_list $output/intFiles/$pre\_sv_bam_list.txt -genome $species -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group`;
 	`/bin/touch $output/progress/$pre\_$uID\_DELLY.done`;
 	$ran_strvar = 1;
     }

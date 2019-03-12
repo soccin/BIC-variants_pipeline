@@ -128,9 +128,9 @@ if(!$poolName)
     die "Please specify the project name by -pre\n";  
 }
 
-if(!$genome || ($genome ne "hg19" && $genome ne "b37") )
+if(!$genome || ($genome ne "hg19" && $genome ne "b37" && $genome ne "hybrid") )
 {
-    die "Please specify the genome build by using -genome. Valid values are 'hg19' and 'b37'\n";
+    die "Please specify the genome build by using -genome. Valid values are 'hg19', 'b37', and 'hybrid'\n";
 }
 
 
@@ -684,6 +684,12 @@ sub verifyConfig{
         elsif($conf[0] =~ /^B37_FASTA/i && $genome eq "b37"){
             if(!-e "$conf[1]"){
                 die "CAN'T FIND b37 fasta at $conf[1] $!";
+            }
+            $refFile = $conf[1];
+        }
+        elsif($conf[0] =~ /^B37_MM10_HYBRID_FASTA/i && $genome eq "hybrid"){
+            if(!-e "$conf[1]"){
+                die "CAN'T FIND hybrid fasta at $conf[1] $!";
             }
             $refFile = $conf[1];
         }
