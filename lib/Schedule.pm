@@ -369,10 +369,10 @@ sub singularityBind{
 
     }
     elsif($scheduler =~ /LUNA/i){
-        my $sBind = "/scratch/,/tmp/,/ifs/,/common/lsf/";
+        $sBind = "/scratch/,/tmp/,/ifs/,/common/lsf/";
     }
     elsif($scheduler =~ /JUNO/i){
-        my $sBind = "/scratch/,/tmp/,/ifs/,/juno/,/common/lsf/,/common/juno/";
+        $sBind = "/scratch/,/tmp/,/ifs/,/juno/,/common/lsf/,/common/juno/";
     }
     return $sBind;
 }
