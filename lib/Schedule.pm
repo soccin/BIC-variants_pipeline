@@ -364,7 +364,7 @@ sub additionalJUNO {
 
 sub singularityBind{
     my $scheduler = shift;
-    my $sBindi;
+    my $sBind;
     if($scheduler =~ /SGE/i){
 
     }
