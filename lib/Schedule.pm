@@ -363,8 +363,17 @@ sub additionalJUNO {
 
 
 sub singularityBind{
-    my $sBind = "/scratch/,/tmp/,/ifs/,/juno/,/common/lsf/,/common/juno/";
+    my $scheduler = shift;
+    my $sBindi;
+    if($scheduler =~ /SGE/i){
 
+    }
+    elsif($scheduler =~ /LUNA/i){
+        my $sBind = "/scratch/,/tmp/,/ifs/,/common/lsf/";
+    }
+    elsif($scheduler =~ /JUNO/i){
+        my $sBind = "/scratch/,/tmp/,/ifs/,/juno/,/common/lsf/,/common/juno/";
+    }
     return $sBind;
 }
 

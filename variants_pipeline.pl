@@ -833,7 +833,7 @@ sub verifyConfig{
    }
     my %sinParams = (singularity_exec => "$SINGULARITY/singularity", singularity_image => "$Bin/variants_pipeline_singularity_prod.simg");
     $singularityParams = Schedule::singularityParams(%sinParams);
-    $singularityBind = Schedule::singularityBind();  
+    $singularityBind = Schedule::singularityBind($scheduler);  
 
     $ENV{'SINGULARITYENV_PREPEND_PATH'} = $singularityenv_prepend_path;
     $ENV{'SINGULARITY_BINDPATH'} = $singularityBind;
