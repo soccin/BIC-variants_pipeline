@@ -363,7 +363,7 @@ sub additionalJUNO {
 
 
 sub singularityBind{
-    my $sBind = "/scratch/,/tmp/,/ifs/,/common/lsf/,/common/juno/,/work/,/res/";
+    my $sBind = "/scratch/,/tmp/,/ifs/,/juno/,/common/lsf/,/common/juno/";
 
     return $sBind;
 }
