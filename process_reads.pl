@@ -393,7 +393,7 @@ while (<IN>){
 	
 	if(!-e "progress/$pre\_$uID\_BWA_$nameR1[0]\_$nameR2[0]\.done" || $ran_cutadapt){
 	    sleep(2);
-	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_BWA_$nameR1[0]\_$nameR2[0]", job_hold => "$ca_jid", cpu => "12", mem => "12", cluster_out => "progress/$pre\_$uID\_BWA_$nameR1[0]\_$nameR2[0]\.log");
+	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_BWA_$nameR1[0]\_$nameR2[0]", job_hold => "$ca_jid", cpu => "24", mem => "12", cluster_out => "progress/$pre\_$uID\_BWA_$nameR1[0]\_$nameR2[0]\.log");
 	    my $standardParams = Schedule::queuing(%stdParams);
 	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams "$singularityParams $BWA/bwa mem $bwaOptions -R \'$readgroup\' -t 12 $bwaDB  $count/$nameR1[0]\_CQS_CT_PE.fastq $count/$nameR2[0]\_CQS_CT_PE.fastq >$count/$nameR1[0]\_$nameR2[0]\_CQS_CT_PE.fastq_$species\.bwa.sam"`;
 	    `/bin/touch progress/$pre\_$uID\_BWA_$nameR1[0]\_$nameR2[0]\.done`;
@@ -417,7 +417,7 @@ while (<IN>){
 	
 	if(!-e "progress/$pre\_$uID\_BWA_$nameR1[0]\.done" || $ran_cutadapt){
 	    sleep(2);
-	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_BWA_$nameR1[0]", job_hold => "$ca_jid", cpu => "12", mem => "12", cluster_out => "progress/$pre\_$uID\_BWA_$nameR1[0]\.log");
+	    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_BWA_$nameR1[0]", job_hold => "$ca_jid", cpu => "12", mem => "24", cluster_out => "progress/$pre\_$uID\_BWA_$nameR1[0]\.log");
 	    my $standardParams = Schedule::queuing(%stdParams);
 	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams "$singularityParams $BWA/bwa mem $bwaOptions -R \'$readgroup\' -t 12 $bwaDB $count/$nameR1[0]\_CQS_CT_SE.fastq >$count/$nameR1[0]\_CQS_CT_SE.fastq_$species\.bwa.sam"`;
 	    `/bin/touch progress/$pre\_$uID\_BWA_$nameR1[0]\.done`;
