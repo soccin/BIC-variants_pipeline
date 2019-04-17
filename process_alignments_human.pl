@@ -10,7 +10,7 @@ use File::Basename;
 use POSIX qw(strftime);
 my $cur_date = strftime "%Y%m%d", localtime;
 
-my ($patient, $email, $impact, $wes, $svnRev, $pair, $group, $bamgroup, $config, $nosnps, $targets, $ug, $scheduler, $priority_project, $priority_group, $abra, $indelrealigner, $help, $step1, $allSomatic, $scalpel, $somaticsniper, $strelka, $varscan, $virmid, $lancet, $vardict, $pindel, $abra_target);
+my ($patient, $email, $impact, $wes, $svnRev, $pair, $group, $bamgroup, $config, $nosnps, $targets, $ug, $scheduler, $priority_project, $priority_group, $abra, $indelrealigner, $help, $step1, $allSomatic, $scalpel, $somaticsniper, $strelka, $varscan, $virmid, $lancet, $vardict, $pindel, $abra_target, $rna);
 
 my $pre = 'TEMP';
 my $output = "results";
@@ -54,7 +54,8 @@ GetOptions ('email=s' => \$email,
             'pindel' => \$pindel,
 	    'tempdir=s' => \$tempdir,
  	    'output|out|o=s' => \$output,
-            'abratarget|abra_target=s' => \$abra_target) or exit(1);
+            'abratarget|abra_target=s' => \$abra_target,
+            'rna=s' => \$rna) or exit(1);
 
 
 if(!$group || !$config || !$scheduler || !$targets || !$bamgroup || $help){
@@ -503,12 +504,13 @@ elsif($species =~ /hybrid|xenograft|b37_mm10/i){
 }
 elsif($species =~ /^hg19$/i){
 
-    die "hg19 is no longer supported in the variants pipeline";
+    #die "hg19 is no longer supported in the variants pipeline";
 
     $REF_SEQ = "$HG19_FASTA";
     $REF_FAI = "$HG19_FAI";
     $BWA_INDEX = "$HG19_BWA_INDEX";
     $DB_SNP = "$Bin/data/hg19/dbsnp_138.hg19.excluding_sites_after_129.vcf";
+    $ExAC_VCF = "$VEP/ExAC_nonTCGA.r0.3.1.sites.vep.vcf.gz";
     $FACETS_DB_SNP = "$Bin/data/hg19/dbsnp_137.hg19__RmDupsClean__plusPseudo50__DROP_SORT.vcf";
     $MILLS_1000G = "$Bin/data/hg19/Mills_and_1000G_gold_standard.indels.hg19.vcf";
     $HAPMAP = "$Bin/data/hg19/hapmap_3.3.hg19.vcf";
@@ -963,6 +965,10 @@ foreach my $c (@ref_chr){
 	my $standardParams = Schedule::queuing(%stdParams);
 	my %addParams = (scheduler => "$scheduler", runtime => "500", priority_project=> "$priority_project", priority_group=> "$priority_group", rerun => "1", iounits => "7");
 	my $additionalParams = Schedule::additionalParams(%addParams);
+        my $rna_param = '';
+        if($rna){
+            $rna_param = "-dontUseSoftClippedBases -stand_call_conf 20.0";
+        }
 	my $response = "";
     my $HC_submission_num = 0;
     while($response !~ /is submitted to default queue/ && $HC_submission_num < 10){
@@ -972,7 +978,7 @@ foreach my $c (@ref_chr){
         my $stamp = localtime(time);
         print "$stamp : HC Chromosome $c attempt number $HC_submission_num.\n"; 
         print "Command: $standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $JAVA/java -Xms256m -Xmx90g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=$tempdir -jar $GATK/GenomeAnalysisTK.jar -T HaplotypeCaller -R $REF_SEQ -L $c $multipleTargets --dbsnp $DB_SNP --downsampling_type NONE --annotation AlleleBalanceBySample --annotation ClippingRankSumTest --read_filter BadCigar --num_cpu_threads_per_data_thread 30 --out $output/intFiles/$pre\_$c\_HaplotypeCaller.vcf $irBams2\n";
-        $response = `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $JAVA/java -Xms256m -Xmx90g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=$tempdir -jar $GATK/GenomeAnalysisTK.jar -T HaplotypeCaller -R $REF_SEQ -L $c $multipleTargets --dbsnp $DB_SNP --downsampling_type NONE --annotation AlleleBalanceBySample --annotation ClippingRankSumTest --read_filter BadCigar --num_cpu_threads_per_data_thread 30 --out $output/intFiles/$pre\_$c\_HaplotypeCaller.vcf $irBams2        2>&1`;
+        $response = `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $JAVA/java -Xms256m -Xmx90g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=$tempdir -jar $GATK/GenomeAnalysisTK.jar -T HaplotypeCaller -R $REF_SEQ -L $c $multipleTargets --dbsnp $DB_SNP --downsampling_type NONE --annotation AlleleBalanceBySample --annotation ClippingRankSumTest --read_filter BadCigar --num_cpu_threads_per_data_thread 30 $rna_param --out $output/intFiles/$pre\_$c\_HaplotypeCaller.vcf $irBams2        2>&1`;
         print "Response: $response\n";
         if($response !~ /is submitted to default queue/ && $HC_submission_num == 10 && $c eq '1'){
             `mail -s "HaplotypeCaller Job Not Working" $email <<< "This is an e-mail letting you know that your variants pipeline run for $pre is not submitting HC jobs to the cluster. Please remove all .done files for haplotype caller and rerun the pipeline."  `;
@@ -1010,7 +1016,7 @@ if(!-e "$output/progress/$pre\_$uID\_CV_HC.done" || $ran_hc){
 
 my $ran_vr_snp_hc = 0;
 my $vrshcj = '';
-if(!-e "$output/progress/$pre\_$uID\_VR_SNP_HC.done" || $ran_cv_hc){
+if((!-e "$output/progress/$pre\_$uID\_VR_SNP_HC.done" || $ran_cv_hc) && !$rna){
     sleep(2);
     my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_VR_SNP_HC", job_hold => "$cvhcj", cpu => "4", mem => "10", cluster_out => "$output/progress/$pre\_$uID\_VR_SNP_HC.log");
     my $standardParams = Schedule::queuing(%stdParams);
@@ -1024,7 +1030,7 @@ if(!-e "$output/progress/$pre\_$uID\_VR_SNP_HC.done" || $ran_cv_hc){
 ###       about not being able to find a tmp file; running with -nt 1 to avoid errors
 my $ran_ar_snp_hc = 0;
 my $arshcj = '';
-if(!-e "$output/progress/$pre\_$uID\_AR_SNP_HC.done" || $ran_vr_snp_hc){
+if((!-e "$output/progress/$pre\_$uID\_AR_SNP_HC.done" || $ran_vr_snp_hc) && !$rna){
     sleep(2);
     my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_AR_SNP_HC", job_hold => "$vrshcj", cpu => "1", mem => "20", cluster_out => "$output/progress/$pre\_$uID\_AR_SNP_HC.log");
     my $standardParams = Schedule::queuing(%stdParams);
@@ -1036,7 +1042,7 @@ if(!-e "$output/progress/$pre\_$uID\_AR_SNP_HC.done" || $ran_vr_snp_hc){
 
 my $ran_vr_indel_hc = 0;
 my $vrihcj = '';
-if(!-e "$output/progress/$pre\_$uID\_VR_INDEL_HC.done" || $ran_ar_snp_hc){
+if((!-e "$output/progress/$pre\_$uID\_VR_INDEL_HC.done" || $ran_ar_snp_hc) && !$rna){
     sleep(2);
     my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_VR_INDEL_HC", job_hold => "$arshcj", cpu => "4", mem => "20", cluster_out => "$output/progress/$pre\_$uID\_VR_INDEL_HC.log");
     my $standardParams = Schedule::queuing(%stdParams);
@@ -1048,7 +1054,7 @@ if(!-e "$output/progress/$pre\_$uID\_VR_INDEL_HC.done" || $ran_ar_snp_hc){
 
 my $ran_ar_indel_hc = 0;
 my $arihcj = '';
-if(!-e "$output/progress/$pre\_$uID\_AR_INDEL_HC.done" || $ran_vr_indel_hc){
+if((!-e "$output/progress/$pre\_$uID\_AR_INDEL_HC.done" || $ran_vr_indel_hc) && !$rna){
     sleep(2);
     my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_AR_INDEL_HC", job_hold => "$vrihcj", cpu => "1", mem => "20", cluster_out => "$output/progress/$pre\_$uID\_AR_INDEL_HC.log");
     my $standardParams = Schedule::queuing(%stdParams);
@@ -1058,10 +1064,28 @@ if(!-e "$output/progress/$pre\_$uID\_AR_INDEL_HC.done" || $ran_vr_indel_hc){
     $ran_ar_indel_hc = 1;   
 }
 
+
+#use hard variants filtering for rnaseq
+my $run_rna_vf_hc = 0;
+my $rvfhcj = '';
+if((!-e "$output/progress/$pre\_$uID\_RNA_VF_HC.done" || $ran_cv_hc) && $rna){
+    sleep(2);
+    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_RNA_VF_HC", job_hold => "$cvhcj", cpu => "1", mem => "20", cluster_out => "$output/progress/$pre\_$uID\_RNA_VF_HC.log");
+    my $standardParams = Schedule::queuing(%stdParams);
+    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $JAVA/java -Djava.io.tmpdir=$tempdir -jar $GATK/GenomeAnalysisTK.jar -T VariantFiltration -R $REF_SEQ -V $output/intFiles/$pre\_HaplotypeCaller_RAW.vcf -window 35 -cluster 3 -filterName FS -filter \"FS \> 30.0\" -filterName QD -filter \"QD \< 2.0\" -o $output/variants/snpsIndels/haplotypecaller/$pre\_HaplotypeCaller.vcf`;
+    `/bin/touch $output/progress/$pre\_$uID\_RNA_VF_HC.done`;
+    $rvfhcj = "$pre\_$uID\_RNA_VF_HC";
+    $run_rna_vf_hc = 1;   
+} 
+
 # This runs regardless because it has a .done check in the function
 sleep(2);
-&generateMaf("$output/variants/snpsIndels/haplotypecaller/$pre\_HaplotypeCaller.vcf", 'HaplotypeCaller', "$arihcj,$ssfj", $ran_ar_indel_hc);
-
+if(!$rna){
+    &generateMaf("$output/variants/snpsIndels/haplotypecaller/$pre\_HaplotypeCaller.vcf", 'HaplotypeCaller', "$arihcj,$ssfj", $ran_ar_indel_hc);
+}
+else{
+    &generateMaf("$output/variants/snpsIndels/haplotypecaller/$pre\_HaplotypeCaller.vcf", 'HaplotypeCaller', "$rvfhcj,$ssfj", $run_rna_vf_hc);
+}
 if($ug){
     if(!-d "$output/variants/snpsIndels/unifiedgenotyper"){
 	mkdir("$output/variants/snpsIndels/unifiedgenotyper", 0775) or die "Can't make $output/variants/snpsIndels/unifiedgenotyper";
