@@ -10,7 +10,7 @@ use File::Basename;
 use POSIX qw(strftime);
 my $cur_date = strftime "%Y%m%d", localtime;
 
-my ($patient, $email, $impact, $wes, $svnRev, $pair, $group, $bamgroup, $config, $nosnps, $targets, $ug, $scheduler, $priority_project, $priority_group, $abra, $indelrealigner, $help, $step1, $allSomatic, $scalpel, $somaticsniper, $strelka, $varscan, $virmid, $lancet, $vardict, $pindel, $abra_target, $rna);
+my ($patient, $email, $impact, $wes, $svnRev, $pair, $group, $bamgroup, $config, $nosnps, $targets, $ug, $scheduler, $priority_project, $priority_group, $abra, $indelrealigner, $noindelrealign, $help, $step1, $allSomatic, $scalpel, $somaticsniper, $strelka, $varscan, $virmid, $lancet, $vardict, $pindel, $abra_target, $rna, $mutect2);
 
 my $pre = 'TEMP';
 my $output = "results";
@@ -55,7 +55,9 @@ GetOptions ('email=s' => \$email,
 	    'tempdir=s' => \$tempdir,
  	    'output|out|o=s' => \$output,
             'abratarget|abra_target=s' => \$abra_target,
-            'rna=s' => \$rna) or exit(1);
+            'rna=s' => \$rna,
+            'mutect2' => \$mutect2,
+            'noindelrealign|noir' => \$noindelrealign) or exit(1);
 
 
 if(!$group || !$config || !$scheduler || !$targets || !$bamgroup || $help){
@@ -80,7 +82,7 @@ if(!$group || !$config || !$scheduler || !$targets || !$bamgroup || $help){
 	* -step1: forece the pipeline to start from the first step in pipeline
 	* haplotypecaller is default; -ug || -unifiedgenotyper to also make unifiedgenotyper variant calls	
 	* TEMPDIR:  temp directory (default: /scratch/$uID)
-	* ALLSOMATIC: run all somatic callers; mutect/haplotypecaller always run; otherwise -scalpel, -somaticsniper, -strelka, -varscan, -virmid, -lancet, -vardict, -pindel to run them individually	
+	* ALLSOMATIC: run all somatic callers; mutect/haplotypecaller always run; otherwise -scalpel, -somaticsniper, -strelka, -varscan, -virmid, -lancet, -vardict, -pindel, -mutect2 to run them individually	
 HELP
 exit;
 }
@@ -108,7 +110,11 @@ if($wes && $impact){
 if($abra && $indelrealigner){
     die "Cannot run both abra and gatk indelrealigner $!";
 }
-elsif(!$abra && !$indelrealigner){
+if(($abra || $indelrealigner) && $noindelrealign)
+{
+    die "Cannot skip indel realignment when -abra or -indelrealigner is specified $!";
+}
+if(!$abra && !$indelrealigner && !$noindelrealign){
     $abra = 1;
 }
 
@@ -121,12 +127,14 @@ if($allSomatic){
     $lancet = 1;
     $vardict = 1;
     $pindel = 1;
+    $mutect2 = 1;
 }
 
 my $ABRA = '';
 my $BCFTOOLS= '';
 my $BEDTOOLS = '';
 my $GATK = '';
+my $GATK4 = '';
 my $HTSTOOLS = '';
 my $FACETS_LIB = '';
 my $FACETS_SUITE = '';
@@ -209,11 +217,17 @@ while(<CONFIG>){
         }
         $FACETS_SUITE = $conf[1];
     }
-    elsif($conf[0] =~ /gatk/i){
+    elsif($conf[0] =~ /^gatk$/i){
 	if(!-e "$conf[1]/GenomeAnalysisTK.jar"){
 	    die "CAN'T FIND GenomeAnalysisTK.jar IN $conf[1] $!";
 	}
 	$GATK = $conf[1];
+    }
+    elsif($conf[0] =~ /^gatk4$/i){
+        if(!-e "$conf[1]/gatk"){
+        #    die "CAN'T gatk IN $conf[1] $!";
+        }
+        $GATK4 = $conf[1];
     }
     elsif($conf[0] =~ /htstools/i){
         if(!-e "$conf[1]/snp-pileup"){
@@ -784,16 +798,24 @@ while(<IN>){
 		$ran_ir = 1;
 	    }
 	}
-	else{
-	    die "no indel realinger chosen #!";
+	else{ #skip indel realignment
+
 	}
 	push @indelBams, "-I $output/intFiles/$pre\_$gpair[0]\_$c\_indelRealigned.bam";
     }
 
-    my $irBams = join(" ", @indelBams);
+    my $irBams ='';
+    my $irj ='';
+    if($abra || $indelrealigner){
+        $irBams = join(" ", @indelBams);
+        $irj = join(",", @ir_jids);
+    }
+    else{  #skipped indel realignment previously
+        $irBams = $bgroup;
+    }
+
     my $ran_br = 0;
     my $brj = '';
-    my $irj = join(",", @ir_jids);
     if(!-e "$output/progress/$pre\_$uID\_$gpair[0]\_BR.done" || $ran_ir){
 	sleep(2);
 	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$gpair[0]\_BR", job_hold => "$irj", cpu => "12", mem => "40", cluster_out => "$output/progress/$pre\_$uID\_$gpair[0]\_BR.log");
@@ -1567,6 +1589,21 @@ if($pair){
             }
         }
 
+        if($mutect2){
+            if(!-d "$output/variants/snpsIndels/mutect2"){
+                mkdir("$output/variants/snpsIndels/mutect2", 0775) or die "Can't make $output/variants/snpsIndels/mutect2";
+            }
+            if(!-e "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_MUTECT2.done" || $ran_ssf){
+                sleep(2);
+                my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$data[0]\_$data[1]\_MUTECT2", job_hold => "$ssfj", cpu => "8", mem => "30", cluster_out => "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_MUTECT2.log"); 
+                my $standardParams = Schedule::queuing(%stdParams);
+
+                `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $JAVA/java -Xmx25g -Djava.io.tmpdir=$tempdir -jar $GATK4/gatk-package-4.1.0.0-local.jar Mutect2 --native-pair-hmm-threads 4 -R $REF_SEQ -I $output/alignments/$pre\_indelRealigned_recal\_$data[0]\.bam -I $output/alignments/$pre\_indelRealigned_recal\_$data[1]\.bam -O $output/variants/snpsIndels/mutect2/$pre\_$data[0]\_$data[1]\_mutect2_calls.vcf -normal $data[0] -tumor $data[1] --max-reads-per-alignment-start 0 --read-filter GoodCigarReadFilter --read-filter ReadLengthEqualsCigarLengthReadFilter`;
+
+                `/bin/touch $output/progress/$pre\_$uID\_$data[0]\_$data[1]\_MUTECT2.done`;
+                push @all_jids, "$pre\_$uID\_$data[0]\_$data[1]\_MUTECT2";
+            }
+        }
 
         ## Here we will add the facets scripts
         ## Set up tumor and normal counts

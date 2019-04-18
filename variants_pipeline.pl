@@ -65,7 +65,7 @@ use Cluster;
 ### NOTE: DO NOT SUBMIT THIS WRAPPER SCRIPT TO THE CLUSTER BECAUSE ONCOTATOR STEP WILL FAIL
 ###       DUE TO NODES NOT HAVING NETWORK ACCESS
 
-my ($map, $group, $pair, $patient, $impact, $wes, $config, $help, $nosnps, $removedups, $species, $ug, $scheduler, $abra, $indelrealigner, $targets, $mdOnly, $noMD, $DB_SNP, $noClip, $request, $allSomatic, $scalpel, $somaticsniper, $strelka, $varscan, $virmid, $chip, $lancet, $vardict, $pindel, $abra_target, $rna);
+my ($map, $group, $pair, $patient, $impact, $wes, $config, $help, $nosnps, $removedups, $species, $ug, $scheduler, $abra, $indelrealigner, $noindelrealign, $targets, $mdOnly, $noMD, $DB_SNP, $noClip, $request, $allSomatic, $scalpel, $somaticsniper, $strelka, $varscan, $virmid, $chip, $lancet, $vardict, $pindel, $abra_target, $rna, $mutect2);
 
 my $pre = 'TEMP';
 my $output = "results";
@@ -124,7 +124,9 @@ GetOptions ('map=s' => \$map,
 	    'email' => \$email,
 	    'tempdir=s' => \$tempdir,
             'abratarget|abra_target=s' => \$abra_target,
-            'rna=s' => \$rna) or exit(1);
+            'rna=s' => \$rna,
+            'mutect2' => \$mutect2,
+            'noindelrealign|noir' => \$noindelrealign) or exit(1);
 
 if(!$map || !$species || !$config || !$scheduler || !$request || $help){
     print <<HELP;
@@ -153,6 +155,7 @@ if(!$map || !$species || !$config || !$scheduler || !$request || $help){
  	* -chip: will stop after markdups step
 	* -abra: run abra to realign indels (default)
 	* -indelrealigner: run GATK indelrealigner (abra runs as default)
+        * -noindelrealign: skip indel realignment
 	* -mdOnly: will stop after markdups step (e.g. chip seq analysis)
 	* -chip: will stop after markdups step; will also run bwa without -PM options
 	* -noMD: will not run MarkDups
@@ -162,7 +165,7 @@ if(!$map || !$species || !$config || !$scheduler || !$request || $help){
 	* BASEQTRIM: base quality to trim in reads (default: 3)
 	* DB_SNP: VCF file containing known sites of genetic variation (REQUIRED for species_custom; either here or in config)
 	* haplotypecaller is default; -ug || -unifiedgenotyper to also make unifiedgenotyper variant calls	
-	* ALLSOMATIC: run all somatic callers; mutect/haplotypecaller always run; otherwise -scalpel, -somaticsniper, -strelka, -varscan, -virmid, -lancet, -vardict, -pindel to run them individually	
+	* ALLSOMATIC: run all somatic callers; mutect/haplotypecaller always run; otherwise -scalpel, -somaticsniper, -strelka, -varscan, -virmid, -lancet, -vardict, -pindel, -mutect2 to run them individually	
         * RNA: the output directory from rnaseq pipeline which contains STAR aligned sample level bam files. Used when running variants calling on RNA-seq data
 HELP
 exit;
@@ -234,6 +237,7 @@ my $JAVA = '';
 my $PERL = '';
 my $PYTHON = '';
 my $GATK = '';
+my $GATK4 = '';
 
 my $SINGULARITY = '';
 my $singularityParams = '';
@@ -249,6 +253,7 @@ if($allSomatic){
     $lancet = 1;
     $vardict = 1;
     $pindel = 1;
+    $mutect2 = 1;
 }
 
 if($wes && ($impact || $chip)){
@@ -262,7 +267,11 @@ if($wes && ($impact || $chip)){
 if($abra && $indelrealigner){
     die "Cannot run both abra and gatk indelrealigner $!";
 }
-elsif(!$abra && !$indelrealigner){
+if(($abra || $indelrealigner) && $noindelrealign)
+{
+    die "Cannot skip indel realignment when -abra or -indelrealigner is specified $!";
+}
+if(!$abra && !$indelrealigner && !$noindelrealign){
     $abra = 1;
 }
 
@@ -561,6 +570,15 @@ sub reconstructCL {
         $rCL .= " -rna $rna";
     }
 
+    if($mutect2)
+    {
+        $rCL .= " -mutect2";
+    }
+
+    if($noindelrealign){
+        $rCL .= " -noindelrealign";
+    }
+
     my $numArgs = $#ARGV + 1;
     foreach my $argnum (0 .. $#ARGV) {
 	$rCL .= " $ARGV[$argnum]";
@@ -604,12 +622,18 @@ sub verifyConfig{
 	    }
 	    $PICARD = $conf[1];
 	}
-	elsif($conf[0] =~ /gatk/i){
+	elsif($conf[0] =~ /^gatk$/i){
 	    if(!-e "$conf[1]/GenomeAnalysisTK.jar"){
 		die "CAN'T FIND GenomeAnalysisTK.jar IN $conf[1] $!";
 	    }
             $GATK = $conf[1];
 	}
+        elsif($conf[0] =~ /^gatk4$/i){
+            if(!-e "$conf[1]/gatk"){
+            #    die "CAN'T FIND gatk IN $conf[1] $!";
+            }
+            $GATK4 = $conf[1];
+        }
 	elsif($conf[0] =~ /^mutect$/i){
 	    if(!-e "$conf[1]/muTect.jar"){
 		die "CAN'T FIND muTect.jar IN $conf[1] $!";
@@ -1896,7 +1920,13 @@ sub callSNPS {
     if($indelrealigner){
 	$run_ir = '-indelrealigner';
     }
-    
+    elsif($abra){
+        $run_ir = "-abra";
+    }
+    elsif($noindelrealign){
+        $run_ir = "-noindelrealign";
+    }
+ 
     my $run_step1 = '';
     if($ran_md_glob){
 	$run_step1 = '-step1';
@@ -1930,7 +1960,9 @@ sub callSNPS {
     if($pindel){
         $somaticCallers .= " -pindel";
     }
-
+    if($mutect2){
+        $somaticCallers .= " -mutect2";
+    }
     my $abra_target_file = '';
     if($abra_target){
         $abra_target_file = "-abratarget $abra_target";
