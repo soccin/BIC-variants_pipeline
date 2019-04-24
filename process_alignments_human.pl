@@ -1643,7 +1643,7 @@ if($pair){
 
             my $sub_species = $species eq 'b37' ? 'hg19' : $species;
 
-            my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$data[0]\_$data[1]\_facets_RUN",  cpu => "3", mem => "18", job_hold => "$facetsSETUP_jid", cluster_out => "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_facets_RUN.log");
+            my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$data[0]\_$data[1]\_facets_RUN",  cpu => "3", mem => "60", job_hold => "$facetsSETUP_jid", cluster_out => "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_facets_RUN.log");
             my $standardParams = Schedule::queuing(%stdParams);
             my %addParams = (scheduler => "$scheduler", runtime => "10", priority_project=> "$priority_project", priority_group=> "$priority_group", rerun => "1");
             my $additionalParams = Schedule::additionalParams(%addParams);
@@ -1684,7 +1684,7 @@ if($pair){
     if($hasPair && (! -e "$output/progress/$pre\_$uID\_facets_genelevel.done" || $facets_run)){
         my $facets_js = join(",", @facets_jid);
 	
-        my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_facets_genelevel", cpu => "1", mem => "1", job_hold => "$facets_js", cluster_out => "$output/progress/$pre\_$uID\_facets_genelevel.log");
+        my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_facets_genelevel", cpu => "1", mem => "10", job_hold => "$facets_js", cluster_out => "$output/progress/$pre\_$uID\_facets_genelevel.log");
         my $standardParams = Schedule::queuing(%stdParams);
         my %addParams = (scheduler => "$scheduler", runtime => "1", priority_project=> "$priority_project", priority_group=> "$priority_group", queues => "lau.q,lcg.q,nce.q", rerun => "1", iounits => "1");
         my $additionalParams = Schedule::additionalParams(%addParams);
@@ -1696,7 +1696,7 @@ if($pair){
     }
 
     if($hasPair && (! -e "$output/progress/$pre\_$uID\_facets_split_gene.done" || $ran_fgl)){	
-        my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_facets_split_gene", cpu => "1", mem => "1", job_hold => "$facets_geneLevel_jid", cluster_out => "$output/progress/$pre\_$uID\_facets_split_gene.log");
+        my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_facets_split_gene", cpu => "1", mem => "10", job_hold => "$facets_geneLevel_jid", cluster_out => "$output/progress/$pre\_$uID\_facets_split_gene.log");
         my $standardParams = Schedule::queuing(%stdParams);
         my %addParams = (scheduler => "$scheduler", runtime => "1", priority_project=> "$priority_project", priority_group=> "$priority_group", queues => "lau.q,lcg.q,nce.q", rerun => "1", iounits => "1");
         my $additionalParams = Schedule::additionalParams(%addParams);
@@ -1865,7 +1865,7 @@ sub generateMaf{
             my $standardParams = Schedule::queuing(%stdParams);
             `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $BCFTOOLS/bcftools filter -r $c $vcf.gz -O v -o $vcf_dir/chrom_$c/$jna\_$c.vcf`;
 
-            %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$jna\_$c\_MAF_UNPAIRED", job_hold => "$pre\_$uID\_$jna\_split_CHR_$c", cpu => "4", mem => "20", cluster_out => "$output/progress/$pre\_$uID\_$jna\_$c\_MAF_UNPAIRED.log");
+            %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$jna\_$c\_MAF_UNPAIRED", job_hold => "$pre\_$uID\_$jna\_split_CHR_$c", cpu => "4", mem => "60", cluster_out => "$output/progress/$pre\_$uID\_$jna\_$c\_MAF_UNPAIRED.log");
             $standardParams = Schedule::queuing(%stdParams);
             `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $Bin/generateMAF.pl -vcf $vcf_dir/chrom_$c/$jna\_$c.vcf -species $species -config $config -caller $type $patientFile -align_dir $output/alignments $addOptions -delete_temp`;
             `/bin/touch $output/progress/$pre\_$uID\_$jna\_$c\_MAF_UNPAIRED.done`;
