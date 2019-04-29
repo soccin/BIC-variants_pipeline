@@ -983,7 +983,7 @@ foreach my $c (@ref_chr){
 
     ### NOTE: ANNOTATIONS THAT DON'T WORK:AlleleBalance, HardyWeinberg,IndelType
     if(!-e "$output/progress/$pre\_$uID\_$c\_HC.done" || $ran_pr_glob{"$c"}){
-	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$c\_HC", job_hold => "$prgj", cpu => "30", mem => "90", cluster_out => "$output/progress/$pre\_$uID\_$c\_HC.log");
+	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$c\_HC", job_hold => "$prgj", cpu => "30", mem => "150", cluster_out => "$output/progress/$pre\_$uID\_$c\_HC.log");
 	my $standardParams = Schedule::queuing(%stdParams);
 	my %addParams = (scheduler => "$scheduler", runtime => "500", priority_project=> "$priority_project", priority_group=> "$priority_group", rerun => "1", iounits => "7");
 	my $additionalParams = Schedule::additionalParams(%addParams);
@@ -1598,7 +1598,7 @@ if($pair){
                 my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$data[0]\_$data[1]\_MUTECT2", job_hold => "$ssfj", cpu => "8", mem => "30", cluster_out => "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_MUTECT2.log"); 
                 my $standardParams = Schedule::queuing(%stdParams);
 
-                `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $JAVA/java -Xmx25g -Djava.io.tmpdir=$tempdir -jar $GATK4/gatk-package-4.1.0.0-local.jar Mutect2 --native-pair-hmm-threads 4 -R $REF_SEQ -I $output/alignments/$pre\_indelRealigned_recal\_$data[0]\.bam -I $output/alignments/$pre\_indelRealigned_recal\_$data[1]\.bam -O $output/variants/snpsIndels/mutect2/$pre\_$data[0]\_$data[1]\_mutect2_calls.vcf -normal $data[0] -tumor $data[1] --max-reads-per-alignment-start 0 --read-filter GoodCigarReadFilter --read-filter ReadLengthEqualsCigarLengthReadFilter`;
+                `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $JAVA/java -Xmx25g -Djava.io.tmpdir=$tempdir -jar $GATK4/gatk-package-4.1.1.0-local.jar Mutect2 --native-pair-hmm-threads 4 -R $REF_SEQ -I $output/alignments/$pre\_indelRealigned_recal\_$data[0]\.bam -I $output/alignments/$pre\_indelRealigned_recal\_$data[1]\.bam -O $output/variants/snpsIndels/mutect2/$pre\_$data[0]\_$data[1]\_mutect2_calls.vcf -normal $data[0] -tumor $data[1] --max-reads-per-alignment-start 0 --read-filter GoodCigarReadFilter --read-filter ReadLengthEqualsCigarLengthReadFilter`;
 
                 `/bin/touch $output/progress/$pre\_$uID\_$data[0]\_$data[1]\_MUTECT2.done`;
                 push @all_jids, "$pre\_$uID\_$data[0]\_$data[1]\_MUTECT2";
