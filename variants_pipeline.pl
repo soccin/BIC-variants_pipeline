@@ -65,7 +65,7 @@ use Cluster;
 ### NOTE: DO NOT SUBMIT THIS WRAPPER SCRIPT TO THE CLUSTER BECAUSE ONCOTATOR STEP WILL FAIL
 ###       DUE TO NODES NOT HAVING NETWORK ACCESS
 
-my ($map, $group, $pair, $patient, $impact, $wes, $config, $help, $nosnps, $removedups, $species, $ug, $scheduler, $abra, $indelrealigner, $noindelrealign, $targets, $mdOnly, $noMD, $DB_SNP, $noClip, $request, $allSomatic, $scalpel, $somaticsniper, $strelka, $varscan, $virmid, $chip, $lancet, $vardict, $pindel, $abra_target, $rna, $mutect2);
+my ($map, $group, $pair, $patient, $impact, $wes, $config, $help, $nosnps, $removedups, $species, $ug, $scheduler, $abra, $indelrealigner, $noindelrealign, $targets, $mdOnly, $noMD, $DB_SNP, $noClip, $request, $allSomatic, $scalpel, $somaticsniper, $strelka, $varscan, $virmid, $chip, $lancet, $vardict, $pindel, $abra_target, $rna, $mutect2, $nofacets);
 
 my $pre = 'TEMP';
 my $output = "results";
@@ -126,7 +126,8 @@ GetOptions ('map=s' => \$map,
             'abratarget|abra_target=s' => \$abra_target,
             'rna=s' => \$rna,
             'mutect2' => \$mutect2,
-            'noindelrealign|noir' => \$noindelrealign) or exit(1);
+            'noindelrealign|noir' => \$noindelrealign,
+            'nofacets' => \$nofacets) or exit(1);
 
 if(!$map || !$species || !$config || !$scheduler || !$request || $help){
     print <<HELP;
@@ -156,6 +157,7 @@ if(!$map || !$species || !$config || !$scheduler || !$request || $help){
 	* -abra: run abra to realign indels (default)
 	* -indelrealigner: run GATK indelrealigner (abra runs as default)
         * -noindelrealign: skip indel realignment
+        * -nofadets: skip facets
 	* -mdOnly: will stop after markdups step (e.g. chip seq analysis)
 	* -chip: will stop after markdups step; will also run bwa without -PM options
 	* -noMD: will not run MarkDups
@@ -577,6 +579,10 @@ sub reconstructCL {
 
     if($noindelrealign){
         $rCL .= " -noindelrealign";
+    }
+
+    if($nofacets){
+        $rCL .= " -nofacets";
     }
 
     my $numArgs = $#ARGV + 1;
@@ -1973,6 +1979,11 @@ sub callSNPS {
         $run_rna = "-rna $rna";
     } 
 
+    my $run_facets = '';
+    if($nofacets){
+        $run_facets = '-nofacets';
+    }
+
     my @currentTime = &getTime();
     print LOG "$currentTime[2]:$currentTime[1]:$currentTime[0], $currentTime[3]\/$currentTime[4]\/$currentTime[5]\tSNP CALLING RUNNING\n";
     ###my %addParams = (scheduler => "$scheduler", runtime => "50", priority_project=> "$priority_project", priority_group=> "$priority_group", rerun => "1", iounits => "1");
@@ -1984,19 +1995,19 @@ sub callSNPS {
         ###`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $Bin/process_alignments_human.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra $run_step1 $patientFile -species $species`;
 
 	print LOG "$Bin/process_alignments_human.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps $wesImpact -targets $targets $abra_target_file $run_ug -email $email -output $output -svnRev $svnRev -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_ir $run_step1 $patientFile -species $species -rsync $rsync -tempdir $tempdir $somaticCallers\n";
-        `$Bin/process_alignments_human.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps $wesImpact -targets $targets $abra_target_file $run_ug -email $email -output $output -svnRev $svnRev -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_ir $run_step1 $patientFile -species $species -rsync $rsync -tempdir $tempdir $somaticCallers $run_rna > $output/progress/$pre\_process_alignments_human.log 2>&1`;
+        `$Bin/process_alignments_human.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps $wesImpact -targets $targets $abra_target_file $run_ug -email $email -output $output -svnRev $svnRev -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_ir $run_step1 $patientFile -species $species -rsync $rsync -tempdir $tempdir $somaticCallers $run_rna $run_facets > $output/progress/$pre\_process_alignments_human.log 2>&1`;
     }
     elsif($species =~ /mm9|^mm10$|mm10_custom/i){
         ###`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $Bin/process_alignments_mouse.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group -species $species $run_abra $run_step1`;
 
 	print LOG "$Bin/process_alignments_mouse.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $abra_target_file $run_ug -email $email -output $output -svnRev $svnRev -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_ir $run_step1 -species $species -rsync $rsync -tempdir $tempdir $somaticCallers\n";
-        `$Bin/process_alignments_mouse.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $abra_target_file $run_ug -email $email -output $output -svnRev $svnRev -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_ir $run_step1 -species $species -rsync $rsync -tempdir $tempdir $somaticCallers $run_rna > $output/progress/$pre\_process_alignments_mouse.log 2>&1`;
+        `$Bin/process_alignments_mouse.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $abra_target_file $run_ug -email $email -output $output -svnRev $svnRev -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_ir $run_step1 -species $species -rsync $rsync -tempdir $tempdir $somaticCallers $run_rna $run_facets > $output/progress/$pre\_process_alignments_mouse.log 2>&1`;
     }
     elsif($species =~ /species_custom/i){
         ###`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $Bin/process_alignments_species_custom.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra $run_step1`;
 
 	print LOG "$Bin/process_alignments_species_custom.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $abra_target_file $run_ug -email $email -output $output -svnRef $svnRev -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_step1 -rsync $rsync -tempdir $tempdir $somaticCallers\n";
-        `$Bin/process_alignments_species_custom.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $abra_target_file $run_ug -email $email -output $output -svnRef $svnRev -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_step1 -rsync $rsync -tempdir $tempdir $somaticCallers $run_rna > $output/progress/$pre\_process_alignments_species_custom.log 2>&1`;
+        `$Bin/process_alignments_species_custom.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $abra_target_file $run_ug -email $email -output $output -svnRef $svnRev -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_step1 -rsync $rsync -tempdir $tempdir $somaticCallers $run_rna $run_facets > $output/progress/$pre\_process_alignments_species_custom.log 2>&1`;
     }
     elsif($species =~ /dm3/i){
         ###`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $Bin/process_alignments_dm3.pl -pre $pre -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra $run_step1 -species $species -rsync $rsync $somaticCallers $run_rna > $output/progress/process_alignments_drosophila.log 2>&1`;

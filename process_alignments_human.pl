@@ -10,7 +10,7 @@ use File::Basename;
 use POSIX qw(strftime);
 my $cur_date = strftime "%Y%m%d", localtime;
 
-my ($patient, $email, $impact, $wes, $svnRev, $pair, $group, $bamgroup, $config, $nosnps, $targets, $ug, $scheduler, $priority_project, $priority_group, $abra, $indelrealigner, $noindelrealign, $help, $step1, $allSomatic, $scalpel, $somaticsniper, $strelka, $varscan, $virmid, $lancet, $vardict, $pindel, $abra_target, $rna, $mutect2);
+my ($patient, $email, $impact, $wes, $svnRev, $pair, $group, $bamgroup, $config, $nosnps, $targets, $ug, $scheduler, $priority_project, $priority_group, $abra, $indelrealigner, $noindelrealign, $help, $step1, $allSomatic, $scalpel, $somaticsniper, $strelka, $varscan, $virmid, $lancet, $vardict, $pindel, $abra_target, $rna, $mutect2, $nofacets);
 
 my $pre = 'TEMP';
 my $output = "results";
@@ -57,7 +57,8 @@ GetOptions ('email=s' => \$email,
             'abratarget|abra_target=s' => \$abra_target,
             'rna=s' => \$rna,
             'mutect2' => \$mutect2,
-            'noindelrealign|noir' => \$noindelrealign) or exit(1);
+            'noindelrealign|noir' => \$noindelrealign,
+            'nofacets' => \$nofacets) or exit(1);
 
 
 if(!$group || !$config || !$scheduler || !$targets || !$bamgroup || $help){
@@ -79,6 +80,8 @@ if(!$group || !$config || !$scheduler || !$targets || !$bamgroup || $help){
 	* -nosnps: if no snps to be called; e.g. when only indelrealigned/recalibrated bams needed
 	* -abra: run abra to realign indels (default)
 	* -indelrealigner: run GATK indelrealigner (abra runs as default)
+        * -noindelrealign: skip indel realignment
+        * -nofacets: skip facets
 	* -step1: forece the pipeline to start from the first step in pipeline
 	* haplotypecaller is default; -ug || -unifiedgenotyper to also make unifiedgenotyper variant calls	
 	* TEMPDIR:  temp directory (default: /scratch/$uID)
@@ -983,7 +986,7 @@ foreach my $c (@ref_chr){
 
     ### NOTE: ANNOTATIONS THAT DON'T WORK:AlleleBalance, HardyWeinberg,IndelType
     if(!-e "$output/progress/$pre\_$uID\_$c\_HC.done" || $ran_pr_glob{"$c"}){
-	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$c\_HC", job_hold => "$prgj", cpu => "30", mem => "150", cluster_out => "$output/progress/$pre\_$uID\_$c\_HC.log");
+	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$c\_HC", job_hold => "$prgj", cpu => "30", mem => "120", cluster_out => "$output/progress/$pre\_$uID\_$c\_HC.log");
 	my $standardParams = Schedule::queuing(%stdParams);
 	my %addParams = (scheduler => "$scheduler", runtime => "500", priority_project=> "$priority_project", priority_group=> "$priority_group", rerun => "1", iounits => "7");
 	my $additionalParams = Schedule::additionalParams(%addParams);
@@ -1609,7 +1612,7 @@ if($pair){
         ## Set up tumor and normal counts
         my $facetsSETUP_jid = '';
         my $facets_setup = 0;
-        if($hasPair && (! -e "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_facets_SETUP.done" || $ssfj )) {
+        if(!$nofacets && $hasPair && (! -e "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_facets_SETUP.done" || $ssfj )) {
             if(-d "$output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets"){
                 `/bin/rm -rf -d "$output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets"`;
             }
@@ -1627,7 +1630,7 @@ if($pair){
             $facetsSETUP_jid = "$pre\_$uID\_$data[0]\_$data[1]\_facets_SETUP";
         }
         ## now facets
-        if($hasPair && (! -e "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_facets_RUN.done" || $facets_setup)){ 
+        if(!$nofacets && $hasPair && (! -e "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_facets_RUN.done" || $facets_setup)){ 
             #parameters for hisens
             my $cval = $impact ? 100 : 150; 
             my $snp_nbhd = $impact ? 250 : 150;
@@ -1658,7 +1661,7 @@ if($pair){
 
     ## run merge seg script
     my $facets_haplotect_jid = ''; 
-    if($hasPair && (! -e "$output/progress/$pre\_$uID\_merge_facets_seg.done" || $facets_run)){
+    if(!$nofacets && $hasPair && (! -e "$output/progress/$pre\_$uID\_merge_facets_seg.done" || $facets_run)){
         my $seg_outfile = "$output/variants/copyNumber/facets/$pre\_facets_merge_hisens.seg";
         if( -f "$seg_outfile"){
             unlink("$seg_outfile") or die "Cannot delete? $!";
@@ -1681,7 +1684,7 @@ if($pair){
     ###       so the target has to be b37 chr convention even if input is hg19 chr convention with chr
     my $facets_geneLevel_jid = '';
     my $ran_fgl = 0;
-    if($hasPair && (! -e "$output/progress/$pre\_$uID\_facets_genelevel.done" || $facets_run)){
+    if(!$nofacets && $hasPair && (! -e "$output/progress/$pre\_$uID\_facets_genelevel.done" || $facets_run)){
         my $facets_js = join(",", @facets_jid);
 	
         my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_facets_genelevel", cpu => "1", mem => "10", job_hold => "$facets_js", cluster_out => "$output/progress/$pre\_$uID\_facets_genelevel.log");
@@ -1695,7 +1698,7 @@ if($pair){
         $ran_fgl = 1;
     }
 
-    if($hasPair && (! -e "$output/progress/$pre\_$uID\_facets_split_gene.done" || $ran_fgl)){	
+    if(!$nofacets && $hasPair && (! -e "$output/progress/$pre\_$uID\_facets_split_gene.done" || $ran_fgl)){	
         my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_facets_split_gene", cpu => "1", mem => "10", job_hold => "$facets_geneLevel_jid", cluster_out => "$output/progress/$pre\_$uID\_facets_split_gene.log");
         my $standardParams = Schedule::queuing(%stdParams);
         my %addParams = (scheduler => "$scheduler", runtime => "1", priority_project=> "$priority_project", priority_group=> "$priority_group", queues => "lau.q,lcg.q,nce.q", rerun => "1", iounits => "1");
@@ -1728,7 +1731,7 @@ if($pair){
 
     ## Now join maf
     my $mafAnnoRun=0;
-    if($hasPair && (!-e "$output/progress/$pre\_$uID\_join_maf.done" || $haplotect_run || $facets_run)){
+    if(!$nofacets && $hasPair && (!-e "$output/progress/$pre\_$uID\_join_maf.done" || $haplotect_run || $facets_run)){
         sleep(2);
 
        my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_join_maf", job_hold => "$facets_haplotect_jid", cpu => "4", mem => "8", cluster_out => "$output/progress/$pre\_$uID\_join_maf.log");
@@ -1739,7 +1742,7 @@ if($pair){
         $mafAnnoRun = 1;
     }
 
-    if($hasPair && (! -e "$output/progress/$pre\_$uID\_wes_filters.done" || $mafAnnoRun )) {
+    if(!$nofacets && $hasPair && (! -e "$output/progress/$pre\_$uID\_wes_filters.done" || $mafAnnoRun )) {
         my $holdVar = '';
         if( $mafAnnoRun) { 
             $holdVar = "$pre\_$uID\_join_maf";
