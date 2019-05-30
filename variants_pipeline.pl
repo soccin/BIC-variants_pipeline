@@ -1827,8 +1827,7 @@ sub mergeStats {
 
     my $ran_qcpdf = 0; 
     my $qcpdfj = join(",", @qcpdf_jids);
-    #if(!-e "$output/progress/$pre\_$uID\_QCPDF.done" || $ran_merge){
-    if(!$noMD && !$rna){
+    if((!-e "$output/progress/$pre\_$uID\_QCPDF.done" || $ran_merge) && !$rna){
         my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_QCPDF", job_hold => "$qcpdfj", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_QCPDF.log");
         my $standardParams = Schedule::queuing(%stdParams);
         `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $PERL/perl $Bin/qc/qcPDF.pl -path $output/metrics -pre $pre -config $config -request $request -log $output/progress/$pre\_$uID\_QCPDF_ERRORS.log -v $svnRev`;
@@ -1836,7 +1835,6 @@ sub mergeStats {
         push @r3, "$pre\_$uID\_QCPDF";
         $ran_qcpdf = 1;
     }
-    #}
 
     my $qcdbj = join(",", @qcpdf_jids);
     my $chp = '';
