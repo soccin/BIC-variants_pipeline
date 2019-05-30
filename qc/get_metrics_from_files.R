@@ -577,11 +577,21 @@ get.detail.table <- function(path,type,id,user=NULL){
 
     other = c(" ","Sample")
 
+    samples = NULL
     if(type == 'targeted'){
         title = get.title(path,type)
         samples = paste(title$Barcode,title$Sample_ID,sep=": ")
     } else {
         samples = as.vector(get.md.metrics(path,type)$LIBRARY)
+        if(is.null(samples)){
+            samples = get.trimmed.reads(path,type)$Samples
+            if(is.null(samples)){
+                samples = get.coverage(path,type)$Samples
+                if(is.null(samples)){
+                    stop("Could not find list of samples in MD, CutAdapt or Coverage metrics. Giving up.")
+                }
+            }
+        }
     }
 
     detail = matrix("",nrow=length(samples),ncol=length(other)+length(mets))

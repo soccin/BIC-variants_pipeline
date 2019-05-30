@@ -70,6 +70,7 @@ gc = get.gc.bias(path,type)
 is.summary = NULL
 dp.summary = NULL
 al.summary = NULL
+ls.summary = NULL
 cs.summary = NULL
 cv.summary = NULL
 mjc.summary = NULL
