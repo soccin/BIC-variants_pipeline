@@ -1488,7 +1488,7 @@ sub processBams {
 	    else{
 		push @sBams, "I=$output/intFiles/$samp/$lib/$samp\_$lib\.bam";
 		if(!-e "$output/progress/$pre\_$uID\_LIB_MERGE_$samp\_$lib\.done" || $ran_solexa{$samp}){
-		    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_LIB_MERGE_$samp\_$lib", job_hold => "$rmj", cpu => "20", mem => "160", cluster_out => "$output/progress/$pre\_$uID\_LIB_MERGE_$samp\_$lib\.log");
+		    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_LIB_MERGE_$samp\_$lib", job_hold => "$rmj", cpu => "20", mem => "100", cluster_out => "$output/progress/$pre\_$uID\_LIB_MERGE_$samp\_$lib\.log");
 		    my $standardParams = Schedule::queuing(%stdParams);
 		    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $JAVA/java -Djava.io.tmpdir=$tempdir -jar $PICARD/picard.jar MergeSamFiles $fin O=$output/intFiles/$samp/$lib/$samp\_$lib\.bam SORT_ORDER=coordinate VALIDATION_STRINGENCY=LENIENT TMP_DIR=$tempdir CREATE_INDEX=true USE_THREADING=false MAX_RECORDS_IN_RAM=5000000`;
 
@@ -1544,7 +1544,7 @@ sub processBams {
 	    my $mdb = join(" ", @mdBams);
 	    if(!-e "$output/progress/$pre\_$uID\_SAMP_MD_MERGE_$samp\.done" || $ran_md_glob){
 		my $mdj = join(",", @md_jids);
-		my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_SAMP_MD_MERGE_$samp", job_hold => "$mdj", cpu => "20", mem => "160", cluster_out => "$output/progress/$pre\_$uID\_SAMP_MD_MERGE_$samp\.log");
+		my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_SAMP_MD_MERGE_$samp", job_hold => "$mdj", cpu => "20", mem => "100", cluster_out => "$output/progress/$pre\_$uID\_SAMP_MD_MERGE_$samp\.log");
 		my $standardParams = Schedule::queuing(%stdParams);
 		`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $JAVA/java -Djava.io.tmpdir=$tempdir -jar $PICARD/picard.jar MergeSamFiles $mdb O=$output/alignments/$pre\_$samp\.bam SORT_ORDER=coordinate VALIDATION_STRINGENCY=LENIENT TMP_DIR=$tempdir CREATE_INDEX=true USE_THREADING=false MAX_RECORDS_IN_RAM=5000000`;
 		`/bin/touch $output/progress/$pre\_$uID\_SAMP_MD_MERGE_$samp\.done`;
@@ -1567,7 +1567,7 @@ sub processBams {
 	else{
 	    if(!-e "$output/progress/$pre\_$uID\_SAMP_MERGE_$samp\.done" || $ran_solexa{$samp}){
 		my $lmsj = join(",", @lib_merge_samp_jids);
-		my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_SAMP_MERGE_$samp", job_hold => "$rmj,$lmsj", cpu => "20", mem => "160", cluster_out => "$output/progress/$pre\_$uID\_SAMP_MERGE_$samp\.log");
+		my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_SAMP_MERGE_$samp", job_hold => "$rmj,$lmsj", cpu => "20", mem => "100", cluster_out => "$output/progress/$pre\_$uID\_SAMP_MERGE_$samp\.log");
 		my $standardParams = Schedule::queuing(%stdParams);
 		`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $JAVA/java -Djava.io.tmpdir=$tempdir -jar $PICARD/picard.jar MergeSamFiles $rin O=$output/intFiles/$samp/$samp\.bam SORT_ORDER=coordinate VALIDATION_STRINGENCY=LENIENT TMP_DIR=$tempdir CREATE_INDEX=true USE_THREADING=false MAX_RECORDS_IN_RAM=5000000`;
 		`/bin/touch $output/progress/$pre\_$uID\_SAMP_MERGE_$samp\.done`;
@@ -1581,7 +1581,7 @@ sub processBams {
 	{
 		if(!-e "$output/progress/$pre\_$uID\_SAMP_QUERY_SORT_$samp\.done" || $ran_solexa{$samp}){
                 	my $lmsj = join(",", @lib_merge_samp_jids);
-                	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_SAMP_QUERY_SORT_$samp", job_hold => "$rmj,$lmsj", cpu => "20", mem => "160", cluster_out => "$output/progress/$pre\_$uID\_SAMP_QUERY_SORT_$samp\.log");
+                	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_SAMP_QUERY_SORT_$samp", job_hold => "$rmj,$lmsj", cpu => "20", mem => "100", cluster_out => "$output/progress/$pre\_$uID\_SAMP_QUERY_SORT_$samp\.log");
                 	my $standardParams = Schedule::queuing(%stdParams);
                 	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $JAVA/java -Djava.io.tmpdir=$tempdir -jar $PICARD/picard.jar MergeSamFiles $rin O=$output/intFiles/$samp/$samp\_query_sort.bam SORT_ORDER=queryname VALIDATION_STRINGENCY=LENIENT TMP_DIR=$tempdir USE_THREADING=false MAX_RECORDS_IN_RAM=5000000`;
                 	`/bin/touch $output/progress/$pre\_$uID\_SAMP_QUERY_SORT_$samp\.done`;
