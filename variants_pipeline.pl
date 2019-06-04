@@ -354,9 +354,10 @@ if($removedups){
     $rmdups = 'true';
 }
 
-foreach my $run_merge_jid (@run_merge_jids){
-    `$Bin/jobSync $scheduler $run_merge_jid`;
-}
+### removed this job sync due to the 1 day job holding history issue
+#foreach my $run_merge_jid (@run_merge_jids){
+#    `$Bin/jobSync $scheduler $run_merge_jid`;
+#}
 
 my $rmj = join(",", @run_merge_jids);
 
@@ -1443,6 +1444,25 @@ sub processBams {
     my %addParams = (scheduler => "$scheduler", runtime => "500", priority_project=> "$priority_project", priority_group=> "$priority_group", queues => "lau.q,lcg.q,nce.q", rerun => "1", iounits => "1");
     my $additionalParams = Schedule::additionalParams(%addParams);
 
+    ### we removed the jobSync on run level bam file merge jobs. so we need to make bam file existance check into a cluster job.
+    my @allTest = ();
+    foreach my $samp (keys %samp_libs_run){
+        foreach my $lib (keys %{$samp_libs_run{$samp}}){
+            foreach my $run (keys %{$samp_libs_run{$samp}{$lib}}){
+                push @allTest, "echo \'Checking file $output/intFiles/$samp/$lib/$run/$samp\_$lib\_$run\.bam:\' \&\& test -f $output/intFiles/$samp/$lib/$run/$samp\_$lib\_$run\.bam \&\& echo -e 'Exists...\\n'";
+            }
+        }
+    }
+    my $test_cmd = join(" && ", @allTest);
+    my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_ALL_RUN_BAM_CHECK", job_hold => "$rmj", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_ALL_RUN_BAM_CHECK.log");
+    my $standardParams = Schedule::queuing(%stdParams);
+    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams "$singularityParams $test_cmd"`;
+    if($rmj)
+    {
+        $rmj .= ",";
+    }
+    $rmj .= "$pre\_$uID\_ALL_RUN_BAM_CHECK"; 
+
     foreach my $samp (keys %samp_libs_run){
 	my @sBams = ();
 	my @lib_merge_samp_jids = ();
@@ -1451,11 +1471,6 @@ sub processBams {
 	    my @lBams = ();
 	    my $ran_md = 0;
 	    foreach my $run (keys %{$samp_libs_run{$samp}{$lib}}){
-		if(!-e "$output/intFiles/$samp/$lib/$run/$samp\_$lib\_$run\.bam"){
-		    my @currentTime = &getTime();
-		    print LOG "$currentTime[2]:$currentTime[1]:$currentTime[0], $currentTime[3]\/$currentTime[4]\/$currentTime[5]\tCan't locate $output/intFiles/$samp/$lib/$run/$samp\_$lib\_$run\.bam ...EXITING VARIANTS PIPELINE FOR PROJECT $pre";
-		    die;
-		}
 		push @lBams, "I=$output/intFiles/$samp/$lib/$run/$samp\_$lib\_$run\.bam";
 	    }
 	    
