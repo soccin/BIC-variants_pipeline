@@ -836,7 +836,7 @@ while(<IN>){
 	if(!-e "$output/progress/$pre\_$uID\_$gpair[0]\_$c\_PR.done" || $ran_br){
             my $prBams = '';
             if($abra || $indelrealigner){
-                $prBams = "$output/intFiles/$pre\_$gpair[0]\_$c\_indelRealigned.bam";
+                $prBams = "-I $output/intFiles/$pre\_$gpair[0]\_$c\_indelRealigned.bam";
             }
             else{  #skipped indel realignment previously
                 $prBams = $bgroup;
