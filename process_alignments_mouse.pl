@@ -688,7 +688,7 @@ while(<IN>){
 	    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $JAVA/java -Xms256m -Xmx30g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=$tempdir -jar $GATK/GenomeAnalysisTK.jar -T PrintReads -R $REF_SEQ -L $c $multipleTargets --emit_original_quals -BQSR $output/intFiles/$pre\_$gpair[0]\_recal_data.grp --num_cpu_threads_per_data_thread 6 -rf BadCigar --out $output/intFiles/$pre\_$gpair[0]\_$c\_indelRealigned_recal.bam $prBams`;
 	    `/bin/touch $output/progress/$pre\_$uID\_$gpair[0]\_$c\_PR.done`;
 	    push @pr_jids, "$pre\_$uID\_$gpair[0]\_$c\_PR";
-	    push @prg_jids, "$pre\_$uID\_$gpair[0]\_$c\_PR";
+	    #push @prg_jids, "$pre\_$uID\_$gpair[0]\_$c\_PR"; ### HC jobs sometimes failed to submit due to holding on too many PR jobs, so we now make a dummy holding job per group, and let HC holdiing on group dummy jobs
 	    $ran_pr = 1;
 	    $ran_pr_glob{"$c"} = 1;
 	}
@@ -697,9 +697,23 @@ while(<IN>){
 	push @{$processedBams{"$c"}}, "-I $output/intFiles/$pre\_$gpair[0]\_$c\_indelRealigned_recal.bam";
     }
 
+
+### HC jobs sometimes failed to submit due to holding on too many PR jobs, so we now create a dummy holding job per group, and let HC holdiing on group dummy jobs
+    my $prj = join(",", @pr_jids);
+    if($ran_pr)
+    {
+        sleep(2);
+        my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$gpair[0]\_HOLD_PR", job_hold => "$prj", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_$gpair[0]\_HOLD_PR.log");
+        my $standardParams = Schedule::queuing(%stdParams);
+        my %addParams = (scheduler => "$scheduler", runtime => "10", priority_project=> "$priority_project", priority_group=> "$priority_group", queues => "lau.q,lcg.q,nce.q", rerun => "0", iounits => "0");
+        my $additionalParams = Schedule::additionalParams(%addParams);
+        `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams sleep 1`;
+        push @prg_jids, "$pre\_$uID\_$gpair[0]\_HOLD_PR";
+    }
+
+
     my $irBams1 = join(" ", @indelRecalBams1);    
     my $ran_m = 0;
-    my $prj = join(",", @pr_jids);
     my @merge_jids = ();
     if(!-e "$output/progress/$pre\_$uID\_$gpair[0]\_MERGE_PR.done" || $ran_pr){
 	sleep(2);
