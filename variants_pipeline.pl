@@ -1141,12 +1141,19 @@ sub processInputs {
 	}
 
 	if(!$mapaths{$data[3]}){
-	    $mapaths{$data[3]} = 1;
+	    $mapaths{$data[3]}{$data[1]} = 1;
 	}
 	else{
-	    die "fastq path $data[3] is in the mapping file $map multiple times $!";
+            if(!$mapaths{$data[3]}{$data[1]})
+            {
+                $mapaths{$data[3]}{$data[1]} = 1;
+                die "fastq path $data[3] is in the mapping file $map multiple times!";    ### duplicate fastq path for different samples could be allowed in some circustances, comment this line out when that's the case
+            }
+            else
+            {
+                die "fastq path $data[3] is in the mapping file $map multiple times for the same sample!";    ### duplicate fastq path for the same sample is forbidden
+            }
 	}
-
 	if($group){
 	    if(!$grouping_samples{$data[1]}){
 		die "grouping file $group missing sample $data[1] found in mapping file $map $!";
