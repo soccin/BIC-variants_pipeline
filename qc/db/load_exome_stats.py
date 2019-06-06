@@ -97,6 +97,14 @@ def read_and_save_hs_metrics(file_id, in_file_name, project_id, pipeline_run_id,
     md_file = hs_file.replace('_HsMetrics.txt','_markDuplicatesMetrics.txt')
     ca_file = hs_file.replace('_HsMetrics.txt','_CutAdaptStats.txt')
 
+    if not os.path.exists(md_file):
+        log_file.write("WARNING: No *_markDuplicatesMetrics.txt file found; No HS metrics loaded into database.")
+        return
+
+    if not os.path.exists(ca_file):
+        log_file.write("WARNING: No *_CutAdaptStats.txt file found; No HS metrics loaded into database.")
+        return
+
     md_by_sample = {}
     with open(md_file, "r") as in_file:
         header = in_file.readline().strip("\n")

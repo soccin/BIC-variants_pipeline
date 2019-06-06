@@ -59,12 +59,12 @@ def validate_files(project_name, project_dir, stats, log_file):
 
     ## check for MarkDuplicates, CutAdapt file separately - TEMPORARILY
     ## TO DO: add these to load_stats.stats once database is updated
-    if not os.path.exists(os.path.join(project_dir, "results/metrics/Proj_%s_markDuplicatesMetrics.txt" %(project_name))):
-        if not os.path.exists(os.path.join(project_dir, "metrics/Proj_%s_markDuplicatesMetrics.txt" %(project_name))):
-            log_helper.report_error_and_exit(log_file, "%s '%s[%s]' does not exist" %(MarkDuplicates, os.path.join(project_dir, "metrics/Proj_" + project_name), "_markDuplicatesMetrics.txt"))
-    if not os.path.exists(os.path.join(project_dir, "results/metrics/Proj_%s_CutAdaptStats.txt" %(project_name))):
-        if not os.path.exists(os.path.join(project_dir, "metrics/Proj_%s_CutAdaptStats.txt" %(project_name))):            
-            log_helper.report_error_and_exit(log_file, "%s '%s[%s]' does not exist" %(CutAdaptStats, os.path.join(project_dir, "metrics/Proj_" + project_name), "_CutAdaptStats.txt")) 
+    #if not os.path.exists(os.path.join(project_dir, "results/metrics/Proj_%s_markDuplicatesMetrics.txt" %(project_name))):
+    #    if not os.path.exists(os.path.join(project_dir, "metrics/Proj_%s_markDuplicatesMetrics.txt" %(project_name))):
+            #log_helper.report_error_and_exit(log_file, "MarkDuplicates '%s[%s]' does not exist" %(os.path.join(project_dir, "metrics/Proj_" + project_name), "_markDuplicatesMetrics.txt"))
+    #if not os.path.exists(os.path.join(project_dir, "results/metrics/Proj_%s_CutAdaptStats.txt" %(project_name))):
+    #    if not os.path.exists(os.path.join(project_dir, "metrics/Proj_%s_CutAdaptStats.txt" %(project_name))):            
+            #log_helper.report_error_and_exit(log_file, "CutAdaptStats '%s[%s]' does not exist" %(os.path.join(project_dir, "metrics/Proj_" + project_name), "_CutAdaptStats.txt")) 
     #####
 
 
