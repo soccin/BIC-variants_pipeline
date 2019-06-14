@@ -1469,6 +1469,7 @@ sub processBams {
         $rmj .= ",";
     }
     $rmj .= "$pre\_$uID\_ALL_RUN_BAM_CHECK"; 
+    push @md_jids, "$pre\_$uID\_ALL_RUN_BAM_CHECK";
 
     foreach my $samp (keys %samp_libs_run){
 	my @sBams = ();
