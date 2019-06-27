@@ -1,11 +1,83 @@
 !#/bin/bash
 
-# Do not requeue jobs that exceeded the requested run time or mem limit, which will fail again with the same requested resources
-if [[ $LSB_JOBEXIT_INFO =~ (SIG_TERM_RUNLIMIT|SIG_TERM_MEMLIMIT) ]]; then
-    bstop $LSB_JOBID
-    cd $LS_EXECCWD
+MAX_MEM=200
+STEP_TRESHOLD=20
+MAX_RETRY=20
+
+
+cd $LS_EXECCWD  # change to current working directory
+if [[ $LSB_JOBEXIT_INFO =~ SIG_TERM_RUNLIMIT ]]; then  #Do not requeue jobs that exceeded the requested run time limit
     echo $LSB_JOBEXIT_INFO >>$LSB_OUTPUTFILE
-    echo "Job exceeded the requested run time limit or memory limit. See error above." >>$LSB_OUTPUTFILE
+    #CUR_RUNTIME="$(bjobs -UF -aff $LSB_JOBID | awk '/MEMLIMIT/{getline; print $1})"
+    bstop $LSB_JOBID
+    echo "Job exceeded the requested run time limit. Stopped from auto requeue by post-execution script" >>$LSB_OUTPUTFILE
+elif [[ $LSB_JOBEXIT_INFO =~ SIG_TERM_MEMLIMIT ]]; then #Try to rerun the job with increased memory limit
+    echo $LSB_JOBEXIT_INFO >>$LSB_OUTPUTFILE
+    LSB_HOSTS_ARRAY=($LSB_HOSTS)
+    NUM_CORE=${#LSB_HOSTS_ARRAY[@]}
+    CUR_MEMLIMIT="$(bjobs -UF -aff $LSB_JOBID | awk '/RESOURCE REQUIREMENT DETAILS/{getline; print}' | sed -e 's/.*rusage\[mem\=\([0-9\.]\+\)].*/\1/')"
+    CUR_MEMLIMIT=$(echo "scale=0; $CUR_MEMLIMIT / 1" | bc)  # divided by 1 to get the correct decimal precision
+    CUR_TOTALMEM=$(echo "scale=0; $CUR_MEMLIMIT * $NUM_CORE / 1" | bc)
+    if [[ $CUR_TOTALMEM -lt $STEP_TRESHOLD ]]; then
+        STEP=2
+    else
+        STEP=1.5
+    fi
+    NEW_MEMLIMIT=$(echo "scale=0; $CUR_MEMLIMIT * $STEP / 1" | bc)  # divided by 1 to get the correct decimal precision
+    NEW_TOTALMEM=$(echo "scale=0; $NEW_MEMLIMIT * $NUM_CORE / 1" | bc)
+
+    echo "Job exceeded the requested memory limit." >>$LSB_OUTPUTFILE
+    if [[ $NEW_TOTALMEM -gt $MAX_MEM ]]; then
+        echo "Will not try to rerun job with higher memory limit, since the new total memory $NEW_TOTALMEM would be over the $MAX_MEM threshold" >>$LSB_OUTPUTFILE
+        bstop $LSB_JOBID
+    else
+        echo "Try to rerun job with higher memory limit: $NEW_MEMLIMIT ($NEW_TOTALMEM in total) (old memory limit: $CUR_MEMLIMIT)" >>$LSB_OUTPUTFILE
+        BSTOP_RETRY_COUNT=0
+        bstop $LSB_JOBID
+        while [[ $BSTOP_RETRY_COUNT -lt $MAX_RETRY ]]; do
+            ((BSTOP_RETRY_COUNT++))
+            sleep 10
+            JOB_STATUS=$(bjobs $LSB_JOBID | grep $LSB_JOBID | awk '{print $4}')
+            #echo "Try to stop the automatically requeued job: $JOB_STATUS $BSTOP_RETRY_COUNT" >>$LSB_OUTPUTFILE
+            if [[ $JOB_STATUS =~ (PSUSP|USUSP) ]]; then
+                break
+            fi
+        done
+
+        BREQUEUE_RETRY_COUNT=0
+        brequeue -H $LSB_JOBID   # requeue job to PEND/PSUSP stat
+        while [[ $BREQUEUE_RETRY_COUNT -lt $MAX_RETRY ]]; do
+            ((BREQUEUE_RETRY_COUNT++))
+            sleep 10
+            JOB_STATUS=$(bjobs $LSB_JOBID | grep $LSB_JOBID | awk '{print $4}')
+            #echo "Try to requeue the job with -H option: $JOB_STATUS $BREQUEUE_RETRY_COUNT" >>$LSB_OUTPUTFILE
+            if [[ $JOB_STATUS =~ (PSUSP|PEND) ]]; then
+                break
+            fi
+        done
+
+        BMOD_RETRY_COUNT=0
+        BMOD_SUCCESS=0
+        while [[ $BMOD_RETRY_COUNT -lt $MAX_RETRY ]]; do
+            ((BMOD_RETRY_COUNT++))
+            BMOD_RETURN=$(bmod -rn -R "rusage[mem=$NEW_MEMLIMIT]" $LSB_JOBID)
+            sleep 10
+            echo "Try to change the job memory settings: $BMOD_RETURN" >>$LSB_OUTPUTFILE
+            if [[ $BMOD_RETURN =~ "being changed" ]]; then
+                BMOD_SUCCESS=1
+                break
+            fi
+        done
+        sleep 10
+        if [[ $BMOD_SUCCESS -eq 1 ]]; then
+            echo "Resume job with new memory settings" >>$LSB_OUTPUTFILE
+            bresume $LSB_JOBID
+        else
+            echo "Failed to change memory settings" >>$LSB_OUTPUTFILE
+            bstop $LSB_JOBID
+        fi
+        echo >>$LSB_OUTPUTFILE
+    fi
 fi
 
 
