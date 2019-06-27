@@ -221,7 +221,7 @@ sub additionalLUNA {
     }
     else{
     ### defaults to a long job if runtime isn't provided
-    $aLUNA .= " -We 300";
+    $aLUNA .= " -We 500";
     }
 
     if($addLUNA{'work_dir'}){
@@ -337,7 +337,7 @@ sub additionalJUNO {
     #}
     #else{
     ### defaults to a long job if runtime isn't provided
-    $aJUNO .= " -W 300:00";
+    $aJUNO .= " -W 500:00";
     #}
 
     $aJUNO .= " -app anyOS -R \"select[type==CentOS7]\"";
