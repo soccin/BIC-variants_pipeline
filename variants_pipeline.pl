@@ -82,6 +82,9 @@ my $email = "$uID\@cbio.mskcc.org";
 my $rsync = "/ifs/res/$uID";
 my $tempdir = "/scratch/$uID";
 
+my $hasValidPair = 0;
+
+
 GetOptions ('map=s' => \$map,
 	    'group=s' => \$group,
 	    'pair=s' => \$pair,
@@ -1107,10 +1110,11 @@ sub processInputs {
 	open(PAIR, "$pair") or die "Can't open pairing file $pair $!";
 	while(<PAIR>){
 	    chomp;
-	    
+	    my $hasNA = 0; 
 	    my @data = split(/\s+/, $_);
 	    foreach my $dat (@data){
 		if($dat =~ /^NA$/i){
+                    $hasNA = 1;
 		    next;
 		}
 		$pairing_samples{$dat} = 1;
@@ -1121,6 +1125,10 @@ sub processInputs {
             }
             else{
                 $pairing_check{$data[1]}{$data[0]} = 1; 
+            }
+            if(!$hasNA)
+            {
+                $hasValidPair = 1;
             }
 	}
 	close PAIR;
@@ -1251,7 +1259,7 @@ sub processInputs {
 
     if($species =~ /b37|hg19|hybrid|xenograft/i){
 	if(!-e "$targets_facet"){
-	    if(!$chip){
+	    if($hasValidPair && !$chip){
 		die "directory $targets OR $Bin/targets/$targets MUST CONTAIN THE FOLLOWING FILES FOR FACETS TO RUN: $targets\_targets_FACETS.ilist $!";
 	    }	
 	}
