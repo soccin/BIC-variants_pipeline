@@ -590,8 +590,8 @@ if(-d $targets){
         $target_std_normals = "$targets/StdNormals/$assay\_gatk_norms";
     }
 }
-if(!-e "$targets_bed_padded" || !-e "$targets_facet"){
-    die "CAN'T LOCATE $targets_bed_padded or $targets_facet FOR $targets; REQUIRED FOR SCALPEL or FACETS respectively $!";
+if(!-e "$targets_bed_padded"){
+    die "CAN'T LOCATE $targets_bed_padded FOR $targets; REQUIRED FOR SCALPEL or respectively $!";
 }
 if(!$abra_target){
     $abra_target = $targets_bed_padded;
