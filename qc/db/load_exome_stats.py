@@ -429,7 +429,7 @@ def load(species, assay, chipseq, paired, stat_type, project_name, pi, investiga
         stats = human_stats
         if chipseq:
             stats = human_chipseq_stats
-        if 'wgs' in assay.lower():
+        elif 'wgs' in assay.lower():
             stats = human_wgs_stats
     elif species.lower() in ['mouse','mm9','mm10']:
         stats = mouse_stats
