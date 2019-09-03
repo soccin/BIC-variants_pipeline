@@ -96,7 +96,7 @@ def getSampleName(filePath,pre):
     #start = fname.index(pattern)+len(pattern)
     #end = fname.index('.bam')
     start = 0
-    end = fname.index(pattern)
+    end = fname.rindex(pattern)
     return fname[start:end]
 
 def makeGroups(file):
