@@ -75,7 +75,7 @@ def load(species, assay, chipseq, paired, project_name, rerun_number, pi, invest
         stats = load_exome_stats.human_stats.values()
         if chipseq:
             stats = load_exome_stats.human_chipseq_stats.values()
-        if 'wgs' in assay.lower():
+        elif 'wgs' in assay.lower():
             stats = load_exome_stats.human_wgs_stats.values()
     elif species.lower() in ['mouse','mm9','mm10']:
         stats = load_exome_stats.mouse_stats.values()
