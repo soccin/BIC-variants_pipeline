@@ -1000,7 +1000,7 @@ sub verifyRequest{
 	}
     }
  
-    `/bin/cp $request $output/`;
+    `/bin/cp -p $request $output/`;
 }
 
 
@@ -1096,7 +1096,7 @@ sub processInputs {
 	    $grouping_samples{$data[0]} = 1;
 	}
 	close GROUP;
-	`/bin/cp $group $output/`;
+	`/bin/cp -p $group $output/`;
     }
     else{
 	if(!$mdOnly || $chip){
@@ -1132,7 +1132,7 @@ sub processInputs {
             }
 	}
 	close PAIR;
-	`/bin/cp $pair $output/`;
+	`/bin/cp -p $pair $output/`;
     }
     
     my %mapping_samples = ();
@@ -1169,7 +1169,7 @@ sub processInputs {
 	}
     }
     close MA;
-    `/bin/cp $map $output/`;
+    `/bin/cp -p $map $output/`;
         
     # Check patient sample has fields needed
     # Patient file needs only "Sample_ID", "Patient_ID", "Class", and "Bait_version"
@@ -1206,7 +1206,7 @@ sub processInputs {
             }
         }
         close PATIENT;
-	`/bin/cp $patient $output/`;
+	`/bin/cp -p $patient $output/`;
 
     }
  
