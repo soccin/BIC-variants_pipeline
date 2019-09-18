@@ -1,6 +1,6 @@
+library(scales)
 library(ggplot2)
 library(gplots)
-library(scales)
 library(reshape)
 library(plyr)
 

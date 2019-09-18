@@ -97,69 +97,72 @@ def read_and_save_hs_metrics(file_id, in_file_name, project_id, pipeline_run_id,
     md_file = hs_file.replace('_HsMetrics.txt','_markDuplicatesMetrics.txt')
     ca_file = hs_file.replace('_HsMetrics.txt','_CutAdaptStats.txt')
 
-    if not os.path.exists(md_file):
-        log_file.write("WARNING: No *_markDuplicatesMetrics.txt file found; No HS metrics loaded into database.")
-        return
-
-    if not os.path.exists(ca_file):
-        log_file.write("WARNING: No *_CutAdaptStats.txt file found; No HS metrics loaded into database.")
-        return
-
     md_by_sample = {}
-    with open(md_file, "r") as in_file:
-        header = in_file.readline().strip("\n")
-        header_columns = [x.lower() for x in header.split("\t")]
-        ## [library, unpaired_reads_examined, read_pairs_examined, unmapped_reads, unpaired_read_duplicates, read_pair_duplicates, read_pair_optical_duplicates, percent_duplication, estimated_library_size]
-        for line in in_file:
-            cells = line.strip("\n").split("\t")
-            rec = OrderedDict(zip(header_columns, cells))
-            if rec['library'].endswith("__1"):
-                rec['library'] = rec['library'][:-3]
-            rec['both_reads_align'] = rec['read_pairs_examined']
-            rec['one_read_aligns'] = rec['unpaired_reads_examined']
-            rec['neither_read_aligns'] = (float(rec['unmapped_reads']) - float(rec['unpaired_reads_examined']))/2 
-            sample_id = find_sample_id_by_name(pipeline_run_id, conn, sample_cursor, sample_query, rec['library'], log_file)
-            md_by_sample[sample_id] = rec
+    if os.path.exists(md_file):
+        with open(md_file, "r") as in_file:
+            header = in_file.readline().strip("\n")
+            header_columns = [x.lower() for x in header.split("\t")]
+            ## [library, unpaired_reads_examined, read_pairs_examined, unmapped_reads, unpaired_read_duplicates, read_pair_duplicates, read_pair_optical_duplicates, percent_duplication, estimated_library_size]
+            for line in in_file:
+                cells = line.strip("\n").split("\t")
+                rec = OrderedDict(zip(header_columns, cells))
+                if rec['library'].endswith("__1"):
+                    rec['library'] = rec['library'][:-3]
+                rec['both_reads_align'] = rec['read_pairs_examined']
+                rec['one_read_aligns'] = rec['unpaired_reads_examined']
+                rec['neither_read_aligns'] = (float(rec['unmapped_reads']) - float(rec['unpaired_reads_examined']))/2 
+                sample_id = find_sample_id_by_name(pipeline_run_id, conn, sample_cursor, sample_query, rec['library'], log_file)
+                md_by_sample[sample_id] = rec
+    else:
+        log_file.write("WARNING: No *_markDuplicatesMetrics.txt file found.")
+
 
     ca_by_sample = {}
-    with open(ca_file, "r") as in_file:
-        header = in_file.readline().strip("\n")
-        header_columns = [x.lower() for x in header.split("\t")]
-        ## [sample, r1_processedreads, r1_trimmedreads, r1_percenttrimmedreads, r2_processedreads, r2_trimmedreads, r2_percenttrimmedreads]
-        header_columns[header_columns.index('r1_processedreads')] = 'read_1_total_reads'
-        header_columns[header_columns.index('r2_processedreads')] = 'read_2_total_reads'
-        header_columns[header_columns.index('r1_trimmedreads')] = 'read_1_trimmed_reads'
-        header_columns[header_columns.index('r2_trimmedreads')] = 'read_2_trimmed_reads'
-        header_columns[header_columns.index('r1_percenttrimmedreads')] = 'per_read_1_trimmed'
-        header_columns[header_columns.index('r2_percenttrimmedreads')] = 'per_read_2_trimmed'
+    if os.path.exists(ca_file):
+        with open(ca_file, "r") as in_file:
+            header = in_file.readline().strip("\n")
+            header_columns = [x.lower() for x in header.split("\t")]
+            ## [sample, r1_processedreads, r1_trimmedreads, r1_percenttrimmedreads, r2_processedreads, r2_trimmedreads, r2_percenttrimmedreads]
+            header_columns[header_columns.index('r1_processedreads')] = 'read_1_total_reads'
+            header_columns[header_columns.index('r2_processedreads')] = 'read_2_total_reads'
+            header_columns[header_columns.index('r1_trimmedreads')] = 'read_1_trimmed_reads'
+            header_columns[header_columns.index('r2_trimmedreads')] = 'read_2_trimmed_reads'
+            header_columns[header_columns.index('r1_percenttrimmedreads')] = 'per_read_1_trimmed'
+            header_columns[header_columns.index('r2_percenttrimmedreads')] = 'per_read_2_trimmed'
         
-        for line in in_file:
-            cells = line.strip("\n").split("\t")
-            rec = OrderedDict(zip(header_columns, cells))
-            sample_id = find_sample_id_by_name(pipeline_run_id, conn, sample_cursor, sample_query, rec['sample'], log_file)
-            ca_by_sample[sample_id] = rec
+            for line in in_file:
+                cells = line.strip("\n").split("\t")
+                rec = OrderedDict(zip(header_columns, cells))
+                sample_id = find_sample_id_by_name(pipeline_run_id, conn, sample_cursor, sample_query, rec['sample'], log_file)
+                ca_by_sample[sample_id] = rec
+    else:
+        log_file.write("WARNING: No *_CutAdaptStats.txt file found.")
 
     hs_by_sample = {}
-    with open(in_file_name, "r") as in_file:
-        # read header
-        header = in_file.readline().strip("\n")
-        header_columns = [x.lower() for x in header.split("\t")]
-        for line in in_file:
-            cells = line.strip("\n").split("\t")
-            sample_name = cells[header_columns.index("sample")]
-            sample_id = find_sample_id_by_name(pipeline_run_id, conn, sample_cursor, sample_query, sample_name, log_file)
-            hs_by_sample[sample_id] = OrderedDict(zip(header_columns,cells)) 
+    if os.path.exists(hs_file):
+        with open(in_file_name, "r") as in_file:
+            # read header
+            header = in_file.readline().strip("\n")
+            header_columns = [x.lower() for x in header.split("\t")]
+            for line in in_file:
+                cells = line.strip("\n").split("\t")
+                sample_name = cells[header_columns.index("sample")]
+                sample_id = find_sample_id_by_name(pipeline_run_id, conn, sample_cursor, sample_query, sample_name, log_file)
+                hs_by_sample[sample_id] = OrderedDict(zip(header_columns,cells)) 
 
     if not sorted(set(md_by_sample.keys()+ca_by_sample.keys()+hs_by_sample.keys())) == sorted(set(hs_by_sample.keys())):
-        log_file.write("ERROR: Sample lists are different between *HsMetrics.txt, *CutAdaptStats.txt and *markDuplicatesMetrics.txt")
-        sys.exit(-1)
+        log_file.write("WARNING: Sample lists are different between *HsMetrics.txt, *CutAdaptStats.txt and *markDuplicatesMetrics.txt")
+    #    sys.exit(-1)
 
     fields = ["bait_set", "genome_size", "bait_territory", "target_territory", "bait_design_efficiency", "total_reads", "pf_reads", "pf_unique_reads", "pct_pf_reads", "pct_pf_uq_reads", "pf_uq_reads_aligned", "pct_pf_uq_reads_aligned", "pf_uq_bases_aligned", "on_bait_bases", "near_bait_bases", "off_bait_bases", "on_target_bases", "pct_selected_bases", "pct_off_bait", "on_bait_vs_selected", "mean_bait_coverage", "mean_target_coverage", "pct_usable_bases_on_bait", "pct_usable_bases_on_target", "fold_enrichment", "zero_cvg_targets_pct", "fold_80_base_penalty", "pct_target_bases_2x", "pct_target_bases_10x","pct_target_bases_20x", "pct_target_bases_30x", "pct_target_bases_40x", "pct_target_bases_50x", "pct_target_bases_100x", "hs_library_size", "hs_penalty_10x", "hs_penalty_20x", "hs_penalty_30x", "hs_penalty_40x", "hs_penalty_50x", "hs_penalty_100x", "at_dropout", "gc_dropout", "library", "unpaired_reads_examined", "read_pairs_examined", "unmapped_reads", "unpaired_read_duplicates", "read_pair_duplicates", "read_pair_optical_duplicates", "percent_duplication", "estimated_library_size", "both_reads_align", "one_read_aligns", "neither_read_aligns", "read_1_total_reads", "read_1_trimmed_reads", "per_read_1_trimmed", "read_2_total_reads", "read_2_trimmed_reads", "per_read_2_trimmed"]
 
     for sample_id in hs_by_sample.keys():
-        all_stats = ca_by_sample[sample_id]
-        all_stats.update(hs_by_sample[sample_id])
-        all_stats.update(md_by_sample[sample_id])
+        if len(ca_by_sample.keys()) > 0:
+            all_stats = ca_by_sample[sample_id]
+        if len(hs_by_sample.keys()) > 0:
+            all_stats.update(hs_by_sample[sample_id])
+        if len(md_by_sample.keys()) > 0:
+            all_stats.update(md_by_sample[sample_id])
         #params = [sample_id]
         params = []
         for field in fields:
@@ -171,10 +174,12 @@ def read_and_save_hs_metrics(file_id, in_file_name, project_id, pipeline_run_id,
                     val = None
                 params.append(val)
             except KeyError:
-                print "ERROR: '%s' field missing for sample with ID %s" %(field, sample_id)
-                log_file.write("ERROR: '%s' field missing for sample with ID %s" %(field, sample_id)) 
+                params.append(None)
+                print "WARNING: '%s' field missing for sample with ID %s" %(field, sample_id)
+                log_file.write("WARNING: '%s' field missing for sample with ID %s" %(field, sample_id)) 
         params.append(file_id)
         params = [sample_id] + params + params
+
         stat_cursor.execute(stat_query, params) 
 
 def read_and_save_insert_size_metrics(file_id, in_file_name, project_id, pipeline_run_id, conn, sample_cursor, stat_cursor, barcode_query, sample_and_barcode_query, sample_query, log_file):
@@ -467,6 +472,7 @@ def load(species, assay, chipseq, paired, stat_type, project_name, pi, investiga
     row = project_cursor.fetchone()
     if row:
         project_id = row[0]
+        print "Project " + project_name + " exists in database (title loaded)."
     else:
         raise Exception ("Project '%s' does not exist in database. Load title file first." % (project_name))
 
@@ -491,6 +497,7 @@ def load(species, assay, chipseq, paired, stat_type, project_name, pi, investiga
     #log_file.write("LOG: query = '%s', params = '%s'\n" % (pipeline_run_file_query, params))
     pipeline_run_file_cursor.execute(pipeline_run_file_query, params)
 
+    print "Loading stat " + stat_type
     # call correct function for this stat_type
     stats[stat_type].method(file_id, in_file_name, project_id, pipeline_run_id, conn, sample_cursor, stat_cursor, barcode_query, sample_and_barcode_query, sample_query, log_file)
 

@@ -30,15 +30,16 @@ while(<CONFIG>){
     
     my @conf = split(/\s+/, $_);
 
-    if($conf[0] =~ /^r$/i){
-        if(!-e "$conf[1]/R"){
-            die "CAN'T FIND R IN $conf[1] $!";
-        }
-        $R = $conf[1];
-        my $path_tmp = $ENV{'PATH'};
-        $ENV{'PATH'} = "$conf[1]:$path_tmp";
-    }
-    elsif($conf[0] =~ /^java$/i){
+#    if($conf[0] =~ /^r$/i){
+#        if(!-e "$conf[1]/R"){
+#            die "CAN'T FIND R IN $conf[1] $!";
+#        }
+#        $R = $conf[1];
+#        my $path_tmp = $ENV{'PATH'};
+#        $ENV{'PATH'} = "$conf[1]:$path_tmp";
+#    }
+    #els
+    if($conf[0] =~ /^java$/i){
         if(!-e "$conf[1]/java"){
             die "CAN'T FIND java IN $conf[1] $!";
         }
@@ -50,6 +51,7 @@ while(<CONFIG>){
 close CONFIG;
 
 ## generate a PDF file for each plot, a project summary text file and a sample summary text file
+#$R = '/opt/common/CentOS_7/R/R-3.2.0/bin'; ######## TEMPORARY
 print "$R/R CMD BATCH \"--args path='$path' pre='$pre' bin='$Bin' logfile='$log'\" $Bin/qc_summary.R\n";
 `$R/R CMD BATCH \"--args path='$path' pre='$pre' bin='$Bin' logfile='$log'\" $Bin/qc_summary.R`;
 

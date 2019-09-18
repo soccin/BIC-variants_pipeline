@@ -1,6 +1,9 @@
-## Usage: /opt/common/CentOS_6/R-3.2.0/bin/Rscript qc_images.R "pre='$PRE'" "bin='$BIN'" "path='$PATH_TO_METRICS'" "logfile='$LOGFILE'"
+## Usage: /opt/common/CentOS_6/R-3.2.0/bin/Rscript qc_summary.R "pre='$PRE'" "bin='$BIN'" "path='$PATH_TO_METRICS'" "logfile='$LOGFILE'"
 
-#options(echo = FALSE)
+
+#### TEMPORARY TO GET MY STUFF TO RUN ON JUNO
+#homeLib = "/home/byrne/R/CentOS_7/R-3.2.0/"
+#.libPaths(c("/opt/common/CentOS_7/R/R-3.2.0/lib64/R/library", homeLib))
 
 type = "exome"
 
@@ -27,10 +30,9 @@ print.image <- function(dat,metricType,sortOrder,plot.function,square=FALSE){
 
     if(!is.null(dat)){
         tryCatch({
-                    #png(filename=paste(path,"/images/",pre,"_",sortOrder,"_",metricType,".png",sep=""),type=type,units=units,width=width,height=height,res=res)
-                    pdf(file=paste(path,"/images/",pre,"_",sortOrder,"_",metricType,".pdf",sep=""),width=width,height=height)
+                    pdf(file = paste(path,"/images/",pre,"_",sortOrder,"_",metricType,".pdf",sep=""),
+                        width=width,height=height)
                     print(plot.function(dat))
-                    #plot.function(dat)
                     dev.off()
                  },
           error = function(e){

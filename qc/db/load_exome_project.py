@@ -149,6 +149,10 @@ if __name__ == "__main__":
     #'''
     #sys.exit()
 
+
+    print db_config.params['host']
+    print db_config.params['user']
+
     conn = None 
     with open(log_file_name, "w") as log_file:
         try:
