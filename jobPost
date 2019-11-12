@@ -1,4 +1,4 @@
-!#/bin/bash
+#!/bin/bash
 
 MAX_MEM=200
 STEP_TRESHOLD=20
