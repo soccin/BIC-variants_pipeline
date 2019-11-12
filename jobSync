@@ -18,18 +18,18 @@ JOBNAME=$2
 if [ "$QUEUE" == "LUNA" ] || [ "$QUEUE" == "luna" ]; then
 
     getLastJobNo() {
-        $LSFBIN/bjobs -UF 2>&1 | fgrep "Job Name" | egrep $JOBNAME \
+        bjobs -UF 2>&1 | fgrep "Job Name" | egrep $JOBNAME \
             | tail -1 | perl -ne '/Job <(\d+)[\[\]\d]*>/;print "$1\n"'
 	}
 
-    LSFBIN=/common/lsf/9.1/linux2.6-glibc2.3-x86_64/bin
+    #LSFBIN=/common/lsf/9.1/linux2.6-glibc2.3-x86_64/bin
     BACKOFF=2
     HOLDJOB=$(getLastJobNo)
     while [ "$HOLDJOB" != "" ]; do
         echo
         echo "Holding on" $HOLDJOB $(date) $(( BACKOFF - 1 ))
         echo
-        $LSFBIN/bsub -We 1 -w "post_done($HOLDJOB)" -J bSync_$$ -K sleep $(( BACKOFF - 1 ))
+        bsub -We 1 -w "post_done($HOLDJOB)" -J bSync_$$ -K sleep $(( BACKOFF - 1 ))
         BACKOFF=$(( BACKOFF / 2 + BACKOFF ))
         if [ "$BACKOFF" -gt 1200 ]; then
             BACKOFF=1200
@@ -40,18 +40,18 @@ if [ "$QUEUE" == "LUNA" ] || [ "$QUEUE" == "luna" ]; then
 elif [ "$QUEUE" == "JUNO" ] || [ "$QUEUE" == "juno" ]; then
 
     getLastJobNo() {
-        $LSFBIN/bjobs -UF 2>&1 | fgrep "Job Name" | egrep $JOBNAME \
+        bjobs -UF 2>&1 | fgrep "Job Name" | egrep $JOBNAME \
             | tail -1 | perl -ne '/Job <(\d+)[\[\]\d]*>/;print "$1\n"'
         }
 
-    LSFBIN=/common/juno/OS7/10.1/linux3.10-glibc2.17-x86_64/bin
+    #LSFBIN=/common/juno/OS7/10.1/linux3.10-glibc2.17-x86_64/bin
     BACKOFF=2
     HOLDJOB=$(getLastJobNo)
     while [ "$HOLDJOB" != "" ]; do
         echo
         echo "Holding on" $HOLDJOB $(date) $(( BACKOFF - 1 ))
         echo
-        $LSFBIN/bsub -W 1:00 -w "post_done($HOLDJOB)" -J bSync_$$ -K sleep $(( BACKOFF - 1 ))
+        bsub -W 1:00 -w "post_done($HOLDJOB)" -J bSync_$$ -K sleep $(( BACKOFF - 1 ))
         BACKOFF=$(( BACKOFF / 2 + BACKOFF ))
         if [ "$BACKOFF" -gt 1200 ]; then
             BACKOFF=1200
