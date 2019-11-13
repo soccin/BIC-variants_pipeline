@@ -94,7 +94,6 @@ GetOptions ('map=s' => \$map,
 	    'targets=s' => \$targets,
 	    'request=s' => \$request,
 	    'species=s' => \$species,
- 	    'scheduler=s' => \$scheduler,
 	    'help' => \$help,
 	    'nosnps' => \$nosnps,
 	    'removedups' => \$removedups,
@@ -132,10 +131,10 @@ GetOptions ('map=s' => \$map,
             'noindelrealign|noir' => \$noindelrealign,
             'nofacets' => \$nofacets) or exit(1);
 
-if(!$map || !$species || !$config || !$scheduler || !$request || $help){
+if(!$map || !$species || !$config || !$request || $help){
     print <<HELP;
 
-    USAGE: variants_pipeline.pl -wes -config CONFIG -species SPECIES -scheduler SCHEDULER
+    USAGE: variants_pipeline.pl -wes -config CONFIG -species SPECIES
 	* MAP: file listing sample information for processing (REQUIRED)
 	* GROUP: file listing grouping of samples for realign/recal steps (REQUIRED, unless using -mdOnly flag)
 	* SPECIES: b37 (default: human), mm9, mm10 (default: mouse), hybrid (b37+mm10), mm10_custom, species_custom and dm3 currently supported (REQUIRED)
@@ -175,6 +174,21 @@ if(!$map || !$species || !$config || !$scheduler || !$request || $help){
 HELP
 exit;
 }
+
+if($ENV{'LSF_ENVDIR'} eq "/common/lsf/conf"){
+    $scheduler = 'luna';
+}
+elsif($ENV{'LSF_ENVDIR'} eq "/common/juno/OS7/conf"){
+    $scheduler = 'juno';
+}
+elsif($ENV{'SGE_ROOT'} ne ""){
+    $scheduler = 'sge';
+}
+else{
+    die "unrecognized scheduler, valid scheduler [sge, luna, juno]";
+}
+
+
 
 my $curDir = `pwd`;
 chomp $curDir;
