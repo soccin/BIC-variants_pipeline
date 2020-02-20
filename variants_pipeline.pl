@@ -178,7 +178,7 @@ exit;
 if($ENV{'LSF_ENVDIR'} eq "/common/lsf/conf"){
     $scheduler = 'luna';
 }
-elsif($ENV{'LSF_ENVDIR'} eq "/common/juno/OS7/conf"){
+elsif($ENV{'LSF_ENVDIR'} eq "/common/juno/OS7/conf" or $ENV{'LSF_ENVDIR'} eq "/admin/lsfjuno/lsf/conf"){
     $scheduler = 'juno';
 }
 elsif($ENV{'SGE_ROOT'} ne ""){
