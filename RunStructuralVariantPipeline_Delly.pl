@@ -534,6 +534,7 @@ while ( $processCount < $numberOfProcess ) {
 	$processCount++;
 }
 
+sleep(30);
 CleanUpFiles($outdir);
 
 
