@@ -139,9 +139,9 @@ tryCatch({
 tryCatch({
     write.table(get.project.summary(type,path),file=file.path(path,paste(pre,"_ProjectSummary.txt",sep="")),sep="\t",quote=F,row.names=F,col.names=T)
 }, error = function(e){
-        cat(paste("ERROR: could not write ",paste(path,"/",pre,"_ProjectSummary.txt",sep=""),"\n",sep=""), file=logfile,append=TRUE)
-        cat(paste(e,"\n"),file=logfile,append=TRUE)
-        no.fails = FALSE
+    cat(paste("ERROR: could not write ",paste(path,"/",pre,"_ProjectSummary.txt",sep=""),"\n",sep=""), file=logfile,append=TRUE)
+    cat(paste(e,"\n"),file=logfile,append=TRUE)
+    no.fails = FALSE
 })
 
 if (no.fails == FALSE){

@@ -57,8 +57,8 @@ print "$R/R CMD BATCH \"--args path='$path' pre='$pre' bin='$Bin' logfile='$log'
 my $ec = $? >> 8;
 
 ## generate the complete, formal PDF report
-print "$JAVA/java -jar $Bin/QCPDF.jar -rf $request -v $version -d $path -o $path -pl Variants\n"; 
-`$JAVA/java -jar $Bin/QCPDF.jar -rf $request -v $version -d $path -o $path -pl Variants`;
+print "$JAVA/java -jar $Bin/PDFReport.jar -rf $request -v $version -d $path -o $path -pl Variants\n"; 
+`$JAVA/java -jar $Bin/PDFReport.jar -rf $request -v $version -d $path -o $path -pl Variants`;
 
 my $ec2 = $? >> 8;
 

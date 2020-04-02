@@ -517,6 +517,7 @@ def parse_request(request_file):
             if not len(pairs) == 2:
                 continue
             key,val = pairs
+            val = val.strip()
             if key == 'ProjectID':
                 project_id = val.replace('Proj_','')
             elif key == 'RunNumber':

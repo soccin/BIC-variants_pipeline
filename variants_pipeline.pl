@@ -1000,7 +1000,7 @@ sub verifyRequest{
                     die "\nERROR: This project has a delivered directory with this rerun folder already present: $delDir \n\n";
                 }
             }
-            die "\nERROR: This project has a delivered directory with this rerun folder already present: $delDir \n\n";
+           die "\nERROR: This project has a delivered directory with this rerun folder already present: $delDir \n\n";
         } 
 
     }
