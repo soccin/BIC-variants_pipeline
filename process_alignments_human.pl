@@ -328,7 +328,10 @@ while(<CONFIG>){
 	}
 	$JAVA = $conf[1];
 	my $path_tmp = $ENV{'PATH'};
-	$ENV{'PATH'} = "$conf[1]:$path_tmp";
+	$ENV{'JAVA_HOME'} = "";
+        $ENV{'JAVA_JRE'} = "";
+        $ENV{'JAVA_LD_LIBRARY_PATH'} = "";
+        $ENV{'JAVA_LIBS'} = "";
         $singularityenv_prepend_path .= ":$conf[1]";
     }
     elsif($conf[0] =~ /^java7_mutect$/i){
