@@ -57,7 +57,7 @@ if(!$file || !$config || !$species || !$scheduler || $help){
     USAGE: process_reads_pe.pl -file FILE -pre PRE -species SPECIES -config CONFIG -run RUN -readgroup READGROUP -scheduler SCHEDULER
 	* FILE: file listing read pairs to process (REQUIRED)
 	* PRE: output prefix (default: TEMP)
-	* SPECIES: b37, mm9, mm10, mm10_custom, species_custom, and dm3 currently supported (REQUIRED)
+	* SPECIES: b37, mm9, mm10, mm10_custom, species_custom, and dm6 currently supported (REQUIRED)
 	* CONFIG: file listing paths to programs needed for pipeline; full path to config file needed (REQUIRED)
 	* SCHEDULER: currently support for SGE, LUNA, and JUNO (REQUIRED)
 	* RUN: RUN IDENTIFIER (default: TEMP_RUN)
@@ -87,7 +87,7 @@ my $MM9_BWA_INDEX = '';
 my $MM10_BWA_INDEX = '';
 my $MM10_CUSTOM_BWA_INDEX = '';
 my $SPECIES_CUSTOM_BWA_INDEX = '';
-my $DM3_BWA_INDEX = '';
+my $DM6_BWA_INDEX = '';
 my $CUTADAPT = '';
 my $BWA = '';
 my $PICARD = '';
@@ -196,13 +196,13 @@ while(<CONFIG>){
 	}
 	$SPECIES_CUSTOM_BWA_INDEX = $conf[1];
     }
-    elsif($conf[0] =~ /dm3_bwa_index/i){
+    elsif($conf[0] =~ /dm6_bwa_index/i){
 	if(!-e "$conf[1]\.bwt" || !-e "$conf[1]\.pac" || !-e "$conf[1]\.ann" || !-e "$conf[1]\.amb" || !-e "$conf[1]\.sa"){
-	    if($species =~ /dm3/i){
-		die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR DM3 WITH PREFIX $conf[1] $!";
+	    if($species =~ /dm6/i){
+		die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR DM6 WITH PREFIX $conf[1] $!";
 	    }
 	}
- 	$DM3_BWA_INDEX = $conf[1];
+ 	$DM6_BWA_INDEX = $conf[1];
     }
 }
 my %sinParams = (singularity_exec => "$SINGULARITY/singularity", singularity_image => "$Bin/variants_pipeline_singularity_prod.simg");
@@ -237,8 +237,8 @@ elsif($species =~ /hybrid/i){
 elsif($species =~ /species_custom/i){
     $bwaDB = "$SPECIES_CUSTOM_BWA_INDEX";
 }
-elsif($species =~ /dm3/i){
-    $bwaDB = "$DM3_BWA_INDEX";
+elsif($species =~ /dm6/i){
+    
 }
 else{
     die "SPECIES $species ISN'T CURRENTLY SUPPORTED; ONLY SUPPORT FOR b37, mm9|mm10|mm10_custom, and species_custom\n";

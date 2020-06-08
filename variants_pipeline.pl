@@ -137,7 +137,7 @@ if(!$map || !$species || !$config || !$request || $help){
     USAGE: variants_pipeline.pl -wes -config CONFIG -species SPECIES
 	* MAP: file listing sample information for processing (REQUIRED)
 	* GROUP: file listing grouping of samples for realign/recal steps (REQUIRED, unless using -mdOnly flag)
-	* SPECIES: b37 (default: human), mm9, mm10 (default: mouse), hybrid (b37+mm10), mm10_custom, species_custom and dm3 currently supported (REQUIRED)
+	* SPECIES: b37 (default: human), mm9, mm10 (default: mouse), hybrid (b37+mm10), mm10_custom, species_custom and dm6 currently supported (REQUIRED)
 	* TARGETS: name of targets assay; will search for targets/baits ilists and targets padded file in $Bin/targets/TARGETS unless given full path to targets directory; required for non-chipseq projects
 	* CONFIG: file listing paths to programs needed for pipeline; full path to config file needed (REQUIRED)
         * REQUEST: file containing request information such as PI, investigator, etc. (REQUIRED)
@@ -899,17 +899,17 @@ sub verifyConfig{
 	    }
 	    $SPECIES_CUSTOM_DB_SNP = $conf[1];
 	}
-	elsif($conf[0] =~ /dm3_fasta/i){
+	elsif($conf[0] =~ /dm6_fasta/i){
 	    if(!-e "$conf[1]"){
-		if($species =~ /dm3/i){
+		if($species =~ /dm6/i){
 		    die "CAN'T FIND $conf[1] $!";
 		}
 	    }
 	    $DM3_FASTA = $conf[1];
 	}
- 	elsif($conf[0] =~ /dm3_bwa_index/i){
+ 	elsif($conf[0] =~ /dm6_bwa_index/i){
 	    if(!-e "$conf[1]\.bwt" || !-e "$conf[1]\.pac" || !-e "$conf[1]\.ann" || !-e "$conf[1]\.amb" || !-e "$conf[1]\.sa"){
-		if($species =~ /dm3/i){
+		if($species =~ /dm6/i){
 		    die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR DM3 WITH PREFIX $conf[1] $!";
 		}
 	    }
@@ -1027,8 +1027,8 @@ sub processInputs {
 	$pre = "s_$pre";
     }
     
-    if($species !~ /human|b37|hg19|mouse|mm9|mm10|mm10_custom|species_custom|drosophila|dm3|hybrid|xenograft/i){
-	die "Species must be human (b37), mouse (mm9|mm10|mm10_custom), species_custom or drosophila (dm3) $!";
+    if($species !~ /human|b37|hg19|mouse|mm9|mm10|mm10_custom|species_custom|drosophila|dm6|hybrid|xenograft/i){
+	die "Species must be human (b37), mouse (mm9|mm10|mm10_custom), species_custom or drosophila (dm6) $!";
     }
     
     if($scheduler =~ /sge/i){
@@ -1089,8 +1089,8 @@ sub processInputs {
 	$REF_SEQ = "$SPECIES_CUSTOM_FASTA";
 	$DB_SNP = "$SPECIES_CUSTOM_DB_SNP";
     }
-    elsif($species =~ /drosophila|dm3/i){
-	$species = 'dm3';
+    elsif($species =~ /drosophila|dm6/i){
+	$species = 'dm6';
 	$REF_SEQ = "$DM3_FASTA";
 	$DB_SNP = "";
     }
@@ -2056,7 +2056,7 @@ sub callSNPS {
 	print LOG "$Bin/process_alignments_species_custom.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $abra_target_file $run_ug -email $email -output $output -svnRef $svnRev -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_step1 -rsync $rsync -tempdir $tempdir $somaticCallers\n";
         `$Bin/process_alignments_species_custom.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $abra_target_file $run_ug -email $email -output $output -svnRef $svnRev -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_step1 -rsync $rsync -tempdir $tempdir $somaticCallers $run_rna $run_facets > $output/progress/$pre\_process_alignments_species_custom.log 2>&1`;
     }
-    elsif($species =~ /dm3/i){
+    elsif($species =~ /dm6/i){
         ###`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $Bin/process_alignments_dm3.pl -pre $pre -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra $run_step1 -species $species -rsync $rsync $somaticCallers $run_rna > $output/progress/process_alignments_drosophila.log 2>&1`;
     }
 } 
