@@ -1173,7 +1173,7 @@ sub processInputs {
             if(!$mapaths{$data[3]}{$data[1]})
             {
                 $mapaths{$data[3]}{$data[1]} = 1;
-                die "fastq path $data[3] is in the mapping file $map multiple times!";    ### duplicate fastq path for different samples could be allowed in some circustances, comment this line out when that's the case
+                #die "fastq path $data[3] is in the mapping file $map multiple times!";    ### duplicate fastq path for different samples could be allowed in some circustances, comment this line out when that's the case
             }
             else
             {

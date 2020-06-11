@@ -387,7 +387,7 @@ $hc_vcf = "$hc_vcf\_split.vcf";
 
 foreach my $line (@pair_lines) {
     my($normal,$tumor) = split(/\s+/, $line);
-    next if ($tumor eq 'na' || $normal eq 'na');
+    next if ($tumor  =~ /^NA$/i || $normal  =~ /^NA$/i );
 
     ###
     ### HAPLOTYPE CALLER PART 1 (pair wise running)
