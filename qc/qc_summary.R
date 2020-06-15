@@ -6,12 +6,16 @@
 #.libPaths(c("/opt/common/CentOS_7/R/R-3.2.0/lib64/R/library", homeLib))
 
 type = "exome"
+chip = FALSE
+
 
 args=(commandArgs(TRUE))
+print(args)
 for(i in 1:length(args)){
     eval(parse(text=args[i]))
 }
 
+print(paste0("chip: ",chip))
 path = as.character(path)
 
 source(file.path(bin,"get_metrics_from_files.R"))
@@ -91,20 +95,24 @@ if(!is.null(mnc)){ mnc.summary = get.mean.minor.allele.freq(type,dat=mnc) }
 ## print images
 print.image(al,"alignment","01",plot.alignment)
 print.image(al,"alignment_percentage","02",plot.alignment.percentage)
-print.image(cs,"capture_specificity","03",plot.capture.specificity)
-print.image(cs,"capture_specificity_percentage","04",plot.capture.specificity.percentage)
 print.image(is,"insert_size","05",plot.insert.size.distribution)
 print.image(is,"insert_size_peaks","06",plot.insert.peaks)
 print.image(da,"fingerprint","07",plot.fpc.sum) #,square=TRUE) }
 print.image(mjc,"major_contamination","08",plot.major.contamination) 
 print.image(mnc,"minor_contamination","09",plot.minor.contamination) 
-print.image(cc,"cdna_contamination","10",plot.cdna.contamination) 
 print.image(dp,"duplication","11",plot.duplication) 
 print.image(ls,"library_size","12",plot.library.size) 
-print.image(cv,"coverage","13",plot.coverage) 
 print.image(tr,"trimmed_reads","14",plot.trimmed.reads) 
-print.image(bq,"base_qualities","15",plot.base.qualities) 
 print.image(gc,"gc_bias","16",plot.gc.bias) #,square=TRUE)
+
+if(!chip){
+    print.image(cs,"capture_specificity","03",plot.capture.specificity)
+    print.image(cs,"capture_specificity_percentage","04",plot.capture.specificity.percentage)
+    print.image(cc,"cdna_contamination","10",plot.cdna.contamination)
+    print.image(cv,"coverage","13",plot.coverage)
+    print.image(bq,"base_qualities","15",plot.base.qualities)
+}
+
 
 ## write sample level summary table
 tryCatch({

@@ -9,18 +9,26 @@ use FindBin qw($Bin);
 ### SO STICKING IT IN A WRAPPER FOR SIMPLICITY
 ###
 
-my ($pre, $path, $config, $log, $request, $version);
+my $Bin = "/ifs/work/byrne/pipelines/variants_pipeline/qc";
+
+my ($pre, $path, $config, $log, $request, $version, $chipseq);
 GetOptions ('pre=s' => \$pre,
 	    'path=s' => \$path,
 	    'config=s' => \$config,
             'log=s' => \$log,
             'request=s' => \$request,
-            'version=s' => \$version
+            'version=s' => \$version,
+            'chipseq' => \$chipseq
 	   ) or exit(1);
 
 if(!$pre || !$path || !$config || !$request || !$log || !$version){
     die "MUST PROVIDE PRE, PATH, CONFIG, REQUEST FILE, SVN REVISION NUMBER AND OUTPUT\n";
 }
+
+my $chip = 'FALSE';
+if($chipseq){
+    $chip = 'TRUE';
+} 
 
 my $R = '';
 my $JAVA = '';
@@ -51,8 +59,8 @@ close CONFIG;
 
 ## generate a PDF file for each plot, a project summary text file and a sample summary text file
 #$R = '/opt/common/CentOS_7/R/R-3.2.0/bin'; ######## TEMPORARY
-print "$R/R CMD BATCH \"--args path='$path' pre='$pre' bin='$Bin' logfile='$log'\" $Bin/qc_summary.R\n";
-`$R/R CMD BATCH \"--args path='$path' pre='$pre' bin='$Bin' logfile='$log'\" $Bin/qc_summary.R`;
+print "$R/R CMD BATCH \"--args path='$path' pre='$pre' bin='$Bin' logfile='$log' chip=$chip \" $Bin/qc_summary.R\n";
+`$R/R CMD BATCH \"--args path='$path' pre='$pre' bin='$Bin' logfile='$log' chip=$chip \" $Bin/qc_summary.R`;
 
 my $ec = $? >> 8;
 
