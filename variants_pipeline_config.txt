@@ -1,4 +1,4 @@
-SINGULARITY             /opt/common/CentOS_6-dev/singularity/singularity-2.6.0/bin           
+SINGULARITY             /opt/local/singularity/2.6.0/bin 
 ABRA			/opt/common/CentOS_6/abra2/abra2-2.17
 BCFTOOLS		/opt/common/CentOS_6/bcftools/bcftools-1.2/bin
 BEDTOOLS		/opt/common/CentOS_6/bedtools/bedtools-2.22.0/bin
