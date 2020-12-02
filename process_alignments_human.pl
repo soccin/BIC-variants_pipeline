@@ -1010,7 +1010,7 @@ foreach my $c (@ref_chr){
 
     ### NOTE: ANNOTATIONS THAT DON'T WORK:AlleleBalance, HardyWeinberg,IndelType
     if(!-e "$output/progress/$pre\_$uID\_$c\_HC.done" || $ran_pr_glob{"$c"}){
-	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$c\_HC", job_hold => "$prgj", cpu => "30", mem => "120", cluster_out => "$output/progress/$pre\_$uID\_$c\_HC.log");
+	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$c\_HC", job_hold => "$prgj", cpu => "36", mem => "180", cluster_out => "$output/progress/$pre\_$uID\_$c\_HC.log");
 	my $standardParams = Schedule::queuing(%stdParams);
 	my %addParams = (scheduler => "$scheduler", runtime => "500", priority_project=> "$priority_project", priority_group=> "$priority_group", rerun => "1", iounits => "7");
 	my $additionalParams = Schedule::additionalParams(%addParams);
@@ -1026,8 +1026,8 @@ foreach my $c (@ref_chr){
         $HC_submission_num++;
         my $stamp = localtime(time);
         print "$stamp : HC Chromosome $c attempt number $HC_submission_num.\n"; 
-        print "Command: $standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $JAVA/java -Xms256m -Xmx90g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=$tempdir -jar $GATK/GenomeAnalysisTK.jar -T HaplotypeCaller -R $REF_SEQ -L $c $multipleTargets --dbsnp $DB_SNP --downsampling_type NONE --annotation AlleleBalanceBySample --annotation ClippingRankSumTest --read_filter BadCigar --num_cpu_threads_per_data_thread 30 --out $output/intFiles/$pre\_$c\_HaplotypeCaller.vcf $irBams2\n";
-        $response = `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $JAVA/java -Xms256m -Xmx90g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=$tempdir -jar $GATK/GenomeAnalysisTK.jar -T HaplotypeCaller -R $REF_SEQ -L $c $multipleTargets --dbsnp $DB_SNP --downsampling_type NONE --annotation AlleleBalanceBySample --annotation ClippingRankSumTest --read_filter BadCigar --num_cpu_threads_per_data_thread 30 $rna_param --out $output/intFiles/$pre\_$c\_HaplotypeCaller.vcf $irBams2        2>&1`;
+        print "Command: $standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $JAVA/java -Xms256m -Xmx180g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=$tempdir -jar $GATK/GenomeAnalysisTK.jar -T HaplotypeCaller -R $REF_SEQ -L $c $multipleTargets --dbsnp $DB_SNP --downsampling_type NONE --annotation AlleleBalanceBySample --annotation ClippingRankSumTest --read_filter BadCigar --num_cpu_threads_per_data_thread 30 --out $output/intFiles/$pre\_$c\_HaplotypeCaller.vcf $irBams2\n";
+        $response = `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $JAVA/java -Xms256m -Xmx180g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=$tempdir -jar $GATK/GenomeAnalysisTK.jar -T HaplotypeCaller -R $REF_SEQ -L $c $multipleTargets --dbsnp $DB_SNP --downsampling_type NONE --annotation AlleleBalanceBySample --annotation ClippingRankSumTest --read_filter BadCigar --num_cpu_threads_per_data_thread 30 $rna_param --out $output/intFiles/$pre\_$c\_HaplotypeCaller.vcf $irBams2        2>&1`;
         print "Response: $response\n";
         if($response !~ /is submitted to default queue/ && $HC_submission_num == 10 && $c eq '1'){
             `mail -s "HaplotypeCaller Job Not Working" $email <<< "This is an e-mail letting you know that your variants pipeline run for $pre is not submitting HC jobs to the cluster. Please remove all .done files for haplotype caller and rerun the pipeline."  `;

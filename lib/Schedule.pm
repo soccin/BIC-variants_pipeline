@@ -372,7 +372,7 @@ sub singularityBind{
         $sBind = "/scratch/,/tmp/,/ifs/,/common/lsf/";
     }
     elsif($scheduler =~ /JUNO/i){
-        $sBind = "/scratch/,/tmp/,/ifs/,/juno/,/work/,/common/lsf/,/common/juno/,/admin/";
+        $sBind = "/scratch/,/tmp/,/ifs/,/juno/,/work/,/common/lsf/,/common/juno/,/admin/,/igo/";
     }
     return $sBind;
 }
