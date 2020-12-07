@@ -1576,7 +1576,7 @@ sub processBams {
                 if(!-e "$output/progress/$pre\_$uID\_SNCR_$samp\_$lib\.done" || $ran_md){
                     my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_SNCR_$samp\_$lib", job_hold => "$pre\_$uID\_$samp\_$lib\_MARKDUPS", cpu => "10", mem => "10", cluster_out => "$output/progress/$pre\_$uID\_SNCR_$samp\_$lib\.log");
                     my $standardParams = Schedule::queuing(%stdParams);
-                    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $JAVA/java -Xms256m -Xmx10g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=$tempdir -jar $GATK/GenomeAnalysisTK.jar -T SplitNCigarReads -R $REF_SEQ -S LENIENT -I $output/intFiles/$samp/$lib/$samp\_$lib\_MD.bam -o $output/intFiles/$samp/$lib/$samp\_$lib\_SPLIT\.bam -rf ReassignOneMappingQuality -RMQF 255 -RMQT 60 -U ALLOW_N_CIGAR_READS`;
+                    `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $JAVA/java -Xms256m -Xmx10g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=$tempdir -jar $GATK/GenomeAnalysisTK.jar -T SplitNCigarReads -R $REF_SEQ -S LENIENT -I $output/intFiles/$samp/$lib/$samp\_$lib\_MD.bam -o $output/intFiles/$samp/$lib/$samp\_$lib\_SPLIT\.bam -rf ReassignOneMappingQuality -RMQF 255 -RMQT 60 -U ALLOW_N_CIGAR_READS`;
                     `/bin/touch $output/progress/$pre\_$uID\_SNCR_$samp\_$lib\.done`;
                     push @sncr_jids, "$pre\_$uID\_SNCR_$samp\_$lib";
                     $ran_sncr = 1;

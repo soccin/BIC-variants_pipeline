@@ -31,7 +31,6 @@ GetOptions ('map=s' => \$map,
             'targets=s' => \$targets,
             'request=s' => \$request,
             'species=s' => \$species,
-            'scheduler=s' => \$scheduler,
             'help' => \$help,
             'output|out|o=s' => \$output,
             'rsync=s' => \$rsync,
@@ -41,7 +40,8 @@ GetOptions ('map=s' => \$map,
             'tempdir=s' => \$tempdir,
             'rnaseq_pipeline=s' => \$rnaseq_pipeline) or exit(1);
 
-if(!$map || !$group || !$pair || !$species  || !$scheduler || !$request || !$targets || !$strand || !$rnaseq_pipeline || $help){
+
+if(!$map || !$group || !$pair || !$species || !$request || !$targets || !$strand || !$rnaseq_pipeline || $help){
     print <<HELP;
 
     USAGE: variants_pipeline.pl -wes -config CONFIG -species SPECIES -scheduler SCHEDULER
@@ -50,7 +50,6 @@ if(!$map || !$group || !$pair || !$species  || !$scheduler || !$request || !$tar
         * SPECIES: b37 (default: human), mm9, mm10 (default: mouse), hybrid (b37+mm10), mm10_custom, species_custom and dm6 currently supported (REQUIRED)
         * TARGETS: name of targets assay; will search for targets/baits ilists and targets padded file in $Bin/targets/TARGETS unless given full path to targets directory; required for non-chipseq projects
         * REQUEST: file containing request information such as PI, investigator, etc. (REQUIRED)
-        * SCHEDULER: currently support for SGE, LUNA, and JUNO (REQUIRED)
         * EMAIL: email to send notication of finished final job of pipeline (default: $uID\@cbio.mskcc.org)
         * PAIR: file listing tumor/normal pairing of samples for mutect/maf conversion; if not specified, considered unpaired
         * PRE: output prefix (default: TEMP)
@@ -64,6 +63,21 @@ if(!$map || !$group || !$pair || !$species  || !$scheduler || !$request || !$tar
 HELP
 exit;
 }
+
+
+if($ENV{'LSF_ENVDIR'} eq "/common/lsf/conf"){
+    $scheduler = 'luna';
+}
+elsif($ENV{'LSF_ENVDIR'} eq "/common/juno/OS7/conf" or $ENV{'LSF_ENVDIR'} eq "/admin/lsfjuno/lsf/conf"){
+    $scheduler = 'juno';
+}
+elsif($ENV{'SGE_ROOT'} ne ""){
+    $scheduler = 'sge';
+}
+else{
+    die "unrecognized scheduler, valid scheduler [sge, luna, juno]";
+}
+
 
 my $curDir = `pwd`;
 chomp $curDir;
@@ -104,11 +118,12 @@ my $additionalParams = Schedule::additionalParams(%addParams);
 
 
 
-
-
 my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_RNA_VARIANTS_PREPROCESSING", cpu => "1", mem => "10", cluster_out => "$output/progress/$pre\_$uID\_RNA_VARIANTS_PREPROCESSING.log");
 my $standardParams = Schedule::queuing(%stdParams);
-`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $rnaseq_pipeline/rnaseq_pipeline.pl -species $species -scheduler lsf -priority_project $priority_project -priority_group $priority_group -email $email -request $request -pre $pre -map $map -config $rnaseq_pipeline/rnaseq_pipeline_config.txt -strand $strand -star -o $rna_output -rsync null -alignment_only`;
+
+
+
+`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $rnaseq_pipeline/rnaseq_pipeline.pl -species $species -priority_project $priority_project -priority_group $priority_group -email $email -request $request -pre $pre -map $map -config $rnaseq_pipeline/rnaseq_pipeline_config.txt -strand $strand -star -o $rna_output -rsync $rsync -alignment_only`;
 
 
 
@@ -118,7 +133,8 @@ my $standardParams = Schedule::queuing(%stdParams);
 
 my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_RNA_VARIANTS_CALLING", job_hold => "$pre\_$uID\_RSYNC", cpu => "1", mem => "10", cluster_out => "$output/progress/$pre\_$uID\_RNA_VARIANTS_CALLING.log");
 my $standardParams = Schedule::queuing(%stdParams);
-`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/variants_pipeline.pl -species $species -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group -tempdir $tempdir -email $email -request $request -pre $pre -map $map -config $Bin/variants_pipeline_config.txt -group $group -pair $pair -targets $targets -wes -rna $rna_output/gene/alignments/ -indelrealigner -o $output -rsync $rsync`;
+
+`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/variants_pipeline.pl -species $species -priority_project $priority_project -priority_group $priority_group -tempdir $tempdir -email $email -request $request -pre $pre -map $map -config $Bin/variants_pipeline_config.txt -group $group -pair $pair -targets $targets -wes -rna $rna_output/gene/alignments/ -indelrealigner -o $output -rsync $rsync`;
 
 
 
