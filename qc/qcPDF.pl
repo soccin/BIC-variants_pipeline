@@ -9,8 +9,6 @@ use FindBin qw($Bin);
 ### SO STICKING IT IN A WRAPPER FOR SIMPLICITY
 ###
 
-my $Bin = "/ifs/work/byrne/pipelines/variants_pipeline/qc";
-
 my ($pre, $path, $config, $log, $request, $version, $chipseq);
 GetOptions ('pre=s' => \$pre,
 	    'path=s' => \$path,
