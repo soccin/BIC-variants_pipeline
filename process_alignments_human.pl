@@ -1814,7 +1814,7 @@ if($pair){
 	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_DELLY", job_hold => "$ssfj", cpu => "1", mem => "10", cluster_out => "$output/progress/$pre\_$uID\_DELLY.log");
 	my $standardParams = Schedule::queuing(%stdParams);
         #my $tempGenome = $species == "hybrid" ? "b37" : $species;
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $PERL/perl $Bin/RunStructuralVariantPipeline_Delly.pl -pre $pre -out $output/variants/structVar/delly -pair $pair -bam_list $output/intFiles/$pre\_sv_bam_list.txt -genome $species -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group`;
+	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/RunStructuralVariantPipeline_Delly.pl -pre $pre -out $output/variants/structVar/delly -pair $pair -bam_list $output/intFiles/$pre\_sv_bam_list.txt -genome $species -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group`;
 	`/bin/touch $output/progress/$pre\_$uID\_DELLY.done`;
 	$ran_strvar = 1;
     }
