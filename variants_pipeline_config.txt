@@ -35,24 +35,24 @@ VCFTOOLS		/opt/common/CentOS_6-dev/vcftools/v0.1.14/bin
 VEP                     /opt/common/CentOS_6/vep/v86
 VIRMID			/opt/common/CentOS_6/virmid/Virmid-1.1.1
 WES_FILTER		/opt/common/CentOS_6/wes-filter/wes-filters-1.1.3
-B37_BWA_INDEX		/ifs/depot/assemblies/H.sapiens/b37/index/bwa/0.7.12/b37.fasta
-B37_FASTA		/ifs/depot/assemblies/H.sapiens/b37/b37.fasta		
-B37_FAI		/ifs/depot/assemblies/H.sapiens/b37/b37.fasta.fai
-B37_MM10_HYBRID_BWA_INDEX	/ifs/depot/assemblies/hybrids/H.sapiens_M.musculus/b37_mm10/index/bwa/0.7.12/b37_mm10.fasta
-B37_MM10_HYBRID_FASTA		/ifs/depot/assemblies/hybrids/H.sapiens_M.musculus/b37_mm10/b37_mm10.fasta
-B37_MM10_HYBRID_FAI	/ifs/depot/assemblies/hybrids/H.sapiens_M.musculus/b37_mm10/b37_mm10.fasta.fai
-HG19_BWA_INDEX		/ifs/depot/assemblies/H.sapiens/hg19/index/bwa/0.7.4-r385/hg19.fasta
-HG19_FASTA		/ifs/depot/assemblies/H.sapiens/hg19/hg19.fasta
-HG19_FAI		/ifs/depot/assemblies/H.sapiens/hg19/hg19.fasta.fai
-HG19_MM10_HYBRID_BWA_INDEX	/ifs/depot/assemblies/hybrids/H.sapiens_M.musculus/hg19_mm10/index/bwa/0.7.8/hg19_mm10.fasta
-HG19_MM10_HYBRID_FASTA	/ifs/depot/assemblies/hybrids/H.sapiens_M.musculus/hg19_mm10/hg19_mm10.fasta
-HG19_MM10_HYBRID_FAI	/ifs/depot/assemblies/hybrids/H.sapiens_M.musculus/hg19_mm10/hg19_mm10.fasta.fai
-MM9_BWA_INDEX	/ifs/depot/assemblies/M.musculus/mm9/index/bwa/0.7.4-r385/mm9.fasta
-MM9_FASTA	/ifs/depot/assemblies/M.musculus/mm9/mm9.fasta
-MM9_FAI	/ifs/depot/assemblies/M.musculus/mm9/mm9.fasta.fai
-MM10_BWA_INDEX	/ifs/depot/assemblies/M.musculus/mm10/index/bwa/0.7.8/mm10.fasta
-MM10_FASTA	/ifs/depot/assemblies/M.musculus/mm10/mm10.fasta
-MM10_FAI	/ifs/depot/assemblies/M.musculus/mm10/mm10.fasta.fai
+B37_BWA_INDEX		/juno/depot/assemblies/H.sapiens/b37/index/bwa/0.7.12/b37.fasta
+B37_FASTA		/juno/depot/assemblies/H.sapiens/b37/b37.fasta		
+B37_FAI		/juno/depot/assemblies/H.sapiens/b37/b37.fasta.fai
+B37_MM10_HYBRID_BWA_INDEX	/juno/depot/assemblies/hybrids/H.sapiens_M.musculus/b37_mm10/index/bwa/0.7.12/b37_mm10.fasta
+B37_MM10_HYBRID_FASTA		/juno/depot/assemblies/hybrids/H.sapiens_M.musculus/b37_mm10/b37_mm10.fasta
+B37_MM10_HYBRID_FAI	/juno/depot/assemblies/hybrids/H.sapiens_M.musculus/b37_mm10/b37_mm10.fasta.fai
+HG19_BWA_INDEX		/juno/depot/assemblies/H.sapiens/hg19/index/bwa/0.7.4-r385/hg19.fasta
+HG19_FASTA		/juno/depot/assemblies/H.sapiens/hg19/hg19.fasta
+HG19_FAI		/juno/depot/assemblies/H.sapiens/hg19/hg19.fasta.fai
+HG19_MM10_HYBRID_BWA_INDEX	/juno/depot/assemblies/hybrids/H.sapiens_M.musculus/hg19_mm10/index/bwa/0.7.8/hg19_mm10.fasta
+HG19_MM10_HYBRID_FASTA	/juno/depot/assemblies/hybrids/H.sapiens_M.musculus/hg19_mm10/hg19_mm10.fasta
+HG19_MM10_HYBRID_FAI	/juno/depot/assemblies/hybrids/H.sapiens_M.musculus/hg19_mm10/hg19_mm10.fasta.fai
+MM9_BWA_INDEX	/juno/depot/assemblies/M.musculus/mm9/index/bwa/0.7.4-r385/mm9.fasta
+MM9_FASTA	/juno/depot/assemblies/M.musculus/mm9/mm9.fasta
+MM9_FAI	/juno/depot/assemblies/M.musculus/mm9/mm9.fasta.fai
+MM10_BWA_INDEX	/juno/depot/assemblies/M.musculus/mm10/index/bwa/0.7.8/mm10.fasta
+MM10_FASTA	/juno/depot/assemblies/M.musculus/mm10/mm10.fasta
+MM10_FAI	/juno/depot/assemblies/M.musculus/mm10/mm10.fasta.fai
 MM10_CUSTOM_BWA_INDEX
 MM10_CUSTOM_FASTA
 MM10_CUSTOM_FAI
@@ -60,5 +60,5 @@ SPECIES_CUSTOM_BWA_INDEX
 SPECIES_CUSTOM_FASTA
 SPECIES_CUSTOM_FAI
 SPECIES_CUSTOM_DB_SNP
-DM6_BWA_INDEX	/ifs/depot/assemblies/D.melanogaster/dm6/index/bwa/0.7.12/dm6.fasta
-DM6_FASTA	/ifs/depot/assemblies/D.melanogaster/dm6/dm6.fasta
+DM6_BWA_INDEX	/juno/depot/assemblies/D.melanogaster/dm6/index/bwa/0.7.12/dm6.fasta
+DM6_FASTA	/juno/depot/assemblies/D.melanogaster/dm6/dm6.fasta
