@@ -244,7 +244,7 @@ if(-d $targets){
 if(!$abra_target){
    $abra_target = $targets_bed_padded;
 }
-if(!-e "$abra_target"){
+if(!-e "$abra_target" && !$chip){
     die "CAN'T LOCATE $abra_target; REQUIRED FOR ABRA $!";
 }
 
