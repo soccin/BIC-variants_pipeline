@@ -238,7 +238,7 @@ elsif($species =~ /species_custom/i){
     $bwaDB = "$SPECIES_CUSTOM_BWA_INDEX";
 }
 elsif($species =~ /dm6/i){
-    
+    $bwaDB = "$DM6_BWA_INDEX"; 
 }
 else{
     die "SPECIES $species ISN'T CURRENTLY SUPPORTED; ONLY SUPPORT FOR b37, mm9|mm10|mm10_custom, and species_custom\n";
