@@ -1368,6 +1368,10 @@ sub alignReads {
 	$aSeq = "-r1adaptor $r1adaptor -r2adaptor $r2adaptor";
     }
 
+    ## Default for this pipeline is to run BWA with options -P and -M. For chipseq, we want to run 
+    ## bwa with default settings (no -P or -M). In rare cases a request will include instructions
+    ## to run default settings, but alignment without -M set results in BAMs that do not agree
+    ## with FixMateInformation. Removing -P is fine, but do NOT remove -M. Make this change in process_reads.pl. 
     my $defaultBWA = '';
     if($chip){
 	$defaultBWA = '-defaultBWA';
