@@ -929,6 +929,7 @@ sub verifyRequest{
 
     my($pi,$piname,$inv,$invname,$pid,$runnum,$assay,$pipelines,$rerunReason,$origPi,$origInv);  
 
+    my $DEL_PRE = '/juno/res/delivery';
     open(REQUEST, "$reqfile") || die "Can't open request file $reqfile $!";
     while(<REQUEST>){
         chomp;
@@ -978,14 +979,14 @@ sub verifyRequest{
         die "\nERROR: Info missing from request file.\n\nREQUIRED fields are:\n  PI\n  PI_Name\n  Investigator\n  Investigator_Name\n  ProjectID\n  RunNumber\n  Assay\n  Pipelines\n\n";
     }
 
-    my $delDir = "/ifs/res/seq/$pi/$inv/$pid/";
+    my $delDir = "$DEL_PRE/$pi/$inv/$pid/";
     if($runnum > 1) {
         if(!$rerunReason) {
             die "\nERROR: This is a rerun, but there was no rerun reason given in the request file.\n\n";
         }
         if( ! -d $delDir ){
             if( $origPi && $origInv){
-                $delDir = "/ifs/res/seq/$origPi/$origInv/$pid/";
+                $delDir = "$DEL_PRE/$origPi/$origInv/$pid/";
                 if( ! -d $delDir ){
                     die "\nERROR: This looks like a rerun (RunNum: $runnum) but the delivered directory does not exists: $delDir \n\n";
                 }
@@ -999,7 +1000,7 @@ sub verifyRequest{
         if( -d  "$delDir"){ 
             if( $origPi && $origInv){
                 my $x = sprintf("%03d", $runnum);
-                $delDir = "/ifs/res/seq/$origPi/$origInv/$pid/r_$x";
+                $delDir = "$DEL_PRE/$origPi/$origInv/$pid/r_$x";
                 if( -d  "$delDir"){
                     die "\nERROR: This project has a delivered directory with this rerun folder already present: $delDir \n\n";
                 }
@@ -1010,7 +1011,7 @@ sub verifyRequest{
     }
     
     if( $origPi && $origInv){
-        $delDir = "/ifs/res/seq/$origPi/$origInv/$pid/";
+        $delDir = "$DEL_PRE/$origPi/$origInv/$pid/";
 	my $x = sprintf("%03d", $runnum);
 	$delDir .= "r_$x";
 	if( -d  "$delDir"){
