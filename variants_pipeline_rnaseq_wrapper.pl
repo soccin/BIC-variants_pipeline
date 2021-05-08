@@ -19,7 +19,7 @@ my $uID = `/usr/bin/id -u -n`;
 chomp $uID;
 
 my $email = "$uID\@cbio.mskcc.org";
-my $rsync = "/ifs/res/$uID";
+my $rsync = "/juno/res/bic/$uID";
 my $tempdir = "/scratch/$uID";
 
 
@@ -54,7 +54,7 @@ if(!$map || !$group || !$pair || !$species || !$request || !$targets || !$strand
         * PAIR: file listing tumor/normal pairing of samples for mutect/maf conversion; if not specified, considered unpaired
         * PRE: output prefix (default: TEMP)
         * OUTPUT: output results directory (default: results)
-        * RSYNC:  path to rsync data for archive (default: /ifs/res/$uID)
+        * RSYNC:  path to rsync data for archive (default: /juno/res/bic/$uID)
         * TEMPDIR:  temp directory (default: /scratch/$uID)
         * PRIORITY_PROJECT: sge notion of priority assigned to projects (default: ngs)
         * PRIORITY_GROUP: lsf notion of priority assigned to groups (default: Pipeline)
