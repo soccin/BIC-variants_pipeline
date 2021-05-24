@@ -1904,6 +1904,7 @@ sub mergeStats {
         $se = "--se";
     }
 
+=pod
     if((!-e "$output/progress/$pre\_$uID\_QCDB.done" || $ran_merge || $ran_qcpdf) && !$rna){
         my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_QCDB", job_hold => "$qcdbj", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_QCDB.log");
         my $standardParams = Schedule::queuing(%stdParams);
@@ -1911,7 +1912,8 @@ sub mergeStats {
         `/bin/touch $output/progress/$pre\_$uID\_QCDB.done`;
         push @r3, "$pre\_$uID\_QCDB";
     }
-            
+=cut
+        
 }
 
 sub generateGroupFile {
