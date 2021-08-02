@@ -227,10 +227,12 @@ if($rna && !-d $rna)
     }
 }
 
-my $targets_ilist = "$Bin/targets/$targets/$targets\_targets.ilist";
-my $baits_ilist = "$Bin/targets/$targets/$targets\_baits.ilist";
-my $targets_bed_padded = "$Bin/targets/$targets/$targets\_targets_plus5bp.bed";
-my $targets_facet = "$Bin/targets/$targets/$targets\_targets_FACETS.ilist";
+my $ASSAY_DEF = '/juno/projects/BIC/targets/designs';
+
+my $targets_ilist = "$ASSAY_DEF/targets/$targets/$targets\_targets.ilist";
+my $baits_ilist = "$ASSAY_DEF/targets/$targets/$targets\_baits.ilist";
+my $targets_bed_padded = "$ASSAY_DEF/targets/$targets/$targets\_targets_plus5bp.bed";
+my $targets_facet = "$ASSAY_DEF/targets/$targets/$targets\_targets_FACETS.ilist";
 my $assay = $targets;
 if(-d $targets){
     my @path = split(/\//, $targets);
