@@ -83,8 +83,11 @@ my $bwaDB = '';
 my $B37_BWA_INDEX = '';
 my $HG19_BWA_INDEX = '';
 my $B37_MM10_HYBRID_BWA_INDEX = '';
+my $HG19_MM10_HYBRID_BWA_INDEX = '';
 my $MM9_BWA_INDEX = '';
 my $MM10_BWA_INDEX = '';
+my $MM10_B37_HYBRID_BWA_INDEX = '';
+my $MM10_HG19_HYBRID_BWA_INDEX = '';
 my $MM10_CUSTOM_BWA_INDEX = '';
 my $SPECIES_CUSTOM_BWA_INDEX = '';
 my $DM6_BWA_INDEX = '';
@@ -156,10 +159,18 @@ while(<CONFIG>){
 	}
 	$HG19_BWA_INDEX = $conf[1];
     }
+    elsif($conf[0] =~ /hg19_mm10_hybrid_bwa_index/i){
+        if(!-e "$conf[1]\.bwt" || !-e "$conf[1]\.pac" || !-e "$conf[1]\.ann" || !-e "$conf[1]\.amb" || !-e "$conf[1]\.sa"){
+            if($species =~ /^hg19_mm10$/i){
+                die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR HG19-MM10 WITH PREFIX $conf[1] $!";
+            }
+        }
+        $HG19_MM10_HYBRID_BWA_INDEX = $conf[1];
+    }
     elsif($conf[0] =~ /b37_mm10_hybrid_bwa_index/i){
 	if(!-e "$conf[1]\.bwt" || !-e "$conf[1]\.pac" || !-e "$conf[1]\.ann" || !-e "$conf[1]\.amb" || !-e "$conf[1]\.sa"){
-	    if($species =~ /hybrid/i){
-		die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR HG19-MM10 HYBRID WITH PREFIX $conf[1] $!";
+	    if($species =~ /^(human_hybrid|b37_mm10)$/i){
+		die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR B37-MM10 HYBRID WITH PREFIX $conf[1] $!";
 	    }
 	}
 	$B37_MM10_HYBRID_BWA_INDEX = $conf[1];
@@ -180,10 +191,26 @@ while(<CONFIG>){
 	}
 	$MM10_BWA_INDEX = $conf[1];
     }
+    elsif($conf[0] =~ /mm10_b37_hybrid_bwa_index/i){
+        if(!-e "$conf[1]\.bwt" || !-e "$conf[1]\.pac" || !-e "$conf[1]\.ann" || !-e "$conf[1]\.amb" || !-e "$conf[1]\.sa"){
+            if($species =~ /^(mouse_hybrid|mm10_b37)$/i){
+                die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR MM10-B37 WITH PREFIX $conf[1] $!";
+            }
+        }
+        $MM10_B37_HYBRID_BWA_INDEX = $conf[1];
+    }
+    elsif($conf[0] =~ /mm10_hg19_hybrid_bwa_index/i){
+        if(!-e "$conf[1]\.bwt" || !-e "$conf[1]\.pac" || !-e "$conf[1]\.ann" || !-e "$conf[1]\.amb" || !-e "$conf[1]\.sa"){
+            if($species =~ /^(mm10_hg19)$/i){
+                die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR MM10-HG19 WITH PREFIX $conf[1] $!";
+            }
+        }
+        $MM10_HG19_HYBRID_BWA_INDEX = $conf[1];
+    }
     elsif($conf[0] =~ /mm10_custom_bwa_index/i){
 	if(!-e "$conf[1]\.bwt" || !-e "$conf[1]\.pac" || !-e "$conf[1]\.ann" || !-e "$conf[1]\.amb" || !-e "$conf[1]\.sa"){
 	    if($species =~ /mm10_custom/i){
-		die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR MM10 WITH PREFIX $conf[1] $!";
+		die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR MM10 CUSTOM WITH PREFIX $conf[1] $!";
 	    }
 	}
 	$MM10_CUSTOM_BWA_INDEX = $conf[1];
@@ -213,7 +240,12 @@ $ENV{'SINGULARITYENV_PREPEND_PATH'} = $singularityenv_prepend_path;
 $ENV{'SINGULARITY_BINDPATH'} = $singularityBind;
 close CONFIG;
 
-if($species =~/^b37$|human/i){
+
+###### TEMP
+print "species in process_reads.pl = $species\n";
+######
+
+if($species =~/^(b37|human)$/i){
     $bwaDB = "$B37_BWA_INDEX";
 }
 elsif($species =~/^hg19$/i){
@@ -222,17 +254,26 @@ elsif($species =~/^hg19$/i){
     
     $bwaDB = "$HG19_BWA_INDEX";
 }
-elsif($species =~ /^mm10$|mouse/i){
+elsif($species =~ /^(mm10|mouse)$/i){
     $bwaDB = "$MM10_BWA_INDEX";
 }
 elsif($species =~ /mm10_custom/i){
     $bwaDB = "$MM10_CUSTOM_BWA_INDEX";
 }
-elsif($species =~ /mm9/i){
+elsif($species =~ /^mm9$/i){
     $bwaDB = "$MM9_BWA_INDEX";
 }
-elsif($species =~ /hybrid/i){
+elsif($species =~ /^human_hybrid$/i){
     $bwaDB = "$B37_MM10_HYBRID_BWA_INDEX";
+}
+elsif($species =~ /^hg19_mm10$/i){
+    $bwaDB = "$HG19_MM10_HYBRID_BWA_INDEX";
+}
+elsif($species =~ /^mouse_hybrid$/i){
+    $bwaDB = "$MM10_B37_HYBRID_BWA_INDEX";
+}
+elsif($species =~ /^mm10_hg19$/i){
+    $bwaDB = "$MM10_HG19_HYBRID_BWA_INDEX";
 }
 elsif($species =~ /species_custom/i){
     $bwaDB = "$SPECIES_CUSTOM_BWA_INDEX";

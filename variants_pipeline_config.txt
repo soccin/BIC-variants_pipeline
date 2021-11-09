@@ -53,6 +53,12 @@ MM9_FAI	/juno/depot/assemblies/M.musculus/mm9/mm9.fasta.fai
 MM10_BWA_INDEX	/juno/depot/assemblies/M.musculus/mm10/index/bwa/0.7.8/mm10.fasta
 MM10_FASTA	/juno/depot/assemblies/M.musculus/mm10/mm10.fasta
 MM10_FAI	/juno/depot/assemblies/M.musculus/mm10/mm10.fasta.fai
+MM10_B37_HYBRID_BWA_INDEX	/juno/depot/assemblies/hybrids/M.musculus_H.sapiens/mm10_b37/index/bwa/0.7.12/mm10_b37.fasta
+MM10_B37_HYBRID_FASTA	/juno/depot/assemblies/hybrids/M.musculus_H.sapiens/mm10_b37/mm10_b37.fasta
+MM10_B37_HYBRID_FAI	/juno/depot/assemblies/hybrids/M.musculus_H.sapiens/mm10_b37/mm10_b37.fasta.fai
+MM10_HG19_HYBRID_BWA_INDEX       /juno/depot/assemblies/hybrids/M.musculus_H.sapiens/mm10_hg19/index/bwa/0.7.12/mm10_hg19.fasta
+MM10_HG19_HYBRID_FASTA   /juno/depot/assemblies/hybrids/M.musculus_H.sapiens/mm10_hg19/mm10_hg19.fasta
+MM10_HG19_HYBRID_FAI     /juno/depot/assemblies/hybrids/M.musculus_H.sapiens/mm10_hg19/mm10_hg19.fasta.fai
 MM10_CUSTOM_BWA_INDEX
 MM10_CUSTOM_FASTA
 MM10_CUSTOM_FAI

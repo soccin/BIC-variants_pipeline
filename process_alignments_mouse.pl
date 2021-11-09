@@ -70,7 +70,7 @@ if(!$group || !$config || !$scheduler || !$targets || !$bamgroup || $help){
 	* SCHEDULER: currently support for SGE, LUNA, and JUNO (REQUIRED)
 	* PAIR: file listing tumor/normal pairing of samples for mutect/maf conversion; if not specified, considered unpaired
 	* PRE: output prefix (default: TEMP)
-	* SPECIES: mm10 (default), mm10_custom, and mm9
+	* SPECIES: mm10 (default), mouse_hybrid, (mm10_b37), mm10_custom, and mm9
 	* OUTPUT: output results directory (default: results)
 	* RSYNC:  path to rsync data for archive (default: /juno/res/bic/USER_ID)
 	* PRIORITY_PROJECT: sge notion of priority assigned to projects (default: ngs)
@@ -155,6 +155,12 @@ my $MM9_BWA_INDEX = '';
 my $MM10_FASTA = '';
 my $MM10_FAI = '';
 my $MM10_BWA_INDEX = '';
+my $MM10_B37_HYBRID_FASTA = '';
+my $MM10_B37_HYBRID_FAI = '';
+my $MM10_B37_HYBRID_BWA_INDEX = '';
+my $MM10_HG19_HYBRID_FASTA = '';
+my $MM10_HG19_HYBRID_FAI = '';
+my $MM10_HG19_HYBRID_BWA_INDEX = '';
 my $MM10_CUSTOM_FASTA = '';
 my $MM10_CUSTOM_FAI = '';
 my $MM10_CUSTOM_BWA_INDEX = '';
@@ -328,7 +334,7 @@ while(<CONFIG>){
     }
    elsif($conf[0] =~ /mm9_fasta/i){
 	if(!-e "$conf[1]"){
-	    if($species =~ /mm9/i){
+	    if($species =~ /^mm9$/i){
 		die "CAN'T FIND $conf[1] $!";
 	    }
 	}
@@ -336,7 +342,7 @@ while(<CONFIG>){
     }
    elsif($conf[0] =~ /mm9_fai/i){
 	if(!-e "$conf[1]"){
-	    if($species =~ /mm9/i){
+	    if($species =~ /^mm9$/i){
 		die "CAN'T FIND $conf[1] $!";
 	    }
 	}
@@ -344,7 +350,7 @@ while(<CONFIG>){
     }
     elsif($conf[0] =~ /mm9_bwa_index/i){
 	if(!-e "$conf[1]\.bwt" || !-e "$conf[1]\.pac" || !-e "$conf[1]\.ann" || !-e "$conf[1]\.amb" || !-e "$conf[1]\.sa"){
-	    if($species =~ /mm9/i){
+	    if($species =~ /^mm9$/i){
 		die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR MM9 WITH PREFIX $conf[1] $!";
 	    }
 	}
@@ -373,6 +379,52 @@ while(<CONFIG>){
 	    }
 	}
 	$MM10_BWA_INDEX = $conf[1];
+    }
+    elsif($conf[0] =~ /mm10_b37_hybrid_fasta/i){
+        if(!-e "$conf[1]"){
+            if($species =~ /mouse_hybrid|mm10_b37/i){
+                die "CAN'T FIND $conf[1] $!";
+            }
+        }
+        $MM10_B37_HYBRID_FASTA = $conf[1];
+    }
+    elsif($conf[0] =~ /mm10_b37_hybrid_fai/i){
+        if(!-e "$conf[1]"){
+            if($species =~ /mouse_hybrid|mm10_b37/i){
+                die "CAN'T FIND $conf[1] $!";
+            }
+        }
+        $MM10_B37_HYBRID_FAI = $conf[1];
+    }
+    elsif($conf[0] =~ /mm10_b37_hybrid_bwa_index/i){
+        if(!-e "$conf[1]\.bwt" || !-e "$conf[1]\.pac" || !-e "$conf[1]\.ann" || !-e "$conf[1]\.amb" || !-e "$conf[1]\.sa"){
+            if($species =~ /mouse_hybrid|mm10_b37/i){
+                die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR b37-MM10 HYBRID WITH PREFIX $conf[1] $!";
+            }
+        }
+    }
+    elsif($conf[0] =~ /mm10_hg19_hybrid_fasta/i){
+        if(!-e "$conf[1]"){
+            if($species =~ /mm10_hg19/i){
+                die "CAN'T FIND $conf[1] $!";
+            }
+        }
+        $MM10_HG19_HYBRID_FASTA = $conf[1];
+    }
+    elsif($conf[0] =~ /mm10_hg19_hybrid_fai/i){
+        if(!-e "$conf[1]"){
+            if($species =~ /mm10_hg19/i){
+                die "CAN'T FIND $conf[1] $!";
+            }
+        }
+        $MM10_HG19_HYBRID_FAI = $conf[1];
+    }
+    elsif($conf[0] =~ /mm10_hg19_hybrid_bwa_index/i){
+        if(!-e "$conf[1]\.bwt" || !-e "$conf[1]\.pac" || !-e "$conf[1]\.ann" || !-e "$conf[1]\.amb" || !-e "$conf[1]\.sa"){
+            if($species =~ /mm10_hg19/i){
+                die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR HG19-MM9 HYBRID WITH PREFIX $conf[1] $!";
+            }
+        }
     }
     elsif($conf[0] =~ /mm10_custom_fasta/i){
 	if(!-e "$conf[1]"){
@@ -415,12 +467,28 @@ my $DB_SNP = "$Bin/data/mm10/mm10_snp142.vcf";
 my $CHR_M = 'M'; #as of right now default to M. Once we add NCBI assemblies, we can chang it below.
 my $CHR_PREFIX = "chr"; #as of right now default to 'chr'. Once we add NCBI assemblies, we can change it below.
 
-if($species =~ /mm10_custom/i){
+##### TEMP
+print "species in process_alignments_mouse.pl = $species\n";
+##### TEMP
+
+if($species =~ /mouse_hybrid|mm10_b37/i){
+    $species = "mouse_hybrid";
+    $REF_SEQ = "$MM10_B37_HYBRID_FASTA";
+    $REF_FAI = "$MM10_B37_HYBRID_FAI";
+    $BWA_INDEX = "$MM10_B37_HYBRID_BWA_INDEX";
+}
+elsif($species =~ /mm10_hg19/i){
+    $species = "mouse_hybrid";
+    $REF_SEQ = "$MM10_HG19_HYBRID_FASTA";
+    $REF_FAI = "$MM10_HG19_HYBRID_FAI";
+    $BWA_INDEX = "$MM10_HG19_HYBRID_BWA_INDEX";
+}
+elsif($species =~ /mm10_custom/i){
     $REF_SEQ = "$MM10_CUSTOM_FASTA";
     $REF_FAI = "$MM10_CUSTOM_FAI";
     $BWA_INDEX = "$MM10_CUSTOM_BWA_INDEX";
 }
-elsif($species =~ /mm9/i){
+elsif($species =~ /^mm9$/i){
     $REF_SEQ = "$MM9_FASTA";
     $REF_FAI = "$MM9_FAI";
     $BWA_INDEX = "$MM9_BWA_INDEX";

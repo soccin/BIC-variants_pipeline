@@ -137,7 +137,7 @@ if(!$map || !$species || !$config || !$request || $help){
     USAGE: variants_pipeline.pl -wes -config CONFIG -species SPECIES
 	* MAP: file listing sample information for processing (REQUIRED)
 	* GROUP: file listing grouping of samples for realign/recal steps (REQUIRED, unless using -mdOnly flag)
-	* SPECIES: b37 (default: human), mm9, mm10 (default: mouse), hybrid (b37+mm10), mm10_custom, species_custom and dm6 currently supported (REQUIRED)
+	* SPECIES: b37 (default: human), mm9, mm10 (default: mouse), human_hybrid (b37+mm10), mouse_hybrid (mm10+b37), mm10_custom, species_custom and dm6 currently supported (REQUIRED)
 	* TARGETS: name of targets assay; will search for targets/baits ilists and targets padded file in $Bin/targets/TARGETS unless given full path to targets directory; required for non-chipseq projects
 	* CONFIG: file listing paths to programs needed for pipeline; full path to config file needed (REQUIRED)
         * REQUEST: file containing request information such as PI, investigator, etc. (REQUIRED)
@@ -211,6 +211,8 @@ my $HG19_FASTA = '';
 my $HG19_MM10_HYBRID_FASTA = '';
 my $MM9_FASTA = '';
 my $MM10_FASTA = '';
+my $MM10_B37_HYBRID_FASTA = '';
+my $MM10_HG19_HYBRID_FASTA = '';
 my $MM10_CUSTOM_FASTA = '';
 my $SPECIES_CUSTOM_FASTA = '';
 my $SPECIES_CUSTOM_DB_SNP = '';
@@ -218,7 +220,7 @@ my $DM3_FASTA = '';
 
 if($rna && !-d $rna)
 {
-    if($species !~ /human|b37|hg19/i)
+    if($species !~ /^(human|b37|hg19)$/i)
     {
         die "Only human/b37/hg19 are supported for rnaseq variants calling\n";
     }
@@ -771,7 +773,7 @@ sub verifyConfig{
 	}
 	elsif($conf[0] =~ /b37_fasta/i){
 	    if(!-e "$conf[1]"){
-		if($species =~ /human|^b37$/i){
+		if($species =~ /^(human|b37)$/i){
 		    die "CAN'T FIND $conf[1] $!";
 		}
 	    }
@@ -779,14 +781,14 @@ sub verifyConfig{
 	}
 	elsif($conf[0] =~ /b37_bwa_index/i){
 	    if(!-e "$conf[1]\.bwt" || !-e "$conf[1]\.pac" || !-e "$conf[1]\.ann" || !-e "$conf[1]\.amb" || !-e "$conf[1]\.sa"){
-		if($species =~ /^b37$|human/i){
+		if($species =~ /^(human|b37)$/i){
 		    die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR B37 WITH PREFIX $conf[1] $!";
 		}
 	    }
 	}
 	elsif($conf[0] =~ /b37_mm10_hybrid_fasta/i){
 	    if(!-e "$conf[1]"){
-		if($species =~ /hybrid|b37_mm10/i){
+		if($species =~ /^(human_hybrid|b37_mm10)$/i){
 		    die "CAN'T FIND $conf[1] $!";
 		}
 	    }
@@ -794,14 +796,29 @@ sub verifyConfig{
 	}
 	elsif($conf[0] =~ /b37_mm10_hybrid_bwa_index/i){
 	    if(!-e "$conf[1]\.bwt" || !-e "$conf[1]\.pac" || !-e "$conf[1]\.ann" || !-e "$conf[1]\.amb" || !-e "$conf[1]\.sa"){
-		if($species =~ /hybrid|b37_mm10/i){
+		if($species =~ /^(human_hybrid|b37_mm10)$/i){
 		    die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR b37-MM10 HYBRID WITH PREFIX $conf[1] $!";
 		}
 	    }
 	}
+        elsif($conf[0] =~ /mm10_b37_hybrid_fasta/i){
+            if(!-e "$conf[1]"){
+                if($species =~ /^(mouse_hybrid|mm10_b37)$/i){
+                    die "CAN'T FIND $conf[1] $!";
+                }
+            }
+            $MM10_B37_HYBRID_FASTA = $conf[1];
+        }
+        elsif($conf[0] =~ /mm10_b37_hybrid_bwa_index/i){
+            if(!-e "$conf[1]\.bwt" || !-e "$conf[1]\.pac" || !-e "$conf[1]\.ann" || !-e "$conf[1]\.amb" || !-e "$conf[1]\.sa"){
+                if($species =~ /^(mouse_hybrid|mm10_b37)$/i){
+                    die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR MM10-B37 HYBRID WITH PREFIX $conf[1] $!";
+                }
+            }
+        }
 	elsif($conf[0] =~ /hg19_fasta/i){
 	    if(!-e "$conf[1]"){
-		if($species =~ /hg19/i){
+		if($species =~ /^hg19$/i){
 		    die "CAN'T FIND $conf[1] $!";
 		}
 	    }
@@ -809,14 +826,14 @@ sub verifyConfig{
 	}
  	elsif($conf[0] =~ /hg19_bwa_index/i){
 	    if(!-e "$conf[1]\.bwt" || !-e "$conf[1]\.pac" || !-e "$conf[1]\.ann" || !-e "$conf[1]\.amb" || !-e "$conf[1]\.sa"){
-		if($species =~ /hg19/i){
+		if($species =~ /^hg19$/i){
 		    die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR HG19 WITH PREFIX $conf[1] $!";
 		}
 	    }
 	}
 	elsif($conf[0] =~ /hg19_mm10_hybrid_fasta/i){
 	    if(!-e "$conf[1]"){
-		if($species =~ /hybrid/i){
+		if($species =~ /^hg19_hybrid$/i){
 		    die "CAN'T FIND $conf[1] $!";
 		}
 	    }
@@ -824,14 +841,38 @@ sub verifyConfig{
 	}
  	elsif($conf[0] =~ /hg19_mm10_hybrid_bwa_index/i){
 	    if(!-e "$conf[1]\.bwt" || !-e "$conf[1]\.pac" || !-e "$conf[1]\.ann" || !-e "$conf[1]\.amb" || !-e "$conf[1]\.sa"){
-		if($species =~ /hybrid/i){
+		if($species =~ /^hg19_hybrid$/i){
 		    die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR HG19-MM9 HYBRID WITH PREFIX $conf[1] $!";
 		}
 	    }
 	}
+        elsif($conf[0] =~ /hg19_mm10_hybrid_fasta/i){
+            if(!-e "$conf[1]"){
+                if($species =~ /^hg19_hybrid$/i){
+                    die "CAN'T FIND $conf[1] $!";
+                }
+            }
+            $HG19_MM10_HYBRID_FASTA = $conf[1];
+        }
+        elsif($conf[0] =~ /mm10_hg19_hybrid_fasta/i){
+            if(!-e "$conf[1]"){
+                if($species =~ /^mm10_hg19$/i){
+                    die "CAN'T FIND $conf[1] $!";
+                }
+            }
+            $HG19_MM10_HYBRID_FASTA = $conf[1];
+        }
+
+        elsif($conf[0] =~ /mm10_hg19_hybrid_bwa_index/i){
+            if(!-e "$conf[1]\.bwt" || !-e "$conf[1]\.pac" || !-e "$conf[1]\.ann" || !-e "$conf[1]\.amb" || !-e "$conf[1]\.sa"){
+                if($species =~ /^mm10_hg19$/i){
+                    die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR HG19-MM9 HYBRID WITH PREFIX $conf[1] $!";
+                }
+            }
+        }
 	elsif($conf[0] =~ /mm9_fasta/i){
 	    if(!-e "$conf[1]"){
-		if($species =~ /mm9/i){
+		if($species =~ /^mm9$/i){
 		    die "CAN'T FIND $conf[1] $!";
 		}
 	    }
@@ -839,12 +880,12 @@ sub verifyConfig{
 	}
  	elsif($conf[0] =~ /mm9_bwa_index/i){
 	    if(!-e "$conf[1]\.bwt" || !-e "$conf[1]\.pac" || !-e "$conf[1]\.ann" || !-e "$conf[1]\.amb" || !-e "$conf[1]\.sa"){
-		if($species =~ /mm9/i){
+		if($species =~ /^mm9$/i){
 		    die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR MM9 WITH PREFIX $conf[1] $!";
 		}
 	    }
 	}
-	elsif($conf[0] =~ /mm10_fasta/i){
+	elsif($conf[0] =~ /^mm10_fasta$/i){
 	    if(!-e "$conf[1]"){
 		if($species =~ /^mm10$/i){
 		    die "CAN'T FIND $conf[1] $!";
@@ -1003,11 +1044,11 @@ sub verifyRequest{
             if( $origPi && $origInv){
                 my $x = sprintf("%03d", $runnum);
                 $delDir = "$DEL_PRE/$origPi/$origInv/$pid/r_$x";
-                if( -d  "$delDir"){
-                    die "\nERROR: This project has a delivered directory with this rerun folder already present: $delDir \n\n";
-                }
+                #if( -d  "$delDir"){
+                #    die "\nERROR: This project has a delivered directory with this rerun folder already present: $delDir \n\n";
+                #}
             }
-           die "\nERROR: This project has a delivered directory with this rerun folder already present: $delDir \n\n";
+        #   die "\nERROR: This project has a delivered directory with this rerun folder already present: $delDir \n\n";
         } 
 
     }
@@ -1016,9 +1057,9 @@ sub verifyRequest{
         $delDir = "$DEL_PRE/$origPi/$origInv/$pid/";
 	my $x = sprintf("%03d", $runnum);
 	$delDir .= "r_$x";
-	if( -d  "$delDir"){
-	    die "\nERROR: This project has a delivered directory with this rerun folder already present: $delDir \n\n";
-	}
+	#if( -d  "$delDir"){
+	#    die "\nERROR: This project has a delivered directory with this rerun folder already present: $delDir \n\n";
+	#}
     }
  
     `/bin/cp -p $request $output/`;
@@ -1030,7 +1071,7 @@ sub processInputs {
 	$pre = "s_$pre";
     }
     
-    if($species !~ /human|b37|hg19|mouse|mm9|mm10|mm10_custom|species_custom|drosophila|dm6|hybrid|xenograft/i){
+    if($species !~ /^(human|b37|hg19|mouse|mm9|mm10|mm10_custom|species_custom|drosophila|dm6|mouse_hybrid|mm10_b37|mm10_hg19|human_hybrid|b37_mm10|hg19_mm10)$/i){
 	die "Species must be human (b37), mouse (mm9|mm10|mm10_custom), species_custom or drosophila (dm6) $!";
     }
     
@@ -1048,14 +1089,14 @@ sub processInputs {
         die "unrecognized scheduler, valid scheduler [sge, luna, juno]";
     }
     
-    if($species =~ /human|^b37$/i){
+    if($species =~ /^(human|b37)$/i){
 	$species = 'b37';
 	$REF_SEQ = "$B37_FASTA";
 	$DB_SNP = "$Bin/data/b37/dbsnp_138.b37.vcf";
 	$FP_INT = "$Bin/data/b37/Agilent51MBExome__b37__FP_intervals.list";
 	$FP_TG = "$Bin/data/b37/Agilent51MBExome__b37__FP_tiling_genotypes.txt";
     }
-    elsif($species =~ /hg19/i){
+    elsif($species =~ /^hg19$/i){
 
 	#die "hg19 is no longer supported in the variants pipeline";
 
@@ -1065,12 +1106,12 @@ sub processInputs {
 	$FP_INT = "$Bin/data/hg19/Agilent51MBExome__hg19__FP_intervals.list";
 	$FP_TG = "$Bin/data/hg19/Agilent51MBExome__hg19__FP_tiling_genotypes.txt";
     }
-    elsif($species =~ /mm9/i){
+    elsif($species =~ /^mm9$/i){
 	$species = 'mm9';
 	$REF_SEQ = "$MM9_FASTA";
 	$DB_SNP = "";
     }
-    elsif($species =~ /mouse|^mm10$/i){
+    elsif($species =~ /^(mouse|mm10)$/i){
 	$species = 'mm10';
 	$REF_SEQ = "$MM10_FASTA";
 	$DB_SNP = "$Bin/data/mm10/mm10_snp142.vcf";
@@ -1080,13 +1121,19 @@ sub processInputs {
 	$REF_SEQ = "$MM10_CUSTOM_FASTA";
 	$DB_SNP = "$Bin/data/mm10/mm10_snp142.vcf";
     }
-    elsif($species =~ /hybrid|xenograft/i){
-	$species = 'hybrid';
+    elsif($species =~ /^(human_hybrid|b37_mm10|human_xenograft)$/i){
+	$species = 'human_hybrid';
 	$REF_SEQ = "$B37_MM10_HYBRID_FASTA";
 	$DB_SNP = "$Bin/data/b37/dbsnp_138.b37.vcf";
 	$FP_INT = "$Bin/data/b37/Agilent51MBExome__b37__FP_intervals.list";
 	$FP_TG = "$Bin/data/b37/Agilent51MBExome__b37__FP_tiling_genotypes.txt";
     }
+    elsif($species =~ /^(mouse_hybrid|mm10_b37|mm10_h19|mouse_xenograft)$/i){
+        $species = 'mouse_hybrid';
+        $REF_SEQ = "$MM10_B37_HYBRID_FASTA";
+        $DB_SNP = "$Bin/data/mm10/mm10_snp142.vcf";
+    }
+
     elsif($species =~ /species_custom/i){
 	$species = 'species_custom';
 	$REF_SEQ = "$SPECIES_CUSTOM_FASTA";
@@ -1097,7 +1144,11 @@ sub processInputs {
 	$REF_SEQ = "$DM3_FASTA";
 	$DB_SNP = "";
     }
-      
+     
+###### TEMP
+print "species in variants_pipeline.pl = $species\n"; 
+######
+
     if(!-e "$DB_SNP"){
 	die "CAN'T FIND dbSNP file $DB_SNP $!";
     }
@@ -1278,7 +1329,7 @@ sub processInputs {
 	}	
     }
 
-    if($species =~ /b37|hg19|hybrid|xenograft/i){
+    if($species =~ /^(b37|hg19|human_hybrid|human_xenograft)$/i){
 	if(!-e "$targets_facet"){
 	    if($hasValidPair && !$chip){
 		die "directory $targets OR $Bin/targets/$targets MUST CONTAIN THE FOLLOWING FILES FOR FACETS TO RUN: $targets\_targets_FACETS.ilist $!";
@@ -1633,7 +1684,7 @@ sub processBams {
 	    $bamForStats = "$output/intFiles/$samp/$samp\.bam";
 	}
 	
-	if($species =~ /hybrid/)
+	if($species =~ /human_hybrid|hg19_mm10/)
 	{
 		if(!-e "$output/progress/$pre\_$uID\_SAMP_QUERY_SORT_$samp\.done" || $ran_solexa{$samp}){
                 	my $lmsj = join(",", @lib_merge_samp_jids);
@@ -1705,7 +1756,7 @@ sub processBams {
 	}
 	push @cogm, "-metrics $output/intFiles/$pre\_CollectOxoGMetrics_$samp\.txt";
 
-	if($species =~ /b37|hg19|hybrid/){
+	if($species =~ /^(b37|hg19|human_hybrid|hg19_hybrid)$/){
             if((!-e "$output/progress/$pre\_$uID\_DOC_$samp\.done" || $ran_solexa{$samp} || $ran_samp_merge) && !$rna){
                 my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_DOC\_$samp", job_hold => "$rmj,$smsj,$lmsj", cpu => "1", mem => "20", cluster_out => "$output/progress/$pre\_$uID\_DOC_$samp\.log");
                 my $standardParams = Schedule::queuing(%stdParams);
@@ -1759,7 +1810,7 @@ sub mergeStats {
    
     my $hffiles = join(" ", @hfm);
     my $hfj = join(",", @hf_jids);
-    if((!-e "$output/progress/$pre\_$uID\_MERGE_HFM.done" || $ran_hf) && !$chip && !$rna && $species =~ /hybrid/)
+    if((!-e "$output/progress/$pre\_$uID\_MERGE_HFM.done" || $ran_hf) && !$chip && !$rna && $species =~ /human_hybrid|hg19_hybrid/)
     {
         my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_MERGE_HFM", job_hold => "$hfj", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_MERGE_HFM.log");
         my $standardParams = Schedule::queuing(%stdParams);
@@ -1836,7 +1887,7 @@ sub mergeStats {
        $ran_merge = 1;
     }
 
-    if($species =~ /b37|hg19|hybrid/){
+    if($species =~ /^(b37|hg19|human_hybrid)$/){
         my $docFiles = join(" ", @docm);
         my $docj = join(",", @doc_jids);
         if((!-e "$output/progress/$pre\_$uID\_FINGERPRINTING.done" || $ran_doc) && !$rna){
@@ -2051,13 +2102,13 @@ sub callSNPS {
     ###my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_SNP_PIPE", job_hold => "$mdj", cpu => "1", mem => "1", cluster_out => "$output/progress/$pre\_$uID\_SNP_PIPE.log");
     ###my $standardParams = Schedule::queuing(%stdParams);
     
-    if($species =~ /b37|hg19|hybrid|xenograft/i){
+    if($species =~ /^(b37|hg19|human_hybrid|human_xenograft)$/i){
         ###`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $Bin/process_alignments_human.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_abra $run_step1 $patientFile -species $species`;
 
 	print LOG "$Bin/process_alignments_human.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps $wesImpact -targets $targets $abra_target_file $run_ug -email $email -output $output -svnRev $svnRev -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_ir $run_step1 $patientFile -species $species -rsync $rsync -tempdir $tempdir $somaticCallers\n";
         `$Bin/process_alignments_human.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps $wesImpact -targets $targets $abra_target_file $run_ug -email $email -output $output -svnRev $svnRev -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_ir $run_step1 $patientFile -species $species -rsync $rsync -tempdir $tempdir $somaticCallers $run_rna $run_facets > $output/progress/$pre\_process_alignments_human.log 2>&1`;
     }
-    elsif($species =~ /mm9|^mm10$|mm10_custom/i){
+    elsif($species =~ /^(mm9|mm10|mm10_custom|mouse_hybrid|mouse_xenograft)$/i){
         ###`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $Bin/process_alignments_mouse.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $run_ug -output $output -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group -species $species $run_abra $run_step1`;
 
 	print LOG "$Bin/process_alignments_mouse.pl -pre $pre $paired -group $group -bamgroup $output/intFiles/$pre\_MDbams_groupings.txt -config $config $callSnps -targets $targets $abra_target_file $run_ug -email $email -output $output -svnRev $svnRev -scheduler $scheduler -priority_project $priority_project -priority_group $priority_group $run_ir $run_step1 -species $species -rsync $rsync -tempdir $tempdir $somaticCallers\n";

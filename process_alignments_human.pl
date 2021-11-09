@@ -67,7 +67,7 @@ if(!$group || !$config || !$scheduler || !$targets || !$bamgroup || $help){
     USAGE: process_alignments_human.pl -group GROUP -bampgroup BAMBROUP -config CONFIG -scheduler SCHEDULER -targets TARGETS
 	* GROUP: file listing grouping of samples for realign/recal steps (REQUIRED)
 	* BAMGROUP: files listing bams to be processed together; every bam for each group on 1 line, comma-separated (required)
-	* SPECIES: b37, hybrid|xenograft (b37_mm10)
+	* SPECIES: b37, human_hybrid|xenograft (b37_mm10)
 	* TARGETS: name of targets assay; will search for targets/baits ilists and targets padded file in $Bin/targets/TARGETS unless given full path to targets directory (REQUIRED)
 	* CONFIG: file listing paths to programs needed for pipeline; full path to config file needed (REQUIRED)
 	* SCHEDULER: currently support for SGE, LUNA, and JUNO (REQUIRED)
@@ -406,62 +406,52 @@ while(<CONFIG>){
 	}
 	$B37_BWA_INDEX = $conf[1];
     }
+    elsif($conf[0] =~ /b37_mm10_hybrid_fasta/i){
+        if(!-e "$conf[1]"){
+            if($species =~ /human_hybrid|b37_mm10/i){
+                die "CAN'T FIND $conf[1] $!";
+            }
+        }
+        $B37_MM10_HYBRID_FASTA = $conf[1];
+    }
     elsif($conf[0] =~ /b37_mm10_hybrid_bwa_index/i){
-	if(!-e "$conf[1]\.bwt" || !-e "$conf[1]\.pac" || !-e "$conf[1]\.ann" || !-e "$conf[1]\.amb" || !-e "$conf[1]\.sa"){
-	    if($species =~ /hybrid|xenograft|b37_mm10/i){
-		die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR b37-MM10 HYBRID WITH PREFIX $conf[1] $!";
-	    }
-	}
-	$B37_MM10_HYBRID_BWA_INDEX = $conf[1];
+        if(!-e "$conf[1]\.bwt" || !-e "$conf[1]\.pac" || !-e "$conf[1]\.ann" || !-e "$conf[1]\.amb" || !-e "$conf[1]\.sa"){
+            if($species =~ /human_hybrid|b37_mm10/i){
+                die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR b37-MM10 HYBRID WITH PREFIX $conf[1] $!";
+            }
+        }
     }
     elsif($conf[0] =~ /hg19_fasta/i){
-	if(!-e "$conf[1]"){
-	    if($species =~ /^hg19$/i){
-		die "CAN'T FIND $conf[1] $!";
-	    }
-	}
-	$HG19_FASTA = $conf[1];
-    }
-    elsif($conf[0] =~ /hg19_fai/i){
-	if(!-e "$conf[1]"){
-	    if($species =~ /^hg19$/i){
-		die "CAN'T FIND $conf[1] $!";
-	    }
-	}
-	$HG19_FAI = $conf[1];
-    }
-    elsif($conf[0] =~ /hg19_mm10_hybrid_fasta/i){
-	if(!-e "$conf[1]"){
-	    if($species =~ /hg19_mm10/i){
-		die "CAN'T FIND $conf[1] $!";
-	    }
-	}
-	$HG19_MM10_HYBRID_FASTA = $conf[1];
-    }
-    elsif($conf[0] =~ /hg19_mm10_hybrid_fai/i){
-	if(!-e "$conf[1]"){
-	    if($species =~ /hg19_mm10/i){
-		die "CAN'T FIND $conf[1] $!";
-	    }
-	}
-	$HG19_MM10_HYBRID_FAI = $conf[1];
+        if(!-e "$conf[1]"){
+            if($species =~ /hg19/i){
+                die "CAN'T FIND $conf[1] $!";
+            }
+        }
+        $HG19_FASTA = $conf[1];
     }
     elsif($conf[0] =~ /hg19_bwa_index/i){
-	if(!-e "$conf[1]\.bwt" || !-e "$conf[1]\.pac" || !-e "$conf[1]\.ann" || !-e "$conf[1]\.amb" || !-e "$conf[1]\.sa"){
-	    if($species =~ /^hg19$/i){
-		die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR HG19 WITH PREFIX $conf[1] $!";
-	    }
-	}
-	$HG19_BWA_INDEX = $conf[1];
+        if(!-e "$conf[1]\.bwt" || !-e "$conf[1]\.pac" || !-e "$conf[1]\.ann" || !-e "$conf[1]\.amb" || !-e "$conf[1]\.sa"){
+            if($species =~ /hg19/i){
+                die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR HG19 WITH PREFIX $conf[1] $!";
+            }
+        }
+    }
+    elsif($conf[0] =~ /hg19_mm10_hybrid_fasta/i){
+        if(!-e "$conf[1]"){
+            if($species =~ /hg19_hybrid/i){
+                die "CAN'T FIND $conf[1] $!";
+            }
+        }
+        $HG19_MM10_HYBRID_FASTA = $conf[1];
     }
     elsif($conf[0] =~ /hg19_mm10_hybrid_bwa_index/i){
-	if(!-e "$conf[1]\.bwt" || !-e "$conf[1]\.pac" || !-e "$conf[1]\.ann" || !-e "$conf[1]\.amb" || !-e "$conf[1]\.sa"){
-	    if($species =~ /hg19_mm10/i){
-		die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR HG19-MM10 HYBRID WITH PREFIX $conf[1] $!";
-	    }
-	}
-	$HG19_MM10_HYBRID_BWA_INDEX = $conf[1];
+        if(!-e "$conf[1]\.bwt" || !-e "$conf[1]\.pac" || !-e "$conf[1]\.ann" || !-e "$conf[1]\.amb" || !-e "$conf[1]\.sa"){
+            if($species =~ /hg19_hybrid/i){
+                die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR HG19-MM9 HYBRID WITH PREFIX $conf[1] $!";
+            }
+        }
     }
+
 }
 my %sinParams = (singularity_exec => "$SINGULARITY/singularity", singularity_image => "$Bin/variants_pipeline_singularity_prod.simg");
 $singularityParams = Schedule::singularityParams(%sinParams);
@@ -501,25 +491,26 @@ if($species =~ /^b37$|human/i){
     if (! -s $ExAC_VCF ){
         die "$ExAC_VCF not present! $!";
     }
-}
-elsif($species =~ /hybrid|xenograft|b37_mm10/i){
-    $species = "hybrid";
-    $REF_SEQ = "$B37_MM10_HYBRID_FASTA";
-    $REF_FAI = "$B37_MM10_HYBRID_FAI";
-    $BWA_INDEX = "$B37_MM10_HYBRID_BWA_INDEX";
-    $ExAC_VCF = "$VEP/ExAC_nonTCGA.r0.3.1.sites.vep.vcf.gz";
-    $DB_SNP = "$Bin/data/b37/dbsnp_138.b37.excluding_sites_after_129.vcf";
-    $FACETS_DB_SNP = "$Bin/data/b37/dbsnp_137.b37__RmDupsClean__plusPseudo50__DROP_SORT.vcf";
-    $MILLS_1000G = "$Bin/data/b37/Mills_and_1000G_gold_standard.indels.b37.vcf";
-    $HAPMAP = "$Bin/data/b37/hapmap_3.3.b37.vcf";
-    $OMNI_1000G = "$Bin/data/b37/1000G_omni2.5.b37.vcf";
-    $PHASE1_SNPS_1000G = "$Bin/data/b37/1000G_phase1.snps.high_confidence.b37.vcf";
-    $COSMIC = "$Bin/data/b37/CosmicCodingMuts_v67_b37_20131024__NDS.vcf";
-    $COSMIC_HOTSPOTS = "$Bin/data/b37/dmp_cosmic_for_hotspots.vcf";
 
-    if (! -s $ExAC_VCF ){
-        die "$ExAC_VCF not present! $!";
+    if($species =~ /human_hybrid|xenograft|b37_mm10/i){
+        $species = "human_hybrid";
+        $REF_SEQ = "$B37_MM10_HYBRID_FASTA";
+        $REF_FAI = "$B37_MM10_HYBRID_FAI";
+        $BWA_INDEX = "$B37_MM10_HYBRID_BWA_INDEX";
     }
+    #$ExAC_VCF = "$VEP/ExAC_nonTCGA.r0.3.1.sites.vep.vcf.gz";
+    #$DB_SNP = "$Bin/data/b37/dbsnp_138.b37.excluding_sites_after_129.vcf";
+    #$FACETS_DB_SNP = "$Bin/data/b37/dbsnp_137.b37__RmDupsClean__plusPseudo50__DROP_SORT.vcf";
+    #$MILLS_1000G = "$Bin/data/b37/Mills_and_1000G_gold_standard.indels.b37.vcf";
+    #$HAPMAP = "$Bin/data/b37/hapmap_3.3.b37.vcf";
+    #$OMNI_1000G = "$Bin/data/b37/1000G_omni2.5.b37.vcf";
+    #$PHASE1_SNPS_1000G = "$Bin/data/b37/1000G_phase1.snps.high_confidence.b37.vcf";
+    #$COSMIC = "$Bin/data/b37/CosmicCodingMuts_v67_b37_20131024__NDS.vcf";
+    #$COSMIC_HOTSPOTS = "$Bin/data/b37/dmp_cosmic_for_hotspots.vcf";
+
+    #if (! -s $ExAC_VCF ){
+    #    die "$ExAC_VCF not present! $!";
+    #}
 
 }
 elsif($species =~ /^hg19$/i){
