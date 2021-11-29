@@ -474,10 +474,6 @@ my $PHASE1_SNPS_1000G = '';
 my $COSMIC = '';
 my $COSMIC_HOTSPOTS = '';
 if($species =~ /^b37$|human/i){
-    $species = "b37";
-    $REF_SEQ = "$B37_FASTA";
-    $REF_FAI = "$B37_FAI";
-    $BWA_INDEX = "$B37_BWA_INDEX";
     $DB_SNP = "$Bin/data/b37/dbsnp_138.b37.excluding_sites_after_129.vcf";
     $ExAC_VCF = "$VEP/ExAC_nonTCGA.r0.3.1.sites.vep.vcf.gz";
     $FACETS_DB_SNP = "$Bin/data/b37/dbsnp_137.b37__RmDupsClean__plusPseudo50__DROP_SORT.vcf";
@@ -497,21 +493,13 @@ if($species =~ /^b37$|human/i){
         $REF_SEQ = "$B37_MM10_HYBRID_FASTA";
         $REF_FAI = "$B37_MM10_HYBRID_FAI";
         $BWA_INDEX = "$B37_MM10_HYBRID_BWA_INDEX";
+    } else {
+        $species = "b37";
+        $REF_SEQ = "$B37_FASTA";
+        $REF_FAI = "$B37_FAI";
+        $BWA_INDEX = "$B37_BWA_INDEX";
     }
-    #$ExAC_VCF = "$VEP/ExAC_nonTCGA.r0.3.1.sites.vep.vcf.gz";
-    #$DB_SNP = "$Bin/data/b37/dbsnp_138.b37.excluding_sites_after_129.vcf";
-    #$FACETS_DB_SNP = "$Bin/data/b37/dbsnp_137.b37__RmDupsClean__plusPseudo50__DROP_SORT.vcf";
-    #$MILLS_1000G = "$Bin/data/b37/Mills_and_1000G_gold_standard.indels.b37.vcf";
-    #$HAPMAP = "$Bin/data/b37/hapmap_3.3.b37.vcf";
-    #$OMNI_1000G = "$Bin/data/b37/1000G_omni2.5.b37.vcf";
-    #$PHASE1_SNPS_1000G = "$Bin/data/b37/1000G_phase1.snps.high_confidence.b37.vcf";
-    #$COSMIC = "$Bin/data/b37/CosmicCodingMuts_v67_b37_20131024__NDS.vcf";
-    #$COSMIC_HOTSPOTS = "$Bin/data/b37/dmp_cosmic_for_hotspots.vcf";
-
-    #if (! -s $ExAC_VCF ){
-    #    die "$ExAC_VCF not present! $!";
-    #}
-
+    
 }
 elsif($species =~ /^hg19$/i){
 
