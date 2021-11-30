@@ -21,7 +21,10 @@ GetOptions ('inBams=s' => \$inBams,
 	    'log=s' => \$log,
             'help' => \$help) or exit(1);
 
-
+print "\n\n";
+print "-bwaRef $bwaRef\n";
+print "-targets $targets\n";
+print "\n\n";
 
 my $ABRA = '';
 my $JAVA = '';

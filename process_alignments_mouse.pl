@@ -402,6 +402,7 @@ while(<CONFIG>){
                 die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR b37-MM10 HYBRID WITH PREFIX $conf[1] $!";
             }
         }
+        $MM10_B37_HYBRID_BWA_INDEX = $conf[1];
     }
     elsif($conf[0] =~ /mm10_hg19_hybrid_fasta/i){
         if(!-e "$conf[1]"){
@@ -425,6 +426,7 @@ while(<CONFIG>){
                 die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR HG19-MM9 HYBRID WITH PREFIX $conf[1] $!";
             }
         }
+        $MM10_HG18_HYBRID_BWA_INDEX = $conf[1];
     }
     elsif($conf[0] =~ /mm10_custom_fasta/i){
 	if(!-e "$conf[1]"){

@@ -420,6 +420,7 @@ while(<CONFIG>){
                 die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR b37-MM10 HYBRID WITH PREFIX $conf[1] $!";
             }
         }
+        $B37_MM10_HYBRID_BWA_INDEX = $conf[1];
     }
     elsif($conf[0] =~ /hg19_fasta/i){
         if(!-e "$conf[1]"){
@@ -435,6 +436,7 @@ while(<CONFIG>){
                 die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR HG19 WITH PREFIX $conf[1] $!";
             }
         }
+        $HG19_BWA_INDEX = $conf[1];
     }
     elsif($conf[0] =~ /hg19_mm10_hybrid_fasta/i){
         if(!-e "$conf[1]"){
@@ -450,6 +452,7 @@ while(<CONFIG>){
                 die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR HG19-MM9 HYBRID WITH PREFIX $conf[1] $!";
             }
         }
+        $HG19_MM10_HYBRID_BWA_INDEX = $conf[1];
     }
 
 }
@@ -582,6 +585,10 @@ if(!-e "$abra_target"){
     die "CAN'T LOCATE $abra_target; REQUIRED FOR ABRA $!";
 }
 
+print "\n\n";
+print "-abra_target $abra_target\n";
+print "-targets $targets\n";
+print "\n\n";
 
 my $multipleTargets = '';
 ### NOTE: THERE SEEMS TO BE SOMETHING WRONG WITH DIPS IN COVERAGE AT TARGET BOUNDARY
@@ -719,6 +726,7 @@ while(<IN>){
 		my %addParams = (scheduler => "$scheduler", runtime => "500", priority_project=> "$priority_project", priority_group=> "$priority_group", rerun => "1", iounits => "4");
 		my $additionalParams = Schedule::additionalParams(%addParams);
 		###`$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $JAVA/java -Xms256m -Xmx100g -XX:-UseGCOverheadLimit -Djava.io.tmpdir=$tempdir -jar $ABRA/abra.jar --in $aiBams --out $aoBams --ref $REF_SEQ --bwa-ref $BWA_INDEX --targets $ABRA_TARGETS --working $output/intFiles/abra_$gpair[0] --threads 12`;
+		print "\$abra_target being passed to abra_wrapper.pl = $abra_target\n\n";
 		`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $PERL/perl $Bin/abra_wrapper.pl -inBams $aiBams -outBams $aoBams -refSeq $REF_SEQ -bwaRef $BWA_INDEX -targets $abra_target -working $output/intFiles/abra_$gpair[0]\_$c -config $config -tempdir $tempdir -log $output/progress/$pre\_$uID\_$gpair[0]\_$c\_ABRA_WRAPPER.log`;
 		
 		$abra_jid = "$pre\_$uID\_$gpair[0]\_$c\_ABRA";
