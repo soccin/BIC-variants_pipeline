@@ -1127,13 +1127,14 @@ sub processInputs {
 	$DB_SNP = "$Bin/data/b37/dbsnp_138.b37.vcf";
 	$FP_INT = "$Bin/data/b37/Agilent51MBExome__b37__FP_intervals.list";
 	$FP_TG = "$Bin/data/b37/Agilent51MBExome__b37__FP_tiling_genotypes.txt";
+        $strelka = 0;
     }
     elsif($species =~ /^(mouse_hybrid|mm10_b37|mm10_h19|mouse_xenograft)$/i){
         $species = 'mouse_hybrid';
         $REF_SEQ = "$MM10_B37_HYBRID_FASTA";
         $DB_SNP = "$Bin/data/mm10/mm10_snp142.vcf";
+        $strelka = 0;
     }
-
     elsif($species =~ /species_custom/i){
 	$species = 'species_custom';
 	$REF_SEQ = "$SPECIES_CUSTOM_FASTA";
