@@ -65,7 +65,7 @@ use Cluster;
 ### NOTE: DO NOT SUBMIT THIS WRAPPER SCRIPT TO THE CLUSTER BECAUSE ONCOTATOR STEP WILL FAIL
 ###       DUE TO NODES NOT HAVING NETWORK ACCESS
 
-my ($map, $group, $pair, $patient, $impact, $wes, $config, $help, $nosnps, $removedups, $species, $ug, $scheduler, $abra, $indelrealigner, $noindelrealign, $targets, $mdOnly, $noMD, $DB_SNP, $noClip, $request, $allSomatic, $scalpel, $somaticsniper, $strelka, $varscan, $virmid, $chip, $lancet, $vardict, $pindel, $abra_target, $rna, $mutect2, $nofacets);
+my ($map, $group, $pair, $patient, $impact, $wes, $config, $help, $nosnps, $removedups, $species, $ug, $scheduler, $abra, $indelrealigner, $noindelrealign, $targets, $mdOnly, $noMD, $DB_SNP, $noClip, $request, $allSomatic, $scalpel, $somaticsniper, $strelka, $varscan, $virmid, $chip, $lancet, $vardict, $pindel, $abra_target, $rna, $mutect2, $manta, $nofacets);
 
 my $pre = 'TEMP';
 my $output = "results";
@@ -128,6 +128,7 @@ GetOptions ('map=s' => \$map,
             'abratarget|abra_target=s' => \$abra_target,
             'rna=s' => \$rna,
             'mutect2' => \$mutect2,
+            'manta' => \$manta,
             'noindelrealign|noir' => \$noindelrealign,
             'nofacets' => \$nofacets) or exit(1);
 
@@ -169,7 +170,7 @@ if(!$map || !$species || !$config || !$request || $help){
 	* BASEQTRIM: base quality to trim in reads (default: 3)
 	* DB_SNP: VCF file containing known sites of genetic variation (REQUIRED for species_custom; either here or in config)
 	* haplotypecaller is default; -ug || -unifiedgenotyper to also make unifiedgenotyper variant calls	
-	* ALLSOMATIC: run all somatic callers; mutect/haplotypecaller always run; otherwise -scalpel, -somaticsniper, -strelka, -varscan, -virmid, -lancet, -vardict, -pindel, -mutect2 to run them individually	
+	* ALLSOMATIC: run all somatic callers; mutect/haplotypecaller always run; otherwise -scalpel, -somaticsniper, -strelka, -varscan, -virmid, -lancet, -vardict, -pindel, -mutect2, -manta to run them individually
         * RNA: the output directory from rnaseq pipeline which contains STAR aligned sample level bam files. Used when running variants calling on RNA-seq data
 HELP
 exit;
@@ -277,6 +278,7 @@ if($allSomatic){
     $vardict = 1;
     $pindel = 1;
     $mutect2 = 1;
+    $manta = 1;
 }
 
 if($wes && ($impact || $chip)){
@@ -599,6 +601,11 @@ sub reconstructCL {
         $rCL .= " -mutect2";
     }
 
+    if($manta)
+    {
+        $rCL .= " -manta";
+    }
+
     if($noindelrealign){
         $rCL .= " -noindelrealign";
     }
@@ -717,6 +724,11 @@ sub verifyConfig{
 		die "CAN'T FIND lancet IN $conf[1] $!";
 	    }
 	}
+        elsif($conf[0] =~ /manta/i){
+            if(!-e "$conf[1]/configManta.py"){
+                die "CAN'T FIND configManta.py IN $conf[1] $!";
+            }
+        }
 	elsif($conf[0] =~ /vardict_java/i){
 	    if(!-e "$conf[1]/VarDict"){
 		die "CAN'T FIND VarDict IN $conf[1] $!";
@@ -758,6 +770,11 @@ sub verifyConfig{
 	    $ENV{'PATH'} = "$conf[1]:$path_tmp";
             $singularityenv_prepend_path .= ":$conf[1]";
 	}
+        elsif($conf[0] =~ /^r_facets$/i){
+            if(!-e "$conf[1]/Rscript"){
+                die "CAN'T FIND Rscript IN $conf[1] $!";
+            }
+        }
 	elsif($conf[0] =~ /^java$/i){
 	    if(!-e "$conf[1]/java"){
 		die "CAN'T FIND java IN $conf[1] $!";
@@ -2081,6 +2098,10 @@ sub callSNPS {
     if($mutect2){
         $somaticCallers .= " -mutect2";
     }
+    if($manta){
+        $somaticCallers .= " -manta";
+    }
+
     my $abra_target_file = '';
     if($abra_target){
         $abra_target_file = "-abratarget $abra_target";

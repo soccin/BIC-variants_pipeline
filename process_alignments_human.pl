@@ -10,7 +10,7 @@ use File::Basename;
 use POSIX qw(strftime);
 my $cur_date = strftime "%Y%m%d", localtime;
 
-my ($patient, $email, $impact, $wes, $svnRev, $pair, $group, $bamgroup, $config, $nosnps, $targets, $ug, $scheduler, $priority_project, $priority_group, $abra, $indelrealigner, $noindelrealign, $help, $step1, $allSomatic, $scalpel, $somaticsniper, $strelka, $varscan, $virmid, $lancet, $vardict, $pindel, $abra_target, $rna, $mutect2, $nofacets);
+my ($patient, $email, $impact, $wes, $svnRev, $pair, $group, $bamgroup, $config, $nosnps, $targets, $ug, $scheduler, $priority_project, $priority_group, $abra, $indelrealigner, $noindelrealign, $help, $step1, $allSomatic, $scalpel, $somaticsniper, $strelka, $varscan, $virmid, $lancet, $vardict, $pindel, $abra_target, $rna, $mutect2, $manta, $nofacets);
 
 my $pre = 'TEMP';
 my $output = "results";
@@ -57,6 +57,7 @@ GetOptions ('email=s' => \$email,
             'abratarget|abra_target=s' => \$abra_target,
             'rna=s' => \$rna,
             'mutect2' => \$mutect2,
+            'manta' => \$manta,
             'noindelrealign|noir' => \$noindelrealign,
             'nofacets' => \$nofacets) or exit(1);
 
@@ -85,7 +86,7 @@ if(!$group || !$config || !$scheduler || !$targets || !$bamgroup || $help){
 	* -step1: forece the pipeline to start from the first step in pipeline
 	* haplotypecaller is default; -ug || -unifiedgenotyper to also make unifiedgenotyper variant calls	
 	* TEMPDIR:  temp directory (default: /scratch/$uID)
-	* ALLSOMATIC: run all somatic callers; mutect/haplotypecaller always run; otherwise -scalpel, -somaticsniper, -strelka, -varscan, -virmid, -lancet, -vardict, -pindel, -mutect2 to run them individually	
+	* ALLSOMATIC: run all somatic callers; mutect/haplotypecaller always run; otherwise -scalpel, -somaticsniper, -strelka, -varscan, -virmid, -lancet, -vardict, -pindel, -mutect2, -manta to run them individually	
 HELP
 exit;
 }
@@ -131,6 +132,7 @@ if($allSomatic){
     $vardict = 1;
     $pindel = 1;
     $mutect2 = 1;
+    $manta = 1;
 }
 
 my $ABRA = '';
@@ -139,9 +141,9 @@ my $BEDTOOLS = '';
 my $GATK = '';
 my $GATK4 = '';
 my $HTSTOOLS = '';
-my $FACETS_LIB = '';
 my $FACETS_SUITE = '';
 my $LANCET = '';
+my $MANTA = '';
 my $MUTECT = '';
 my $PICARD = '';
 my $PINDEL = '';
@@ -160,6 +162,7 @@ my $JAVA = '';
 my $JAVA7_MUTECT = '';
 my $PYTHON = '';
 my $PERL = '';
+my $R_FACETS = '';
 
 my $SINGULARITY = '';
 my $singularityParams = '';
@@ -208,14 +211,8 @@ while(<CONFIG>){
         }
         $BEDTOOLS = $conf[1];
     }
-    elsif($conf[0] =~ /facets_lib/i){
-        if(!-e "$conf[1]/facets"){
-            die "CAN'T FIND facets_lib IN $conf[1] $!";
-        }
-        $FACETS_LIB = $conf[1];
-    }
     elsif($conf[0] =~ /facets_suite/i){
-        if(!-e "$conf[1]/facets"){
+        if(!-e "$conf[1]/snp-pileup-wrapper.R" || !-e "$conf[1]/run-facets-wrapper.R" || !-e "$conf[1]/annotate-maf-wrapper.R"){
             die "CAN'T FIND facets_suite IN $conf[1] $!";
         }
         $FACETS_SUITE = $conf[1];
@@ -244,11 +241,11 @@ while(<CONFIG>){
 	}
 	$LANCET = $conf[1];
     }
-    elsif($conf[0] =~ /pindel/i){
-        if(!-e "$conf[1]/pindel" or !-e "$conf[1]/pindel2vcf"){
-            die "CAN'T FIND pindel or pindel2vcf IN $conf[1] $!";
+    elsif($conf[0] =~ /manta/i){
+        if(!-e "$conf[1]/configManta.py"){
+            die "CAN'T FIND configManta.py IN $conf[1] $!";
         }
-        $PINDEL = $conf[1];
+        $MANTA = $conf[1];
     }
     elsif($conf[0] =~ /^mutect$/i){
 	if(!-e "$conf[1]/muTect.jar"){
@@ -261,6 +258,12 @@ while(<CONFIG>){
 	    die "CAN'T FIND picard.jar IN $conf[1] $!";
 	}
 	$PICARD = $conf[1];
+    }
+    elsif($conf[0] =~ /pindel/i){
+        if(!-e "$conf[1]/pindel" or !-e "$conf[1]/pindel2vcf"){
+            die "CAN'T FIND pindel or pindel2vcf IN $conf[1] $!";
+        }
+        $PINDEL = $conf[1];
     }
     elsif($conf[0] =~ /samtools/i){
 	if(!-e "$conf[1]/samtools"){
@@ -365,6 +368,12 @@ while(<CONFIG>){
 	my $path_tmp = $ENV{'PATH'};
 	$ENV{'PATH'} = "$conf[1]:$path_tmp";
         $singularityenv_prepend_path .= ":$conf[1]";
+    }
+    elsif($conf[0] =~ /^r_facets$/i){
+        if(!-e "$conf[1]/Rscript"){
+            die "CAN'T FIND Rscript IN $conf[1] $!";
+        }
+        $R_FACETS = $conf[1];
     }
     elsif($conf[0] =~ /b37_fasta/i){
 	if(!-e "$conf[1]"){
@@ -1603,6 +1612,37 @@ if($pair){
             }
         }
 
+        if($manta){
+            my $mcj = '';
+            my $ran_mc = 0;
+            if(!-e "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_MANTA_CONFIG.done" || $ran_ssf){
+                sleep(2);
+                my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$data[0]\_$data[1]\_MANTA_CONFIG", job_hold => "$ssfj", cpu => "1", mem => "10", cluster_out => "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_MANTA_CONFIG.log");
+                my $standardParams = Schedule::queuing(%stdParams);
+
+                ### NOTE: not using singularity b/c manta is not installed in image
+                my $mes = '';
+                if($wes){
+                   $mes = '--exome';
+                }
+                `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PYTHON/python $MANTA/configManta.py --normalBam $output/alignments/$pre\_indelRealigned_recal\_$data[0]\.bam --tumorBam $output/alignments/$pre\_indelRealigned_recal\_$data[1]\.bam --referenceFasta $REF_SEQ --runDir $output/variants/structVar/manta/$data[0]\_$data[1]\_manta $mes`;
+                $ran_mc = 1;
+                `/bin/touch $output/progress/$pre\_$uID\_$data[0]\_$data[1]\_MANTA_CONFIG.done`;
+                $mcj = "$pre\_$uID\_$data[0]\_$data[1]\_MANTA_CONFIG";
+            }
+
+            if(!-e "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_MANTA_RUN.done" || $ran_mc){
+                sleep(2);
+                my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$data[0]\_$data[1]\_MANTA_RUN", job_hold => "$mcj", cpu => "16", mem => "60", cluster_out => "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_MANTA_RUN.log");
+                my $standardParams = Schedule::queuing(%stdParams);
+
+                `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PYTHON/python $output/variants/structVar/manta/$data[0]\_$data[1]\_manta/runWorkflow.py -j 16`;
+
+                `/bin/touch $output/progress/$pre\_$uID\_$data[0]\_$data[1]\_MANTA_RUN.done`;
+                push @all_jids, "$pre\_$uID\_$data[0]\_$data[1]\_MANTA_RUN";
+            }
+        }
+
         if($mutect2){
             if(!-d "$output/variants/snpsIndels/mutect2"){
                 mkdir("$output/variants/snpsIndels/mutect2", 0775) or die "Can't make $output/variants/snpsIndels/mutect2";
@@ -1634,8 +1674,13 @@ if($pair){
             my $standardParams = Schedule::queuing(%stdParams);
             my %addParams_local = (scheduler => "$scheduler", runtime => "30", priority_project=> "$priority_project", priority_group=> "$priority_group", queues => "lau.q,lcg.q,nce.q", rerun => "1", iounits => "1");
             my $additionalParams_local = Schedule::additionalParams(%addParams_local);
-            `$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{job_hold} $standardParams->{cluster_out} $additionalParams_local $singularityParams $HTSTOOLS/snp-pileup -A -g -P 50 -r15,0 $FACETS_DB_SNP $output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets/tmp/$pre\_countsMerged_$data[0]\_$data[1].dat.gz $output/alignments/$pre\_indelRealigned_recal\_$data[0]\.bam $output/alignments/$pre\_indelRealigned_recal\_$data[1]\.bam`;
+            ### OLD FACETS: `$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{job_hold} $standardParams->{cluster_out} $additionalParams_local $singularityParams $HTSTOOLS/snp-pileup -A -g -P 50 -r15,0 $FACETS_DB_SNP $output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets/tmp/$pre\_countsMerged_$data[0]\_$data[1].dat.gz $output/alignments/$pre\_indelRealigned_recal\_$data[0]\.bam $output/alignments/$pre\_indelRealigned_recal\_$data[1]\.bam`;
 	    
+            ### `$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{job_hold} $standardParams->{cluster_out} $additionalParams_local $singularityParams  $R_FACETS/Rscript $FACETS_SUITE/snp-pileup-wrapper.R --snp-pileup-path $HTSTOOLS/snp-pileup --vcf-file $FACETS_DB_SNP --normal-bam $output/alignments/$pre\_indelRealigned_recal\_$data[0]\.bam --tumor-bam $output/alignments/$pre\_indelRealigned_recal\_$data[1]\.bam --output-prefix  $output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets/tmp/$pre\_$data[0]\_$data[1]`;
+
+            ### removed singularity because this version of R is not in the image
+            `$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{job_hold} $standardParams->{cluster_out} $additionalParams_local $R_FACETS/Rscript $FACETS_SUITE/snp-pileup-wrapper.R --snp-pileup-path $HTSTOOLS/snp-pileup --vcf-file $FACETS_DB_SNP --normal-bam $output/alignments/$pre\_indelRealigned_recal\_$data[0]\.bam --tumor-bam $output/alignments/$pre\_indelRealigned_recal\_$data[1]\.bam --output-prefix  $output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets/tmp/$pre\_$data[0]\_$data[1]`;
+
             $facets_setup = 1;
             `/bin/touch $output/progress/$pre\_$uID\_$data[0]\_$data[1]\_facets_SETUP.done`;
             $facetsSETUP_jid = "$pre\_$uID\_$data[0]\_$data[1]\_facets_SETUP";
@@ -1661,15 +1706,32 @@ if($pair){
             my $standardParams = Schedule::queuing(%stdParams);
             my %addParams = (scheduler => "$scheduler", runtime => "10", priority_project=> "$priority_project", priority_group=> "$priority_group", rerun => "1");
             my $additionalParams = Schedule::additionalParams(%addParams);
-            `$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{job_hold} $standardParams->{cluster_out} $additionalParams $singularityParams $PYTHON/python $FACETS_SUITE/facets doFacets -c $cval -s $snp_nbhd -n $ndepth -m $min_nhet -pc $p_cval -ps $p_snp_nbhd -pn $p_ndepth -pm $p_min_nhet -f $output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets/tmp/$pre\_countsMerged_$data[0]\_$data[1].dat.gz -t $data[0]\_$data[1] -D $output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets -r $FACETS_LIB`;
+            ### OLD FACETS: `$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{job_hold} $standardParams->{cluster_out} $additionalParams $singularityParams $PYTHON/python $FACETS_SUITE/facets doFacets -c $cval -s $snp_nbhd -n $ndepth -m $min_nhet -pc $p_cval -ps $p_snp_nbhd -pn $p_ndepth -pm $p_min_nhet -f $output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets/tmp/$pre\_countsMerged_$data[0]\_$data[1].dat.gz -t $data[0]\_$data[1] -D $output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets -r $FACETS_LIB`;
+
+           ### `$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{job_hold} $standardParams->{cluster_out} $additionalParams $singularityParams  $R_FACETS/Rscript $FACETS_SUITE/run-facets-wrapper.R --counts-file $output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets/tmp/$pre\_$data[0]\_$data[1]\.snp_pileup.gz --sample-id $data[0]\_$data[1] --directory $output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets --everything --genome $sub_species --cval $cval --purity-cval $p_cval --min-nhet $min_nhet --purity-min-nhet $p_min_nhet --snp-window-size $snp_nbhd --normal-depth $ndepth --facets-lib-path ''`;
+
+            ### removed singularity because this version of R is not in the image
+            `$standardParams->{submit} $standardParams->{job_name} $standardParams->{cpu} $standardParams->{mem} $standardParams->{job_hold} $standardParams->{cluster_out} $additionalParams  $R_FACETS/Rscript $FACETS_SUITE/run-facets-wrapper.R --counts-file $output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets/tmp/$pre\_$data[0]\_$data[1]\.snp_pileup.gz --sample-id $data[0]\_$data[1] --directory $output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets --everything --genome $sub_species --cval $cval --purity-cval $p_cval --min-nhet $min_nhet --purity-min-nhet $p_min_nhet --snp-window-size $snp_nbhd --normal-depth $ndepth --facets-lib-path ''`;
+
 	    push @facets_jid, "$pre\_$uID\_$data[0]\_$data[1]\_facets_RUN" ;
             $facets_run = 1;
             `/bin/touch $output/progress/$pre\_$uID\_$data[0]\_$data[1]\_facets_RUN.done`; 
         }
-    `/bin/echo "$data[1]\t$output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets/$data[0]\_$data[1]\_hisens.Rdata" >> $output/variants/copyNumber/facets/facets_mapping.txt`;
+
+    ### OLD FACETS: `/bin/echo "$data[1]\t$output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets/$data[0]\_$data[1]\_hisens.Rdata" >> $output/variants/copyNumber/facets/facets_mapping.txt`;
+
+    `/bin/echo "$data[1]\t$output/variants/copyNumber/facets/$data[0]\_$data[1]\_facets/$data[0]\_$data[1]\_hisens.rds" >> $output/variants/copyNumber/facets/facets_mapping.txt`;
+
     }
     close PAIR;
 
+    ### NOTE: NEW FACETS does not output *_hisens.cncf.txt so will need to ask Manda to write new script for this step to generate 
+    ###       run merge seg script
+
+    my $facets_haplotect_jid = '';
+    my $facets_js = join(",", @facets_jid);
+
+=pod
     ## run merge seg script
     my $facets_haplotect_jid = ''; 
     if(!$nofacets && $hasPair && (! -e "$output/progress/$pre\_$uID\_merge_facets_seg.done" || $facets_run)){
@@ -1720,6 +1782,9 @@ if($pair){
         push @all_jids, "$pre\_$uID\_facets_split_gene";
     }
 
+=cut
+
+
     if($hasPair && (!-e "$output/progress/$pre\_$uID\_HAPLOTECT.done" || $ran_mutect_glob || $ran_ar_indel_hc)){
 	sleep(2);
         my $patientFile = "";
@@ -1745,9 +1810,15 @@ if($pair){
     if(!$nofacets && $hasPair && (!-e "$output/progress/$pre\_$uID\_join_maf.done" || $haplotect_run || $facets_run)){
         sleep(2);
 
-       my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_join_maf", job_hold => "$facets_haplotect_jid", cpu => "4", mem => "8", cluster_out => "$output/progress/$pre\_$uID\_join_maf.log");
+       my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_join_maf", job_hold => "$facets_haplotect_jid,$facets_js", cpu => "4", mem => "8", cluster_out => "$output/progress/$pre\_$uID\_join_maf.log");
         my $standardParams = Schedule::queuing(%stdParams); 
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $PYTHON/python $FACETS_SUITE/facets mafAnno -m $output/variants/snpsIndels/haplotect/$pre\_haplotect_VEP_MAF.txt -f $output/variants/copyNumber/facets/facets_mapping.txt -o $output/intFiles/$pre\_CMO_MAF_intermediate.txt`; 
+	### OLD FACETS:`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $PYTHON/python $FACETS_SUITE/facets mafAnno -m $output/variants/snpsIndels/haplotect/$pre\_haplotect_VEP_MAF.txt -f $output/variants/copyNumber/facets/facets_mapping.txt -o $output/intFiles/$pre\_CMO_MAF_intermediate.txt`; 
+
+        ### `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams  $R_FACETS/Rscript $FACETS_SUITE/annotate-maf-wrapper.R --maf-file $output/variants/snpsIndels/haplotect/$pre\_haplotect_VEP_MAF.txt --sample-mapping $output/variants/copyNumber/facets/facets_mapping.txt --output $output/intFiles/$pre\_CMO_MAF_intermediate.txt`;
+
+        ### removed singularity because this version of R is not in the image
+        `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $R_FACETS/Rscript $FACETS_SUITE/annotate-maf-wrapper.R --maf-file $output/variants/snpsIndels/haplotect/$pre\_haplotect_VEP_MAF.txt --sample-mapping $output/variants/copyNumber/facets/facets_mapping.txt --output $output/intFiles/$pre\_CMO_MAF_intermediate.txt`;
+            
         `/bin/touch $output/progress/$pre\_$uID\_join_maf.done`;
 	push @all_jids, "$pre\_$uID\_join_maf";
         $mafAnnoRun = 1;

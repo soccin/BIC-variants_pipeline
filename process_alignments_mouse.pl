@@ -12,7 +12,7 @@ use POSIX qw(strftime);
 my $cur_date = strftime "%Y%m%d", localtime;
 
 
-my ($pair, $svnRev, $email, $patient, $group, $bamgroup, $config, $nosnps, $targets, $ug, $scheduler, $priority_project, $priority_group, $abra, $indelrealigner, $noindelrealign, $help, $step1, $allSomatic, $scalpel, $somaticsniper, $strelka, $varscan, $virmid, $lancet, $vardict, $pindel, $abra_target, $mutect2);
+my ($pair, $svnRev, $email, $patient, $group, $bamgroup, $config, $nosnps, $targets, $ug, $scheduler, $priority_project, $priority_group, $abra, $indelrealigner, $noindelrealign, $help, $step1, $allSomatic, $scalpel, $somaticsniper, $strelka, $varscan, $virmid, $lancet, $vardict, $pindel, $abra_target, $mutect2, $manta);
 
 my $pre = 'TEMP';
 my $output = "results";
@@ -56,6 +56,7 @@ GetOptions ('email=s' => \$email,
  	    'output|out|o=s' => \$output,
             'abratarget|abra_target=s' => \$abra_target,
             'mutect2' => \$mutect2,
+            'manta' => \$manta,
             'noindelrealign|noir' => \$noindelrealign) or exit(1);
 
 
@@ -82,7 +83,7 @@ if(!$group || !$config || !$scheduler || !$targets || !$bamgroup || $help){
 	* -step1: forece the pipeline to start from the first step in pipeline
 	* haplotypecaller is default; -ug || -unifiedgenotyper to also make unifiedgenotyper variant calls	
 	* TEMPDIR:  temp directory (default: /scratch/$uID)
-	* ALLSOMATIC: run all somatic callers; mutect/haplotypecaller always run; otherwise -scalpel, -somaticsniper, -strelka, -varscan, -virmid, -lancet, -vardict, -pindel, -mutect2 to run them individually	
+	* ALLSOMATIC: run all somatic callers; mutect/haplotypecaller always run; otherwise -scalpel, -somaticsniper, -strelka, -varscan, -virmid, -lancet, -vardict, -pindel, -mutect2, -manta to run them individually
 HELP
 exit;
 }
@@ -118,15 +119,16 @@ if($allSomatic){
     $vardict = 1;
     $pindel = 1;
     $mutect2 = 1;
+    $manta = 1;
 }
 
 my $ABRA = '';
 my $BCFTOOLS = '';
 my $GATK = '';
 my $GATK4 = '';
-my $FACETS_LIB = '';
 my $FACETS_SUITE = '';
 my $LANCET = '';
+my $MANTA = '';
 my $MUTECT = '';
 my $PICARD = '';
 my $PINDEL = '';
@@ -144,6 +146,8 @@ my $JAVA = '';
 my $JAVA7_MUTECT = '';
 my $PYTHON = '';
 my $PERL = '';
+my $R_FACETS = '';
+
 my $SINGULARITY = '';
 my $singularityParams = '';
 my $singularityBind = '';
@@ -164,6 +168,8 @@ my $MM10_HG19_HYBRID_BWA_INDEX = '';
 my $MM10_CUSTOM_FASTA = '';
 my $MM10_CUSTOM_FAI = '';
 my $MM10_CUSTOM_BWA_INDEX = '';
+
+
 
 open(CONFIG, "$config") or die "CAN'T OPEN CONFIG FILE $config";
 while(<CONFIG>){
@@ -188,14 +194,8 @@ while(<CONFIG>){
         }
         $BCFTOOLS = $conf[1];
     }
-    elsif($conf[0] =~ /facets_lib/i){
-        if(!-e "$conf[1]/facets"){
-            die "CAN'T FIND facets_lib IN $conf[1] $!";
-        }
-        $FACETS_LIB = $conf[1];
-    }
     elsif($conf[0] =~ /facets_suite/i){
-        if(!-e "$conf[1]/facets"){
+        if(!-e "$conf[1]/snp-pileup-wrapper.R" || !-e "$conf[1]/run-facets-wrapper.R" || !-e "$conf[1]/annotate-maf-wrapper.R"){
             die "CAN'T FIND facets_suite IN $conf[1] $!";
         }
         $FACETS_SUITE = $conf[1];
@@ -218,11 +218,11 @@ while(<CONFIG>){
 	}
 	$LANCET = $conf[1];
     }
-    elsif($conf[0] =~ /pindel/i){
-        if(!-e "$conf[1]/pindel" or !-e "$conf[1]/pindel2vcf"){
-            die "CAN'T FIND pindel or pindel2vcf IN $conf[1] $!";
+    elsif($conf[0] =~ /manta/i){
+        if(!-e "$conf[1]/configManta.py"){
+            die "CAN'T FIND configManta.py IN $conf[1] $!";
         }
-        $PINDEL = $conf[1];
+        $MANTA = $conf[1];
     }
     elsif($conf[0] =~ /^mutect$/i){
 	if(!-e "$conf[1]/muTect.jar"){
@@ -235,6 +235,12 @@ while(<CONFIG>){
 	    die "CAN'T FIND picard.jar IN $conf[1] $!";
 	}
 	$PICARD = $conf[1];
+    }
+    elsif($conf[0] =~ /pindel/i){
+        if(!-e "$conf[1]/pindel" or !-e "$conf[1]/pindel2vcf"){
+            die "CAN'T FIND pindel or pindel2vcf IN $conf[1] $!";
+        }
+        $PINDEL = $conf[1];
     }
     elsif($conf[0] =~ /samtools/i){
 	if(!-e "$conf[1]/samtools"){
@@ -324,7 +330,7 @@ while(<CONFIG>){
         $ENV{'PATH'} = "$conf[1]:$path_tmp";
         $singularityenv_prepend_path .= ":$conf[1]";
     }
-     elsif($conf[0] =~ /^r$/i){
+    elsif($conf[0] =~ /^r$/i){
 	if(!-e "$conf[1]/R"){
 	    die "CAN'T FIND R IN $conf[1] $!";
 	}
@@ -332,7 +338,13 @@ while(<CONFIG>){
 	$ENV{'PATH'} = "$conf[1]:$path_tmp";
         $singularityenv_prepend_path .= ":$conf[1]";
     }
-   elsif($conf[0] =~ /mm9_fasta/i){
+    elsif($conf[0] =~ /^r_facets$/i){
+        if(!-e "$conf[1]/Rscript"){
+            die "CAN'T FIND Rscript IN $conf[1] $!";
+        }
+        $R_FACETS = $conf[1];
+    }
+    elsif($conf[0] =~ /mm9_fasta/i){
 	if(!-e "$conf[1]"){
 	    if($species =~ /^mm9$/i){
 		die "CAN'T FIND $conf[1] $!";
@@ -426,7 +438,7 @@ while(<CONFIG>){
                 die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR HG19-MM9 HYBRID WITH PREFIX $conf[1] $!";
             }
         }
-        $MM10_HG18_HYBRID_BWA_INDEX = $conf[1];
+        $MM10_HG19_HYBRID_BWA_INDEX = $conf[1];
     }
     elsif($conf[0] =~ /mm10_custom_fasta/i){
 	if(!-e "$conf[1]"){
@@ -1362,6 +1374,34 @@ if($pair){
             }
         }
 
+        if($manta){
+            my $mcj = '';
+            my $ran_mc = 0;
+            if(!-e "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_MANTA_CONFIG.done" || $ran_ssf){
+                sleep(2);
+                my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$data[0]\_$data[1]\_MANTA_CONFIG", job_hold => "$ssfj", cpu => "1", mem => "10", cluster_out => "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_MANTA_CONFIG.log");
+                my $standardParams = Schedule::queuing(%stdParams);
+
+                ### NOTE: not using singularity b/c manta is not installed in image
+                ### running all mouse as exome
+                my $mes = '--exome';
+                `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PYTHON/python $MANTA/configManta.py --normalBam $output/alignments/$pre\_indelRealigned_recal\_$data[0]\.bam --tumorBam $output/alignments/$pre\_indelRealigned_recal\_$data[1]\.bam --referenceFasta $REF_SEQ --runDir $output/variants/structVar/manta/$data[0]\_$data[1]\_manta $mes`;
+                $ran_mc = 1;
+                `/bin/touch $output/progress/$pre\_$uID\_$data[0]\_$data[1]\_MANTA_CONFIG.done`;
+                $mcj = "$pre\_$uID\_$data[0]\_$data[1]\_MANTA_CONFIG";
+            }
+
+            if(!-e "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_MANTA_RUN.done" || $ran_mc){
+                sleep(2);
+                my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$data[0]\_$data[1]\_MANTA_RUN", job_hold => "$mcj", cpu => "16", mem => "60", cluster_out => "$output/progress/$pre\_$uID\_$data[0]\_$data[1]\_MANTA_RUN.log");
+                my $standardParams = Schedule::queuing(%stdParams);
+
+                `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PYTHON/python $output/variants/structVar/manta/$data[0]\_$data[1]\_manta/runWorkflow.py -j 16`;
+
+                `/bin/touch $output/progress/$pre\_$uID\_$data[0]\_$data[1]\_MANTA_RUN.done`;
+                push @all_jids, "$pre\_$uID\_$data[0]\_$data[1]\_MANTA_RUN";
+            }
+        }
 
         if($mutect2){
             if(!-d "$output/variants/snpsIndels/mutect2"){
