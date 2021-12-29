@@ -377,7 +377,7 @@ while(<CONFIG>){
     }
     elsif($conf[0] =~ /b37_fasta/i){
 	if(!-e "$conf[1]"){
-	    if($species =~ /human|^b37$/i){
+	    if($species =~ /^human$|^b37$/i){
 		die "CAN'T FIND $conf[1] $!";
 	    }
 	}
@@ -385,7 +385,7 @@ while(<CONFIG>){
     }
     elsif($conf[0] =~ /b37_fai/i){
 	if(!-e "$conf[1]"){
-	    if($species =~ /human|^b37$/i){
+	    if($species =~ /^human$|^b37$/i){
 		die "CAN'T FIND $conf[1] $!";
 	    }
 	}
@@ -393,7 +393,7 @@ while(<CONFIG>){
     }
     elsif($conf[0] =~ /b37_mm10_hybrid_fasta/i){
 	if(!-e "$conf[1]"){
-	    if($species =~ /hybrid|xenograft|b37_mm10/i){
+	    if($species =~ /human_hybrid|b37_hybrid|b37_mm10/i){
 		die "CAN'T FIND $conf[1] $!";
 	    }
 	}
@@ -401,7 +401,7 @@ while(<CONFIG>){
     }
     elsif($conf[0] =~ /b37_mm10_hybrid_fai/i){
 	if(!-e "$conf[1]"){
-	    if($species =~ /hybrid|xenograft|b37_mm10/i){
+	    if($species =~ /human_hybrid|b37_hybrid|b37_mm10/i){
 		die "CAN'T FIND $conf[1] $!";
 	    }
 	}
@@ -415,17 +415,9 @@ while(<CONFIG>){
 	}
 	$B37_BWA_INDEX = $conf[1];
     }
-    elsif($conf[0] =~ /b37_mm10_hybrid_fasta/i){
-        if(!-e "$conf[1]"){
-            if($species =~ /human_hybrid|b37_mm10/i){
-                die "CAN'T FIND $conf[1] $!";
-            }
-        }
-        $B37_MM10_HYBRID_FASTA = $conf[1];
-    }
     elsif($conf[0] =~ /b37_mm10_hybrid_bwa_index/i){
         if(!-e "$conf[1]\.bwt" || !-e "$conf[1]\.pac" || !-e "$conf[1]\.ann" || !-e "$conf[1]\.amb" || !-e "$conf[1]\.sa"){
-            if($species =~ /human_hybrid|b37_mm10/i){
+            if($species =~ /human_hybrid|b37_hybrid|b37_mm10/i){
                 die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR b37-MM10 HYBRID WITH PREFIX $conf[1] $!";
             }
         }
@@ -433,11 +425,19 @@ while(<CONFIG>){
     }
     elsif($conf[0] =~ /hg19_fasta/i){
         if(!-e "$conf[1]"){
-            if($species =~ /hg19/i){
+            if($species =~ /^hg19$/i){
                 die "CAN'T FIND $conf[1] $!";
             }
         }
         $HG19_FASTA = $conf[1];
+    }
+    elsif($conf[0] =~ /hg19_fai/i){
+        if(!-e "$conf[1]"){
+            if($species =~ /^hg19$/i){
+                die "CAN'T FIND $conf[1] $!";
+            }
+        }
+        $HG19_FAI = $conf[1];
     }
     elsif($conf[0] =~ /hg19_bwa_index/i){
         if(!-e "$conf[1]\.bwt" || !-e "$conf[1]\.pac" || !-e "$conf[1]\.ann" || !-e "$conf[1]\.amb" || !-e "$conf[1]\.sa"){
@@ -449,21 +449,28 @@ while(<CONFIG>){
     }
     elsif($conf[0] =~ /hg19_mm10_hybrid_fasta/i){
         if(!-e "$conf[1]"){
-            if($species =~ /hg19_hybrid/i){
+            if($species =~ /hg19_hybrid|hg19_mm10/i){
                 die "CAN'T FIND $conf[1] $!";
             }
         }
         $HG19_MM10_HYBRID_FASTA = $conf[1];
     }
+    elsif($conf[0] =~ /hg19_mm10_hybrid_fai/i){
+        if(!-e "$conf[1]"){
+            if($species =~ /hg19_hybrid|hg19_mm10/i){
+                die "CAN'T FIND $conf[1] $!";
+            }
+        }
+        $B37_MM10_HYBRID_FAI = $conf[1];
+    }
     elsif($conf[0] =~ /hg19_mm10_hybrid_bwa_index/i){
         if(!-e "$conf[1]\.bwt" || !-e "$conf[1]\.pac" || !-e "$conf[1]\.ann" || !-e "$conf[1]\.amb" || !-e "$conf[1]\.sa"){
-            if($species =~ /hg19_hybrid/i){
+            if($species =~ /hg19_hybrid|hg19_mm10/i){
                 die "CAN'T FIND ALL NECESSARY BWA INDEX FILES FOR HG19-MM9 HYBRID WITH PREFIX $conf[1] $!";
             }
         }
         $HG19_MM10_HYBRID_BWA_INDEX = $conf[1];
     }
-
 }
 my %sinParams = (singularity_exec => "$SINGULARITY/singularity", singularity_image => "$Bin/variants_pipeline_singularity_prod.simg");
 $singularityParams = Schedule::singularityParams(%sinParams);
@@ -594,10 +601,10 @@ if(!-e "$abra_target"){
     die "CAN'T LOCATE $abra_target; REQUIRED FOR ABRA $!";
 }
 
-print "\n\n";
-print "-abra_target $abra_target\n";
-print "-targets $targets\n";
-print "\n\n";
+#print "\n\n";
+#print "-abra_target $abra_target\n";
+#print "-targets $targets\n";
+#print "\n\n";
 
 my $multipleTargets = '';
 ### NOTE: THERE SEEMS TO BE SOMETHING WRONG WITH DIPS IN COVERAGE AT TARGET BOUNDARY
