@@ -182,7 +182,6 @@ unless( -e $output or make_path($output , { verbose => 1, mode => 0775, } )) {
 }
 umask $orig_umask;
 
-my $FACETS = '';
 my $PYTHON = '';
 my $PERL = '';
 my $VEP = '';
@@ -204,11 +203,6 @@ while(<CONFIG>){
             die "CAN'T FIND python IN $conf[1] $!";
         }
 	$PYTHON = $conf[1];
-    } elsif($conf[0] =~ /facets/i){
-        if(!-e "$conf[1]/facets"){
-            die "CAN'T FIND facets IN $conf[1] $!";
-        }
-        $FACETS = $conf[1];
     }elsif($conf[0] =~/fixmultiindel/i){
         if(!-e "$conf[1]/fixMultiInDel.sh"){
             die "CAN'T FIND fixMultiInDel in $conf[1] $!";
