@@ -314,7 +314,7 @@ while(<CONFIG>){
 	$VARSCAN = $conf[1];
     }
     elsif($conf[0] =~ /^vep/i){
-        if(!-e "$conf[1]/variant_effect_predictor.pl"){
+        if(!-e "$conf[1]/vep"){
             die "CAN'T FIND VEP IN $conf[1] $!";
         }
         $VEP = $conf[1];
@@ -484,7 +484,6 @@ my $REF_SEQ = '';
 my $REF_FAI = '';
 my $BWA_INDEX = '';
 my $DB_SNP = "";
-my $ExAC_VCF = '';
 my $FACETS_DB_SNP = "";
 my $MILLS_1000G = '';
 my $HAPMAP = '';
@@ -494,7 +493,6 @@ my $COSMIC = '';
 my $COSMIC_HOTSPOTS = '';
 if($species =~ /^b37$|human/i){
     $DB_SNP = "$Bin/data/b37/dbsnp_138.b37.excluding_sites_after_129.vcf";
-    $ExAC_VCF = "$VEP/ExAC_nonTCGA.r0.3.1.sites.vep.vcf.gz";
     $FACETS_DB_SNP = "$Bin/data/b37/dbsnp_137.b37__RmDupsClean__plusPseudo50__DROP_SORT.vcf";
     $MILLS_1000G = "$Bin/data/b37/Mills_and_1000G_gold_standard.indels.b37.vcf";
     $HAPMAP = "$Bin/data/b37/hapmap_3.3.b37.vcf";
@@ -502,10 +500,6 @@ if($species =~ /^b37$|human/i){
     $PHASE1_SNPS_1000G = "$Bin/data/b37/1000G_phase1.snps.high_confidence.b37.vcf";
     $COSMIC = "$Bin/data/b37/CosmicCodingMuts_v67_b37_20131024__NDS.vcf";
     $COSMIC_HOTSPOTS = "$Bin/data/b37/dmp_cosmic_for_hotspots.vcf";
-
-    if (! -s $ExAC_VCF ){
-        die "$ExAC_VCF not present! $!";
-    }
 
     if($species =~ /human_hybrid|xenograft|b37_mm10/i){
         $species = "human_hybrid";
@@ -528,7 +522,6 @@ elsif($species =~ /^hg19$/i){
     $REF_FAI = "$HG19_FAI";
     $BWA_INDEX = "$HG19_BWA_INDEX";
     $DB_SNP = "$Bin/data/hg19/dbsnp_138.hg19.excluding_sites_after_129.vcf";
-    $ExAC_VCF = "$VEP/ExAC_nonTCGA.r0.3.1.sites.vep.vcf.gz";
     $FACETS_DB_SNP = "$Bin/data/hg19/dbsnp_137.hg19__RmDupsClean__plusPseudo50__DROP_SORT.vcf";
     $MILLS_1000G = "$Bin/data/hg19/Mills_and_1000G_gold_standard.indels.hg19.vcf";
     $HAPMAP = "$Bin/data/hg19/hapmap_3.3.hg19.vcf";
@@ -1794,18 +1787,16 @@ if($pair){
 
     if($hasPair && (!-e "$output/progress/$pre\_$uID\_HAPLOTECT.done" || $ran_mutect_glob || $ran_ar_indel_hc)){
 	sleep(2);
+
         my $patientFile = "";
-        my $addOptions = "";
-        if($ExAC_VCF){
-            $addOptions = "-exac_vcf $ExAC_VCF";
-        }
         if($patient){
             $patientFile = "-patient $patient";
         }
+
 	my $muj = join(",", @mu_jids);
-	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_HAPLOTECT", job_hold => "$arihcj,$muj", cpu => "4", mem => "8", cluster_out => "$output/progress/$pre\_$uID\_HAPLOTECT.log");
+	my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_HAPLOTECT", job_hold => "$arihcj,$muj", cpu => "12", mem => "90", cluster_out => "$output/progress/$pre\_$uID\_HAPLOTECT.log");
 	my $standardParams = Schedule::queuing(%stdParams);
-	`$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $PERL/perl $Bin/haploTect_merge.pl -pair $pair -hc_vcf $output/variants/snpsIndels/haplotypecaller/$pre\_HaplotypeCaller.vcf -species $species -pre $pre -output $output/variants/snpsIndels/haplotect -mutect_dir $output/variants/snpsIndels/mutect -config $config $patientFile -align_dir $output/alignments/ -svnRev $svnRev $addOptions -tempdir $tempdir -delete_temp`;
+        `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $PERL/perl $Bin/haploTect_merge.pl -pair $pair -hc_vcf $output/variants/snpsIndels/haplotypecaller/$pre\_HaplotypeCaller.vcf -species $species -pre $pre -output $output/variants/snpsIndels/haplotect -mutect_dir $output/variants/snpsIndels/mutect -config $config $patientFile -align_dir $output/alignments/ -svnRev $svnRev -tempdir $tempdir -delete_temp`;
 
         $haplotect_run = 1;
 	`/bin/touch $output/progress/$pre\_$uID\_HAPLOTECT.done`;
@@ -1945,11 +1936,6 @@ sub generateMaf{
                 $bgz_jid = "$pre\_$uID\_$jna\_bgzip,$pre\_$uID\_$jna\_bgzip_index";
             }
 
-            my $addOptions = "";
-            if($ExAC_VCF){
-                $addOptions = "-exac_vcf $ExAC_VCF";
-            }
-	    
 	    if(!-d "$vcf_dir/chrom_$c"){
 		mkdir("$vcf_dir/chrom_$c", 0775) or die "Can't make $vcf_dir/chrom_$c";
 	    }
@@ -1957,15 +1943,15 @@ sub generateMaf{
             my $standardParams = Schedule::queuing(%stdParams);
             `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $BCFTOOLS/bcftools filter -r $c $vcf.gz -O v -o $vcf_dir/chrom_$c/$jna\_$c.vcf`;
 
-            %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$jna\_$c\_MAF_UNPAIRED", job_hold => "$pre\_$uID\_$jna\_split_CHR_$c", cpu => "4", mem => "60", cluster_out => "$output/progress/$pre\_$uID\_$jna\_$c\_MAF_UNPAIRED.log");
+            %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$jna\_$c\_MAF_UNPAIRED", job_hold => "$pre\_$uID\_$jna\_split_CHR_$c", cpu => "8", mem => "60", cluster_out => "$output/progress/$pre\_$uID\_$jna\_$c\_MAF_UNPAIRED.log");
             $standardParams = Schedule::queuing(%stdParams);
-            `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $Bin/generateMAF.pl -vcf $vcf_dir/chrom_$c/$jna\_$c.vcf -species $species -config $config -caller $type $patientFile -align_dir $output/alignments $addOptions -delete_temp`;
+            `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $Bin/generateMAF.pl -vcf $vcf_dir/chrom_$c/$jna\_$c.vcf -species $species -config $config -caller $type $patientFile -align_dir $output/alignments -delete_temp`;
             `/bin/touch $output/progress/$pre\_$uID\_$jna\_$c\_MAF_UNPAIRED.done`;
             push @all_jids, "$pre\_$uID\_$jna\_$c\_MAF_UNPAIRED";
             push @chr_maf_jids, "$pre\_$uID\_$jna\_$c\_MAF_UNPAIRED";
-            push @vcf_files, "$vcf_dir/chrom_$c/$jna\_$c.vcf";
+            #push @vcf_files, "$vcf_dir/chrom_$c/$jna\_$c.vcf";
         }
-        #push @vcf_files, "$vcf_dir/chrom_$c/$jna\_$c.vcf";
+        push @vcf_files, "$vcf_dir/chrom_$c/$jna\_$c.vcf";
         #push @chr_maf_jids, "$pre\_$uID\_$jna\_$c\_MAF_UNPAIRED";
     }
 
@@ -1974,6 +1960,7 @@ sub generateMaf{
     s/vcf$/vcf_UNPAIRED_TCGA_MAF.txt/g for @merge_files;
     my $merge_files = join(" -i ", @merge_files);
     my @merge_jids;
+
 
     if(@chr_maf_jids){
         # MAKE A JOB HERE THAT WILL MERGE ALL THE MAF FILES FOR TCGA_MAF, TCGA_PORTAL_MAF, TCGA_PORTAL_MAF_fillout, and VEP_MAF

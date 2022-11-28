@@ -6,7 +6,7 @@ use FindBin qw($Bin);
 use File::Path qw(make_path);
 use File::Basename;
 
-my ($svnRev, $pairing, $hc_vcf, $help, $mutect_dir, $species, $bam_dir, $patient, $pre, $output, $delete_temp, $config, $exac_vcf, $tempdir);
+my ($svnRev, $pairing, $hc_vcf, $help, $mutect_dir, $species, $bam_dir, $patient, $pre, $output, $delete_temp, $config, $tempdir);
 
 # Default output = results/variants/FinalReport
 # get current directory
@@ -26,7 +26,6 @@ GetOptions ('pair=s' => \$pairing,
             'align_dir=s' => \$bam_dir,
             'patient=s' => \$patient,
             'pre=s' => \$pre,
-            'exac_vcf=s' => \$exac_vcf,
             'output=s' => \$output,
             'delete_temp' => \$delete_temp,
 	        'config=s' => \$config,
@@ -68,13 +67,6 @@ if( ! -e $hc_vcf || -z $hc_vcf){
 
 if($hc_vcf !~ /^\//){
     $hc_vcf = "$curDir/$hc_vcf";
-}
-
-## Checking exac vcf
-if($exac_vcf){
-    if( !-e $exac_vcf){
-        die "$exac_vcf DOES NOT EXIST";
-    }
 }
 
 ## Checking Mutect Directory
@@ -248,7 +240,7 @@ while(<CONFIG>){
         }
         $MM9_FASTA = $conf[1];
     } elsif($conf[0] =~ /^vep/i){
-        if(!-e "$conf[1]/variant_effect_predictor.pl"){
+        if(!-e "$conf[1]/vep"){
             die "CAN'T FIND VEP IN $conf[1] $!";
         }
         if(!-e "$conf[1]/Plugins/UpDownstream.pm"){
@@ -515,7 +507,7 @@ if($force_run || !-e "$progress/$pre\_combine_INDELS.done"){
 if($force_run || ! -e "$progress/$pre\_haplotect_pA_qFiltersHC.done"){
     $force_run=1;
         
-    print "$PYTHON/python $Bin/maf/pA_qFiltersHC.py -m $raw_maf -s -c HaplotypeCaller -o $output/$pre\_haplotect_BIC_INDELS.maf";
+    print "$PYTHON/python $Bin/maf/pA_qFiltersHC.py -m $raw_maf -s -c HaplotypeCaller -o $output/$pre\_haplotect_BIC_INDELS.maf\n\n";
     `$PYTHON/python $Bin/maf/pA_qFiltersHC.py -m $raw_maf -s -c HaplotypeCaller -o $output/$pre\_haplotect_BIC_INDELS.maf`;
     &checkResult($?, $progress, "$pre\_haplotect_pA_qFiltersHC");
 }
@@ -535,6 +527,7 @@ if($force_run || ! -e "$progress/$pre\_merge_maf.done"){
     # Now get the mutect
     print "grep -v -e ^# -e ^Hugo_Symbol $mut_maf >> $output/$pre\_merge_maf0.txt\n\n";
     `grep -v -e ^# -e ^Hugo_Symbol $mut_maf >> $output/$pre\_merge_maf0.txt`;
+
     &checkResult($?, $progress, "$pre\_merge_maf");
 
 } 
@@ -732,14 +725,10 @@ sub run_vcf_2_maf{
     # softlink reference
     symlink($REF_FASTA, "$output/ref/$ref_base");
     symlink("$REF_FASTA.fai", "$output/ref/$ref_base.fai");
-    my $addOptions = '';
-    if($exac_vcf){
-        $addOptions = "--filter-vcf $exac_vcf";
-    }
     
     print "\n#######\n#######\nStarting VEP. \n";
-    print "$PERL/perl $VCF2MAF/vcf2maf.pl --input-vcf $in_vcf --output-maf $out_maf --ref-fasta $output/ref/$ref_base --tmp-dir $output/tmp/ --ncbi $ncbi --vep-forks 4 --vep-path $VEP --vep-data $VEP $addOptions --tumor-id $tumor --normal-id $normal --updown-length 10 \n";
-    `$PERL/perl $VCF2MAF/vcf2maf.pl --input-vcf $in_vcf --output-maf $out_maf --ref-fasta $output/ref/$ref_base --tmp-dir $output/tmp/ --ncbi $ncbi --vep-forks 4 --vep-path $VEP --vep-data $VEP $addOptions --tumor-id $tumor --normal-id $normal --updown-length 10`;
+    print "$PERL/perl $VCF2MAF/vcf2maf.pl --input-vcf $in_vcf --output-maf $out_maf --ref-fasta $output/ref/$ref_base --tmp-dir $output/tmp/ --ncbi $ncbi --vep-forks 12 --vep-path $VEP --vep-data $VEP --tumor-id $tumor --normal-id $normal --vep-overwrite \n";
+    `$PERL/perl $VCF2MAF/vcf2maf.pl --input-vcf $in_vcf --output-maf $out_maf --ref-fasta $output/ref/$ref_base --tmp-dir $output/tmp/ --ncbi $ncbi --vep-forks 12 --vep-path $VEP --vep-data $VEP --tumor-id $tumor --normal-id $normal --vep-overwrite`;
 
     &checkResult($?, $progress, $doneFile, $out_maf);
 }

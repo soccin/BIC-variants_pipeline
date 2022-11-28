@@ -53,7 +53,7 @@ start=dropwhile(lambda L: L.lower().lstrip().startswith('#'), fin)
 cin=csv.DictReader(start,delimiter="\t")
 fnames = cin.fieldnames
 fnames.append("Caller")
-cout=csv.DictWriter(ofh,fieldnames=fnames,delimiter="\t")
+cout=csv.DictWriter(ofh,fieldnames=fnames,delimiter="\t",lineterminator='\n')
 cout.writeheader()
 
 for recDict in cin:

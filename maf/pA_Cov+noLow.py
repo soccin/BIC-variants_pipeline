@@ -14,7 +14,7 @@ FILTER SNPEFF_EFFECT SNPEFF_FUNCTIONAL_CLASS SNPEFF_IMPACT
 """
 
 cin=csv.DictReader(sys.stdin,delimiter="\t")
-cout=csv.DictWriter(sys.stdout,cin.fieldnames,delimiter="\t")
+cout=csv.DictWriter(sys.stdout,cin.fieldnames,delimiter="\t",lineterminator="\n")
 cout.writeheader()
 for recDict in cin:
     try:

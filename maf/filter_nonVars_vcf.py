@@ -43,7 +43,8 @@ with open(args.vcf) as fin:
     # Now grab formatted rest of file, change ofh to a csv.dictwriter, output header
     start = dropwhile(lambda L: L.lower().lstrip().startswith('##'), fin)
     cin = csv.DictReader(start, delimiter='\t')
-    cout = csv.DictWriter(ofh,fieldnames=cin.fieldnames,delimiter="\t")
+    ### NOTE: lineterminator needed so a carriage return isn't added to end of each line in output csv
+    cout = csv.DictWriter(ofh,fieldnames=cin.fieldnames,delimiter="\t",lineterminator='\n')
     cout.writeheader()
     for row in cin:
         

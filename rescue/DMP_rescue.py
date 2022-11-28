@@ -58,7 +58,8 @@ start=dropwhile(lambda L: L.lower().lstrip().startswith('##'), fin)
 cin=csv.DictReader(start,delimiter="\t")
 #This is incase I need to add anything. I don't think I do.
 fnames = cin.fieldnames
-cout=csv.DictWriter(ofh,fieldnames=fnames,delimiter="\t")
+### NOTE: lineterminator needed so a carriage return isn't added to end of each line in output csv
+cout=csv.DictWriter(ofh,fieldnames=fnames,delimiter="\t",lineterminator='\n')
 cout.writeheader()
 
 for rec in cin:

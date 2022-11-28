@@ -476,7 +476,6 @@ close CONFIG;
 my $REF_SEQ = "$MM10_FASTA";
 my $REF_FAI = "$MM10_FAI";
 my $BWA_INDEX = "$MM10_BWA_INDEX";
-my $ExAC_VCF;
 my $DB_SNP = "$Bin/data/mm10/mm10_snp142.vcf";
 my $CHR_M = 'M'; #as of right now default to M. Once we add NCBI assemblies, we can chang it below.
 my $CHR_PREFIX = "chr"; #as of right now default to 'chr'. Once we add NCBI assemblies, we can change it below.
@@ -1508,17 +1507,13 @@ if($pair){
     if($hasPair && (!-e "$output/progress/$pre\_$uID\_HAPLOTECT.done" || $ran_mutect_glob || $ran_hc)){
         sleep(2);
         my $patientFile = "";
-        my $addOptions = "";
-        if($ExAC_VCF){
-            $addOptions = "-exac_vcf $ExAC_VCF";
-        }
         if($patient){
             $patientFile = "-patient $patient";
         }
         my $muj = join(",", @mu_jids);
-        my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_HAPLOTECT", job_hold => "$cvhcj,$muj", cpu => "4", mem => "8", cluster_out => "$output/progress/$pre\_$uID\_HAPLOTECT.log");
+        my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_HAPLOTECT", job_hold => "$cvhcj,$muj", cpu => "12", mem => "90", cluster_out => "$output/progress/$pre\_$uID\_HAPLOTECT.log");
         my $standardParams = Schedule::queuing(%stdParams);
-        `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $PERL/perl $Bin/haploTect_merge.pl -pair $pair -hc_vcf $output/variants/snpsIndels/haplotypecaller/$pre\_HaplotypeCaller.vcf -species $species -pre $pre -output $output/variants/snpsIndels/haplotect -mutect_dir $output/variants/snpsIndels/mutect -config $config $patientFile -align_dir $output/alignments/ -svnRev $svnRev $addOptions -tempdir $tempdir -delete_temp`;
+        `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $PERL/perl $Bin/haploTect_merge.pl -pair $pair -hc_vcf $output/variants/snpsIndels/haplotypecaller/$pre\_HaplotypeCaller.vcf -species $species -pre $pre -output $output/variants/snpsIndels/haplotect -mutect_dir $output/variants/snpsIndels/mutect -config $config $patientFile -align_dir $output/alignments/ -svnRev $svnRev -tempdir $tempdir -delete_temp`;
 
         $haplotect_run = 1;
         `/bin/touch $output/progress/$pre\_$uID\_HAPLOTECT.done`;
@@ -1594,24 +1589,19 @@ sub generateMaf{
 	    if(!-d "$vcf_dir/chrom_$c"){
                 mkdir("$vcf_dir/chrom_$c", 0775) or die "Can't make $vcf_dir/chrom_$c";
             }
-            my $addOptions = "";
-            if($ExAC_VCF){
-                $addOptions = "-exac_vcf $ExAC_VCF";
-            }
-
             my %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$jna\_split__$c", job_hold => $bgz_jid, cpu => "1", mem => "5", cluster_out => "$output/progress/$pre\_$uID\_$jna\_split_$c.log");
             my $standardParams = Schedule::queuing(%stdParams);
             `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $BCFTOOLS/bcftools filter -r $c $vcf.gz -O v -o $vcf_dir/chrom_$c/$jna\_$c.vcf`;
 	    
-            %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$jna\_$c\_MAF_UNPAIRED", job_hold => "$pre\_$uID\_$jna\_split__$c", cpu => "4", mem => "20", cluster_out => "$output/progress/$pre\_$uID\_$jna\_$c\_MAF_UNPAIRED.log");
+            %stdParams = (scheduler => "$scheduler", job_name => "$pre\_$uID\_$jna\_$c\_MAF_UNPAIRED", job_hold => "$pre\_$uID\_$jna\_split__$c", cpu => "8", mem => "60", cluster_out => "$output/progress/$pre\_$uID\_$jna\_$c\_MAF_UNPAIRED.log");
             $standardParams = Schedule::queuing(%stdParams);
-            `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $Bin/generateMAF.pl -vcf $vcf_dir/chrom_$c/$jna\_$c.vcf -species $species -config $config -caller $type $patientFile -align_dir $output/alignments $addOptions -delete_temp`;
+            `$standardParams->{submit} $standardParams->{job_name} $standardParams->{job_hold} $standardParams->{cpu} $standardParams->{mem} $standardParams->{cluster_out} $additionalParams $singularityParams $Bin/generateMAF.pl -vcf $vcf_dir/chrom_$c/$jna\_$c.vcf -species $species -config $config -caller $type $patientFile -align_dir $output/alignments -delete_temp`;
           `/bin/touch $output/progress/$pre\_$uID\_$jna\_$c\_MAF_UNPAIRED.done`;
             push @all_jids, "$pre\_$uID\_$jna\_$c\_MAF_UNPAIRED";
             push @chr_maf_jids, "$pre\_$uID\_$jna\_$c\_MAF_UNPAIRED";
-            push @vcf_files, "$vcf_dir/chrom_$c/$jna\_$c.vcf";
+            #push @vcf_files, "$vcf_dir/chrom_$c/$jna\_$c.vcf";
         }
-        #push @vcf_files, "$vcf_dir/chrom_$c/$jna\_$c.vcf";
+        push @vcf_files, "$vcf_dir/chrom_$c/$jna\_$c.vcf";
         #push @chr_maf_jids, "$pre\_$uID\_$jna\_$c\_MAF_UNPAIRED";
     }
     

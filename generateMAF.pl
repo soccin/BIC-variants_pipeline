@@ -13,14 +13,13 @@ my $VEP_COLUMN_NAMES = "Center,Verification_Status,Validation_Status,Mutation_St
 ## to help with selective restarting
 my $force_run;
 
-my ($vcf, $pairing, $patient, $bam_dir, $species, $config, $caller, $normal_sample, $tumor_sample, $delete_temp, $exac_vcf);
+my ($vcf, $pairing, $patient, $bam_dir, $species, $config, $caller, $normal_sample, $tumor_sample, $delete_temp);
 GetOptions ('vcf=s' => \$vcf,
 	    'species=s' => \$species,
 	    'config=s' => \$config,
 	    'caller=s' => \$caller,
             'align_dir=s' => \$bam_dir,
             'patient=s' => \$patient,
-            'exac_vcf=s' => \$exac_vcf,
 	    'normal_sample=s' => \$normal_sample,
 	    'tumor_sample=s' => \$tumor_sample,
 	    'delete_temp' => \$delete_temp,
@@ -33,12 +32,6 @@ if(!$vcf){
 
 if(!-e $vcf){
     die "$vcf DOES NOT EXIST";
-}
-
-if($exac_vcf){
-    if( !-e $exac_vcf){
-        die "$exac_vcf DOES NOT EXIST";
-    }
 }
 
 if($pairing){
@@ -149,17 +142,18 @@ while(<CONFIG>){
         $PERL = $conf[1];
     }
     elsif($conf[0] =~ /^vep/i){
-        if(!-e "$conf[1]/variant_effect_predictor.pl"){
+        if(!-e "$conf[1]/vep"){
             die "CAN'T FIND VEP IN $conf[1] $!";
         }
         if(!-e "$conf[1]/Plugins/UpDownstream.pm"){
             die "VEP missing UpDownstream Plugin!";
         }
+
         $VEP = $conf[1];
     }
     elsif($conf[0] =~/vcf2maf/i){
-        if(!-e "$conf[1]/maf2maf.pl"){
-            die "CAN'T FIND maf2maf.pl in $conf[1] $!";
+        if(!-e "$conf[1]/vcf2maf.pl"){
+            die "CAN'T FIND vcf2maf.pl in $conf[1] $!";
         }
         $VCF2MAF = $conf[1];
     }
@@ -521,14 +515,6 @@ if($species =~ /hg19|human|b37/){
         &checkResult($?, $progress, basename("$vcf") . "_bedtools_anno");
     }
 
-    # vcf2maf includes exac annotation
-    #if($force_run || !-e "$progress/" . basename("$vcf") . "_exac_anno.done"){
-    #    $force_run = 1;
-    #    print "perl $Bin/maf/exac_annotate.pl --in_maf $vcf\_BIC.maf --species $species --output $output --config $config --somatic $somatic --data $Bin/data\n";
-    #    `$PERL/perl $Bin/maf/exac_annotate.pl --in_maf $vcf\_BIC.maf --species $species --output $output --config $config --somatic $somatic --data $Bin/data`;
-    #    &checkResult($?, $progress, basename("$vcf") . "_exac_anno");
-    #}
-
     if($force_run || !-e "$progress/" . basename("$vcf") . "_mergeExtraCols.done"){
         $force_run = 1;
         print "$PYTHON/python $Bin/maf/mergeExtraCols.py --triNuc $output/TriNuc.txt --targeted $output/maf_targets.IMPACT410 --maf $vcf\_BIC.maf\n";
@@ -581,14 +567,9 @@ sub run_vcf_2_maf{
     symlink($REF_FASTA, "$output/ref_$somatic/$ref_base");
     symlink("$REF_FASTA.fai", "$output/ref_$somatic/$ref_base.fai");
     
-    my $addOptions = '';
-    if($exac_vcf){
-        $addOptions = "--filter-vcf $exac_vcf";
-    }
-    
     print "\n#######\n#######\nStarting VEP. \n";
-    print "$PERL/perl $VCF2MAF/vcf2maf.pl --input-vcf $in_vcf --species $VEP_SPECIES --output-maf $out_maf --ref-fasta $output/ref_$somatic/$ref_base --tmp-dir $output/tmp_$somatic/ --ncbi $NCBI_BUILD --vep-forks 4 --vep-path $VEP --vep-data $VEP $addOptions --tumor-id $tumor --normal-id $normal --updown-length 10 \n";
-    `$PERL/perl $VCF2MAF/vcf2maf.pl --input-vcf $in_vcf --species $VEP_SPECIES --output-maf $out_maf --ref-fasta $output/ref_$somatic/$ref_base --tmp-dir $output/tmp_$somatic/ --ncbi $NCBI_BUILD --vep-forks 4 --vep-path $VEP --vep-data $VEP $addOptions --tumor-id $tumor --normal-id $normal --updown-length 10`;
+    print "$PERL/perl $VCF2MAF/vcf2maf.pl --input-vcf $in_vcf --species $VEP_SPECIES --output-maf $out_maf --ref-fasta $output/ref_$somatic/$ref_base --tmp-dir $output/tmp_$somatic/ --ncbi $NCBI_BUILD --vep-forks 8 --vep-path $VEP --vep-data $VEP --tumor-id $tumor --normal-id $normal --vep-overwrite \n";
+    `$PERL/perl $VCF2MAF/vcf2maf.pl --input-vcf $in_vcf --species $VEP_SPECIES --output-maf $out_maf --ref-fasta $output/ref_$somatic/$ref_base --tmp-dir $output/tmp_$somatic/ --ncbi $NCBI_BUILD --vep-forks 8 --vep-path $VEP --vep-data $VEP --tumor-id $tumor --normal-id $normal --vep-overwrite`;
 
     &checkResult($?, $progress, $doneFile, $out_maf);
 }

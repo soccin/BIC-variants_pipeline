@@ -31,9 +31,9 @@ TABIX			/opt/common/CentOS_6/samtools/samtools-1.2/htslib-1.2.1
 VARDICT_JAVA		/opt/common/CentOS_6/VarDictJava/VarDict-1.5.1/bin
 VARDICT_PERL		/opt/common/CentOS_6/VarDict/VarDict_85cc3f6
 VARSCAN			/opt/common/CentOS_6/varscan/v2.3.7
-VCF2MAF			/opt/common/CentOS_6/vcf2maf/v1.6.11_mod
+VCF2MAF			/opt/common/CentOS_7/vcf2maf/vcf2maf-1.6.21
 VCFTOOLS		/opt/common/CentOS_6-dev/vcftools/v0.1.14/bin
-VEP                     /opt/common/CentOS_6/vep/v86
+VEP                     /opt/common/CentOS_7/vep/ensembl-vep-release-102
 VIRMID			/opt/common/CentOS_6/virmid/Virmid-1.1.1
 WES_FILTER		/opt/common/CentOS_6/wes-filter/wes-filters-1.1.3
 B37_BWA_INDEX		/juno/depot/assemblies/H.sapiens/b37/index/bwa/0.7.12/b37.fasta

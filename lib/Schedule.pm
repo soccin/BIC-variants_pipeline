@@ -308,11 +308,11 @@ sub juno {
     }
 
     if($junoParams{'cluster_out'}){
-    $cluster ->cluster_out("-o $junoParams{'cluster_out'}");
+    $cluster ->cluster_out("-oo $junoParams{'cluster_out'}");
     }
 
     if($junoParams{'cluster_error'}){
-    $cluster ->cluster_error("-e $junoParams{'cluster_error'}");
+    $cluster ->cluster_error("-eo $junoParams{'cluster_error'}");
     }
 }
 
