@@ -461,7 +461,7 @@ while(<CONFIG>){
                 die "CAN'T FIND $conf[1] $!";
             }
         }
-        $B37_MM10_HYBRID_FAI = $conf[1];
+        $HG19_MM10_HYBRID_FAI = $conf[1];
     }
     elsif($conf[0] =~ /hg19_mm10_hybrid_bwa_index/i){
         if(!-e "$conf[1]\.bwt" || !-e "$conf[1]\.pac" || !-e "$conf[1]\.ann" || !-e "$conf[1]\.amb" || !-e "$conf[1]\.sa"){
