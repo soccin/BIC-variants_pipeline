@@ -128,11 +128,12 @@ if(!$poolName)
     die "Please specify the project name by -pre\n";  
 }
 
-if(!$genome || ($genome ne "hg19" && $genome ne "b37" && $genome ne "hybrid") )
+if(!$genome || ($genome ne "hg19" && $genome ne "b37" && $genome ne "hybrid" && $genome ne "human_hybrid"))
 {
-    die "Please specify the genome build by using -genome. Valid values are 'hg19', 'b37', and 'hybrid'\n";
+    die "Please specify the genome build by using -genome. Valid values are 'hg19', 'b37', 'hybrid', 'human_hybrid'\n";
 }
 
+$genome = $genome eq 'human_hybrid' ? 'hybrid' : $genome;
 
 if ($variant_config_file) {
 	print "The variant configration file in use is $variant_config_file.\n";
@@ -193,8 +194,6 @@ my $HotspotFile = $genomeDataPath . "v3clin_hg19_structuralvariants_geneInterval
 my $CancerCensusFile = $genomeDataPath . "cancer_gene_census.tsv";
 my $DGvFile = $genomeDataPath . "DGv_Annotation.tsv";
 my $RepeatRegionFile = $genomeDataPath . "repeatRegion.tsv";
-
-
 
 
 #Load Variant Pipeline Main Configuration File
